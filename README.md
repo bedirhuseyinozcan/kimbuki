@@ -1,6 +1,6 @@
 # Ben Kimim? Futbol — Multiplayer
 
-Real-time multiplayer “Who Am I?” game themed around footballers.
+Real-time multiplayer “Who Am I ? and Who Is The Imposter ?" mixture game themed around footballers.
 
 ## Monorepo Structure
 
