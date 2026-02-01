@@ -1,0 +1,122 @@
+module.exports = [
+  {
+    id: 1,
+    name: "Cristiano Ronaldo",
+    team: "Al Nassr",
+    league: "Saudi Pro League",
+    position: "Forward",
+    nation: "Portugal",
+    number: 7,
+    career: ["Sporting CP", "Manchester United", "Real Madrid", "Juventus", "Al Nassr"],
+    titles: ["Champions League", "Premier League", "La Liga", "Serie A", "Euro 2016"],
+    description: "Tarihin en çok gol atan oyuncularından biri. 'Siuuu' sevinciyle ikonikleşmiştir."
+  },
+  {
+    id: 2,
+    name: "Lionel Messi",
+    team: "Inter Miami",
+    league: "MLS",
+    position: "Forward",
+    nation: "Argentina",
+    number: 10,
+    career: ["Barcelona", "PSG", "Inter Miami"],
+    titles: ["Champions League", "La Liga", "Ligue 1", "World Cup 2022", "Copa America"],
+    description: "8 kez Ballon d'Or kazanan Arjantinli sihirbaz."
+  },
+  {
+    id: 3,
+    name: "Erling Haaland",
+    team: "Manchester City",
+    league: "Premier League",
+    position: "Forward",
+    nation: "Norway",
+    number: 9,
+    career: ["Molde", "Salzburg", "Dortmund", "Manchester City"],
+    titles: ["Champions League", "Premier League", "Bundesliga Pokal"],
+    description: "Norveçli gol makinesi. Fiziksel gücü ve hızıyla durdurulamaz."
+  },
+  {
+    id: 4,
+    name: "Kevin De Bruyne",
+    team: "Manchester City",
+    league: "Premier League",
+    position: "Midfielder",
+    nation: "Belgium",
+    number: 17,
+    career: ["Genk", "Chelsea", "Werder Bremen", "Wolfsburg", "Manchester City"],
+    titles: ["Champions League", "Premier League", "Bundesliga Pokal"],
+    description: "Asist kralı. Vizyonu ve pas yeteneğiyle oyunun yönünü değiştirir."
+  },
+  {
+    id: 5,
+    name: "Kylian Mbappé",
+    team: "Real Madrid",
+    league: "La Liga",
+    position: "Forward",
+    nation: "France",
+    number: 9,
+    career: ["Monaco", "PSG", "Real Madrid"],
+    titles: ["Ligue 1", "World Cup 2018"],
+    description: "Hızı ve bitiriciliğiyle tanınan Fransız süperstar."
+  },
+  {
+    id: 6,
+    name: "Virgil van Dijk",
+    team: "Liverpool",
+    league: "Premier League",
+    position: "Defender",
+    nation: "Netherlands",
+    number: 4,
+    career: ["Groningen", "Celtic", "Southampton", "Liverpool"],
+    titles: ["Champions League", "Premier League"],
+    description: "Liverpool savunmasının bel kemiği."
+  },
+  {
+    id: 7,
+    name: "Luka Modrić",
+    team: "Real Madrid",
+    league: "La Liga",
+    position: "Midfielder",
+    nation: "Croatia",
+    number: 10,
+    career: ["Dinamo Zagreb", "Tottenham", "Real Madrid"],
+    titles: ["Champions League", "La Liga", "World Cup Runner-up", "Ballon d'Or"],
+    description: "Yaşlanmayan Hırvat maestro. Dış ayak paslarıyla meşhur."
+  },
+  {
+    id: 8,
+    name: "Mohamed Salah",
+    team: "Liverpool",
+    league: "Premier League",
+    position: "Forward",
+    nation: "Egypt",
+    number: 11,
+    career: ["Basel", "Chelsea", "Fiorentina", "Roma", "Liverpool"],
+    titles: ["Champions League", "Premier League"],
+    description: "Mısır Kralı. Sol ayağıyla ölümcül şutlar çıkarır."
+  },
+  {
+    id: 9,
+    name: "Neymar Jr",
+    team: "Al Hilal",
+    league: "Saudi Pro League",
+    position: "Forward",
+    nation: "Brazil",
+    number: 10,
+    career: ["Santos", "Barcelona", "PSG", "Al Hilal"],
+    titles: ["Champions League", "La Liga", "Ligue 1", "Copa Libertadores"],
+    description: "Brezilya sambacısı. Çalımları ve tekniği büyüleyicidir."
+  },
+  {
+    id: 10,
+    name: "Manuel Neuer",
+    team: "Bayern Munich",
+    league: "Bundesliga",
+    position: "Goalkeeper",
+    nation: "Germany",
+    number: 1,
+    career: ["Schalke 04", "Bayern Munich"],
+    titles: ["Champions League", "Bundesliga", "World Cup 2014"],
+    description: "Modern kaleciliğin öncüsü. Libero kaleci kavramını yarattı."
+  }
+];
