@@ -1,25 +1,25 @@
-const players = require("../data/players");
+const Player = require("../models/Player");
 
 class Room {
     constructor(code, io) {
         this.code = code;
         this.io = io;
-        this.users = []; 
-        this.gameState = "LOBBY"; 
-        this.targetPlayer = null; 
+        this.users = [];
+        this.gameState = "LOBBY";
+        this.targetPlayer = null;
         this.imposterId = null;
-        this.roundTime = 300; 
-        this.turnTime = 30; 
+        this.roundTime = 300;
+        this.turnTime = 30;
         this.timer = null;
         this.timeLeft = this.roundTime;
 
-       
+
         this.currentTurnIndex = 0;
         this.turnTimeLeft = 0;
-        this.clueHistory = []; 
+        this.clueHistory = [];
 
-        this.winner = null; 
-        this.gameEndReason = ""; 
+        this.winner = null;
+        this.gameEndReason = "";
     }
 
     addUser(socketId, name) {
@@ -51,9 +51,9 @@ class Room {
         return this.users.length === 0;
     }
 
-    startGame() {
+    async startGame() {
         if (this.users.length < 3) {
-            
+
         }
 
         this.gameState = "PLAYING";
@@ -61,7 +61,7 @@ class Room {
         this.winner = null;
         this.gameEndReason = "";
 
-        
+
         this.users.forEach(u => {
             u.role = 'civilian';
             u.votedFor = null;
@@ -71,8 +71,17 @@ class Room {
         this.users[imposterIndex].role = 'imposter';
         this.imposterId = this.users[imposterIndex].id;
 
-        const randomPlayer = players[Math.floor(Math.random() * players.length)];
-        this.targetPlayer = randomPlayer;
+        try {
+            const count = await Player.countDocuments();
+            const random = Math.floor(Math.random() * count);
+            const randomPlayer = await Player.findOne().skip(random);
+            this.targetPlayer = randomPlayer;
+        } catch (error) {
+            console.error("Error fetching random player:", error);
+            
+            this.endGame("imposter", "Database Error!");
+            return;
+        }
 
         this.clueHistory = [];
         this.currentTurnIndex = Math.floor(Math.random() * this.users.length);
@@ -86,7 +95,7 @@ class Room {
         if (this.gameState !== "PLAYING") return;
 
         const currentUser = this.users[this.currentTurnIndex];
-        if (currentUser.id !== userId) return; 
+        if (currentUser.id !== userId) return;
 
         this.clueHistory.push({
             userId: currentUser.id,
@@ -106,14 +115,14 @@ class Room {
 
     vote(voterId, targetId) {
         if (this.gameState !== "PLAYING") return;
-        if (voterId === targetId) return; 
+        if (voterId === targetId) return;
 
         const voter = this.users.find(u => u.id === voterId);
         if (!voter) return;
 
-        
+
         if (voter.votedFor === targetId) {
-            voter.votedFor = null; 
+            voter.votedFor = null;
         } else {
             voter.votedFor = targetId;
         }
@@ -123,9 +132,9 @@ class Room {
     }
 
     checkVoteOutcome() {
-        
+
         const votes = {};
-        const aliveCount = this.users.length; 
+        const aliveCount = this.users.length;
 
         this.users.forEach(u => {
             if (u.votedFor) {
@@ -135,7 +144,7 @@ class Room {
 
         for (const [targetId, count] of Object.entries(votes)) {
             if (count > aliveCount / 2) {
-                
+
                 const target = this.users.find(u => u.id === targetId);
                 if (target.role === 'imposter') {
                     this.endGame('civilians', `Imposter ${target.name} yakalandı!`);
@@ -175,8 +184,8 @@ class Room {
             this.turnTimeLeft--;
             if (this.turnTimeLeft <= 0) {
                 this.nextTurn();
-            } else if (this.timeLeft % 5 === 0) {
-            
+            } else {
+                this.broadcastState();
             }
         }, 1000);
     }
@@ -190,9 +199,9 @@ class Room {
     }
 
     broadcastState() {
-        
+
         this.users.forEach(user => {
-            
+
             const isImposter = user.role === 'imposter';
 
             const payload = {
@@ -201,26 +210,26 @@ class Room {
                     id: u.id,
                     name: u.name,
                     isHost: u.isHost,
-                    
-                    
-                    
-                    
+
+
+
+
                     score: u.score,
-                    votedFor: u.votedFor 
+                    votedFor: u.votedFor
                 })),
                 timeLeft: this.timeLeft,
                 winner: this.winner,
                 reason: this.gameEndReason,
 
-                
+
                 targetPlayer: (this.gameState === "ROUND_END" || !isImposter) ? this.targetPlayer : null,
 
-                
+
                 currentTurnUserId: this.users[this.currentTurnIndex]?.id,
                 turnTimeLeft: this.turnTimeLeft,
                 clueHistory: this.clueHistory,
 
-                
+
                 myRole: user.role
             };
 
