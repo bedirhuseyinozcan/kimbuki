@@ -4,15 +4,22 @@ class Room {
     constructor(code, io) {
         this.code = code;
         this.io = io;
-        this.users = []; // { id, name, score, role: 'civilian'|'imposter', votedFor: null }
-        this.gameState = "LOBBY"; // LOBBY, PLAYING, ROUND_END
-        this.targetPlayer = null; // The secret word
+        this.users = []; 
+        this.gameState = "LOBBY"; 
+        this.targetPlayer = null; 
         this.imposterId = null;
-        this.roundTime = 300; // 5 mins
+        this.roundTime = 300; 
+        this.turnTime = 30; 
         this.timer = null;
         this.timeLeft = this.roundTime;
-        this.winner = null; // 'civilians' | 'imposter'
-        this.gameEndReason = ""; // "Imposter caught", "Imposter guessed right", etc.
+
+       
+        this.currentTurnIndex = 0;
+        this.turnTimeLeft = 0;
+        this.clueHistory = []; 
+
+        this.winner = null; 
+        this.gameEndReason = ""; 
     }
 
     addUser(socketId, name) {
@@ -46,12 +53,7 @@ class Room {
 
     startGame() {
         if (this.users.length < 3) {
-            // In prod: return error. For dev: verify logic.
-            // But user specifically asked for min 3.
-            // We will enforce it but maybe allow 2 for absolute debug if needed? 
-            // Nah, let's stick to prompt: min 3.
-            // this.io.to(this.code).emit("game:toast", { message: "Min 3 players required!", type: "error" });
-            // return;
+            
         }
 
         this.gameState = "PLAYING";
@@ -59,35 +61,59 @@ class Room {
         this.winner = null;
         this.gameEndReason = "";
 
-        // Reset User State
+        
         this.users.forEach(u => {
             u.role = 'civilian';
             u.votedFor = null;
         });
 
-        // Pick Imposter
         const imposterIndex = Math.floor(Math.random() * this.users.length);
         this.users[imposterIndex].role = 'imposter';
         this.imposterId = this.users[imposterIndex].id;
 
-        // Pick Secret
         const randomPlayer = players[Math.floor(Math.random() * players.length)];
         this.targetPlayer = randomPlayer;
+
+        this.clueHistory = [];
+        this.currentTurnIndex = Math.floor(Math.random() * this.users.length);
+        this.turnTimeLeft = this.turnTime;
 
         this.startTimer();
         this.broadcastState();
     }
 
+    handleClue(userId, clueText) {
+        if (this.gameState !== "PLAYING") return;
+
+        const currentUser = this.users[this.currentTurnIndex];
+        if (currentUser.id !== userId) return; 
+
+        this.clueHistory.push({
+            userId: currentUser.id,
+            name: currentUser.name,
+            clue: clueText,
+            timestamp: Date.now()
+        });
+
+        this.nextTurn();
+    }
+
+    nextTurn() {
+        this.currentTurnIndex = (this.currentTurnIndex + 1) % this.users.length;
+        this.turnTimeLeft = this.turnTime;
+        this.broadcastState();
+    }
+
     vote(voterId, targetId) {
         if (this.gameState !== "PLAYING") return;
-        if (voterId === targetId) return; // Cannot vote self
+        if (voterId === targetId) return; 
 
         const voter = this.users.find(u => u.id === voterId);
         if (!voter) return;
 
-        // Toggle vote or set vote
+        
         if (voter.votedFor === targetId) {
-            voter.votedFor = null; // Cancel vote
+            voter.votedFor = null; 
         } else {
             voter.votedFor = targetId;
         }
@@ -97,9 +123,9 @@ class Room {
     }
 
     checkVoteOutcome() {
-        // Check if any player has > 50% of votes
+        
         const votes = {};
-        const aliveCount = this.users.length; // Everyone is alive until ejected
+        const aliveCount = this.users.length; 
 
         this.users.forEach(u => {
             if (u.votedFor) {
@@ -109,7 +135,7 @@ class Room {
 
         for (const [targetId, count] of Object.entries(votes)) {
             if (count > aliveCount / 2) {
-                // EJECT!
+                
                 const target = this.users.find(u => u.id === targetId);
                 if (target.role === 'imposter') {
                     this.endGame('civilians', `Imposter ${target.name} yakalandı!`);
@@ -143,11 +169,15 @@ class Room {
             this.timeLeft--;
             if (this.timeLeft <= 0) {
                 this.endGame('imposter', "Süre bitti! Imposter kazandı.");
-            } else if (this.timeLeft % 5 === 0) {
-                // Sync time
-                // We can emit just time, or full state. 
+                return;
             }
-            // We will bundle time in broadcast or separate if optimization needed
+
+            this.turnTimeLeft--;
+            if (this.turnTimeLeft <= 0) {
+                this.nextTurn();
+            } else if (this.timeLeft % 5 === 0) {
+            
+            }
         }, 1000);
     }
 
@@ -160,9 +190,9 @@ class Room {
     }
 
     broadcastState() {
-        // Custom broadcast per user to hide secret from Imposter
+        
         this.users.forEach(user => {
-            // Calculate derived data for this user
+            
             const isImposter = user.role === 'imposter';
 
             const payload = {
@@ -171,21 +201,26 @@ class Room {
                     id: u.id,
                     name: u.name,
                     isHost: u.isHost,
-                    // Hide roles of others? Usually in Imposter, you know your role. 
-                    // Imposter knows they are Imposter. Civilians know they are Civilian.
-                    // Imposter knows others are Civilians (implied).
-                    // We don't explicitly say "He is Imposter" obviously.
+                    
+                    
+                    
+                    
                     score: u.score,
-                    votedFor: u.votedFor // Public voting? Yes usually fun.
+                    votedFor: u.votedFor 
                 })),
                 timeLeft: this.timeLeft,
                 winner: this.winner,
                 reason: this.gameEndReason,
 
-                // The Secret
+                
                 targetPlayer: (this.gameState === "ROUND_END" || !isImposter) ? this.targetPlayer : null,
 
-                // My Role Info
+                
+                currentTurnUserId: this.users[this.currentTurnIndex]?.id,
+                turnTimeLeft: this.turnTimeLeft,
+                clueHistory: this.clueHistory,
+
+                
                 myRole: user.role
             };
 

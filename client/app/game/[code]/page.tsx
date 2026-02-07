@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { io, Socket } from "socket.io-client";
 
@@ -12,12 +12,29 @@ type User = {
     votedFor: string | null;
 };
 
+type Clue = {
+    userId: string;
+    name: string;
+    clue: string;
+    timestamp: number;
+};
+
 export default function GamePage() {
     const { code } = useParams();
     const router = useRouter();
     const [socket, setSocket] = useState<Socket | null>(null);
     const [gameState, setGameState] = useState<any>(null);
     const [imposterGuess, setImposterGuess] = useState("");
+    const [clueInput, setClueInput] = useState("");
+    const [inviteUrl, setInviteUrl] = useState<string>("");
+
+    const clueEndRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (code && typeof window !== 'undefined') {
+            setInviteUrl(`${window.location.origin}/lobby/${code}`);
+        }
+    }, [code]);
 
     useEffect(() => {
         const name = localStorage.getItem("username");
@@ -41,6 +58,12 @@ export default function GamePage() {
         return () => { s.disconnect(); };
     }, [code, router]);
 
+    useEffect(() => {
+        if (gameState?.clueHistory) {
+            clueEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        }
+    }, [gameState?.clueHistory]);
+
     if (!gameState) return <div className="text-white text-center mt-20">Bağlanıyor...</div>;
 
     const myId = socket?.id;
@@ -48,14 +71,32 @@ export default function GamePage() {
     const myRole = gameState.myRole;
     const isImposter = myRole === "imposter";
 
+
+    const currentTurnUserId = gameState.currentTurnUserId;
+    const isMyTurn = currentTurnUserId === myId;
+    const currentTurnUser = gameState.users.find((u: User) => u.id === currentTurnUserId);
+
     const handleStart = () => socket?.emit("game:start");
     const handleVote = (targetId: string) => socket?.emit("game:vote", { targetId });
+
     const handleImposterGuess = () => {
         if (!imposterGuess.trim()) return;
         socket?.emit("game:imposter_guess", { guess: imposterGuess });
     };
 
-    
+    const handleSendClue = (e?: React.FormEvent) => {
+        e?.preventDefault();
+        if (!clueInput.trim()) return;
+        socket?.emit("game:clue", { clue: clueInput });
+        setClueInput("");
+    };
+
+    const copyLink = () => {
+        navigator.clipboard.writeText(inviteUrl);
+        alert("Davet linki kopyalandı!");
+    };
+
+
     if (gameState.gameState === "LOBBY") {
         return (
             <main className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center p-4">
@@ -65,6 +106,19 @@ export default function GamePage() {
                     </h1>
                     <div className="text-6xl font-mono font-black text-slate-700 bg-slate-200 rounded-xl p-4 mb-8 tracking-widest select-all">
                         {code}
+                    </div>
+
+                    <div className="mb-8">
+                        <p className="text-slate-400 text-sm mb-2">DAVET BAĞLANTISI</p>
+                        <div
+                            onClick={copyLink}
+                            className="bg-slate-800/50 p-3 rounded-xl text-sm font-mono text-cyan-400 cursor-pointer hover:bg-slate-800 transition-colors break-all flex items-center justify-center gap-2"
+                        >
+                            <span>{inviteUrl || "..."}</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 text-slate-500">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184" />
+                            </svg>
+                        </div>
                     </div>
 
                     <div className="space-y-2 mb-8 text-left">
@@ -92,97 +146,163 @@ export default function GamePage() {
         );
     }
 
-    
+
     return (
-        <main className="min-h-screen bg-slate-900 text-white p-4 md:p-8 flex flex-col items-center">
+        <main className="min-h-screen bg-slate-900 text-white p-4 md:p-6 flex flex-col md:flex-row gap-6 max-w-7xl mx-auto">
 
             
-            <div className={`w-full max-w-3xl p-6 rounded-3xl mb-8 border-2 shadow-2xl relative overflow-hidden transition-all duration-500 ${isImposter ? "border-red-500 bg-red-900/20" : "border-green-500 bg-green-900/20"
-                }`}>
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-white/50 to-transparent opacity-50"></div>
+            <div className="flex-1 flex flex-col gap-6">
+                
+                <div className={`w-full p-6 rounded-3xl border-2 shadow-2xl relative overflow-hidden transition-all duration-500 ${isImposter ? "border-red-500 bg-red-900/20" : "border-green-500 bg-green-900/20"
+                    }`}>
+                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-white/50 to-transparent opacity-50"></div>
 
-                <div className="text-center">
-                    <p className="text-sm uppercase tracking-[0.2em] font-bold opacity-80 mb-2">GİZLİ KİMLİĞİN</p>
-                    <h2 className={`text-4xl md:text-5xl font-black mb-4 ${isImposter ? 'text-red-500' : 'text-green-400'}`}>
-                        {isImposter ? "IMPOSTER" : "HALK (CIVILIAN)"}
-                    </h2>
+                    <div className="text-center">
+                        <p className="text-xs uppercase tracking-[0.2em] font-bold opacity-80 mb-2">GİZLİ KİMLİĞİN</p>
+                        <h2 className={`text-3xl md:text-4xl font-black mb-4 ${isImposter ? 'text-red-500' : 'text-green-400'}`}>
+                            {isImposter ? "IMPOSTER" : "HALK"}
+                        </h2>
 
-                    {isImposter ? (
-                        <div className="p-4 bg-black/30 rounded-xl">
-                            <p className="text-lg">Kimliğini gizle! Diğerlerinin kimden bahsettiğini anla.</p>
-                            <div className="mt-4 flex gap-2">
-                                <input
-                                    className="input-field bg-red-900/30 border-red-500/50 focus:border-red-400"
-                                    placeholder="Futbolcuyu biliyor musun?"
-                                    value={imposterGuess}
-                                    onChange={e => setImposterGuess(e.target.value)}
-                                />
-                                <button onClick={handleImposterGuess} className="btn bg-red-600 hover:bg-red-500 text-white whitespace-nowrap">
-                                    Tahmin Et & Kazan
-                                </button>
+                        {isImposter ? (
+                            <div className="p-4 bg-black/30 rounded-xl">
+                                <p className="text-sm mb-4">Kimliğini gizle! Diğerlerinin kimden bahsettiğini anla.</p>
+                                <div className="flex gap-2">
+                                    <input
+                                        className="input-field bg-red-900/30 border-red-500/50 focus:border-red-400 w-full text-sm"
+                                        placeholder="Kimi tahmin ediyorsun?"
+                                        value={imposterGuess}
+                                        onChange={e => setImposterGuess(e.target.value)}
+                                    />
+                                    <button onClick={handleImposterGuess} className="btn bg-red-600 hover:bg-red-500 text-white whitespace-nowrap text-sm px-4">
+                                        Tahmin Et
+                                    </button>
+                                </div>
                             </div>
+                        ) : (
+                            <div className="p-4 bg-black/30 rounded-xl">
+                                <p className="text-xs text-slate-400 mb-1">GİZLİ FUTBOLCU</p>
+                                <p className="text-2xl font-bold text-white bg-slate-800/50 inline-block px-4 py-2 rounded-lg border border-slate-700">
+                                    {gameState.targetPlayer?.name}
+                                </p>
+                                <p className="text-xs text-slate-500 mt-2">{gameState.targetPlayer?.team} • {gameState.targetPlayer?.position}</p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                
+                <div className="glass p-6 rounded-3xl flex-1">
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-lg font-bold flex items-center gap-2">
+                            <span>Oylama</span>
+                            <span className="text-xs font-normal text-slate-400">(Çoğunluk = Atılır)</span>
+                        </h3>
+                        <div className="text-slate-400 font-mono text-sm border border-slate-700 px-2 py-1 rounded">
+                            Süre: {Math.floor(gameState.timeLeft / 60)}:{(gameState.timeLeft % 60).toString().padStart(2, '0')}
                         </div>
-                    ) : (
-                        <div className="p-4 bg-black/30 rounded-xl">
-                            <p className="text-sm text-slate-400 mb-1">GİZLİ FUTBOLCU</p>
-                            <p className="text-3xl font-bold text-white bg-slate-800/50 inline-block px-6 py-2 rounded-lg border border-slate-700">
-                                {gameState.targetPlayer?.name}
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                        {gameState.users.map((u: User) => (
+                            <div key={u.id} className={`p-3 rounded-xl border transition-all ${me?.votedFor === u.id ? "bg-red-500/20 border-red-500" : "bg-slate-800/50 border-slate-700"
+                                } ${u.id === myId ? "opacity-50" : ""}`}>
+
+                                <div className="flex justify-between items-center">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center font-bold text-sm">
+                                            {u.name[0].toUpperCase()}
+                                        </div>
+                                        <span className="font-bold text-sm">{u.name}</span>
+                                    </div>
+                                    {u.id !== myId && (
+                                        <button
+                                            onClick={() => handleVote(u.id)}
+                                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${me?.votedFor === u.id
+                                                ? "bg-red-500 text-white hover:bg-red-600"
+                                                : "bg-slate-700 text-slate-300 hover:bg-slate-600"
+                                                }`}
+                                        >
+                                            {me?.votedFor === u.id ? "İPTAL" : "OYLA"}
+                                        </button>
+                                    )}
+                                </div>
+                                <div className="flex flex-wrap gap-1 mt-2">
+                                    {gameState.users.filter((v: User) => v.votedFor === u.id).map((v: User) => (
+                                        <span key={v.id} className="text-[10px] bg-red-500/20 text-red-300 px-2 py-0.5 rounded border border-red-500/30">
+                                            {v.name}
+                                        </span>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+
+            
+            <div className="flex-1 glass rounded-3xl p-6 flex flex-col h-[80vh] md:h-auto">
+                <div className="flex justify-between items-center mb-4 border-b border-slate-700/50 pb-4">
+                    <h3 className="text-xl font-bold">Canlı Sohbet & Jamie'nin İpuçları</h3>
+
+                    
+                    <div className="flex items-center gap-3">
+                        <div className="text-right">
+                            <p className="text-xs text-slate-400">Sıra Kimde?</p>
+                            <p className={`font-bold ${isMyTurn ? "text-green-400" : "text-white"}`}>
+                                {isMyTurn ? "SENİN SIRAN!" : currentTurnUser?.name}
                             </p>
-                            <p className="text-xs text-slate-500 mt-2">{gameState.targetPlayer?.team} • {gameState.targetPlayer?.position}</p>
+                        </div>
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg border-2 ${isMyTurn ? "border-green-400 bg-green-400/20 text-green-400 animate-pulse" : "border-slate-600 bg-slate-800"}`}>
+                            {gameState.turnTimeLeft}
+                        </div>
+                    </div>
+                </div>
+
+                <div className="flex-1 overflow-y-auto space-y-4 mb-4 pr-2 custom-scrollbar">
+                    {gameState.clueHistory && gameState.clueHistory.length > 0 ? (
+                        gameState.clueHistory.map((clue: Clue, idx: number) => (
+                            <div key={idx} className={`flex flex-col ${clue.userId === myId ? "items-end" : "items-start"}`}>
+                                <div className={`max-w-[80%] rounded-2xl p-4 ${clue.userId === myId
+                                    ? "bg-violet-600 rounded-br-none"
+                                    : "bg-slate-700/80 rounded-bl-none"}`}>
+                                    <p className="text-xs opacity-50 mb-1 font-bold">{clue.name}</p>
+                                    <p className="text-sm md:text-base">{clue.clue}</p>
+                                </div>
+                                <span className="text-[10px] text-slate-500 mt-1">
+                                    {new Date(clue.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                            </div>
+                        ))
+                    ) : (
+                        <div className="flex flex-col items-center justify-center h-full text-slate-500 opacity-50">
+                            <p>Henüz hiç ipucu yok...</p>
+                        </div>
+                    )}
+                    <div ref={clueEndRef} />
+                </div>
+
+                <div className="mt-auto">
+                    {isMyTurn ? (
+                        <form onSubmit={handleSendClue} className="flex gap-2">
+                            <input
+                                autoFocus
+                                value={clueInput}
+                                onChange={(e) => setClueInput(e.target.value)}
+                                className="input-field flex-1"
+                                placeholder={`İpucunu yaz... (Kalan süre: ${gameState.turnTimeLeft})`}
+                            />
+                            <button type="submit" className="btn btn-primary px-6">
+                                GÖNDER
+                            </button>
+                        </form>
+                    ) : (
+                        <div className="p-4 bg-slate-800/50 rounded-xl text-center text-slate-400 italic border border-slate-700/50">
+                            {currentTurnUser?.name} düşünüyor...
                         </div>
                     )}
                 </div>
             </div>
 
-            
-            <div className="w-full max-w-3xl glass p-6 rounded-3xl">
-                <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-xl font-bold flex items-center gap-2">
-                        <span>Oylama Paneli</span>
-                        <span className="text-xs font-normal text-slate-400">(Çoğunluk = Atılır)</span>
-                    </h3>
-                    <div className="text-slate-400 font-mono">{Math.floor(gameState.timeLeft / 60)}:{(gameState.timeLeft % 60).toString().padStart(2, '0')}</div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {gameState.users.map((u: User) => (
-                        <div key={u.id} className={`p-4 rounded-2xl border transition-all ${me?.votedFor === u.id ? "bg-red-500/20 border-red-500" : "bg-slate-800/50 border-slate-700"
-                            } ${u.id === myId ? "opacity-50" : ""}`}>
-
-                            <div className="flex justify-between items-center mb-3">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center font-bold text-lg">
-                                        {u.name[0].toUpperCase()}
-                                    </div>
-                                    <span className="font-bold">{u.name}</span>
-                                </div>
-                                {u.id !== myId && (
-                                    <button
-                                        onClick={() => handleVote(u.id)}
-                                        className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${me?.votedFor === u.id
-                                                ? "bg-red-500 text-white hover:bg-red-600"
-                                                : "bg-slate-700 text-slate-300 hover:bg-slate-600"
-                                            }`}
-                                    >
-                                        {me?.votedFor === u.id ? "OYUNU ÇEK" : "OY VER"}
-                                    </button>
-                                )}
-                            </div>
-
-                            
-                            <div className="flex flex-wrap gap-1">
-                                {gameState.users.filter((v: User) => v.votedFor === u.id).map((v: User) => (
-                                    <span key={v.id} className="text-[10px] bg-red-500/20 text-red-300 px-2 py-0.5 rounded border border-red-500/30">
-                                        {v.name}
-                                    </span>
-                                ))}
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </div>
-
-            
             {gameState.gameState === "ROUND_END" && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md animate-fade-in">
                     <div className="max-w-md w-full glass p-8 rounded-3xl text-center m-4 border-2 border-slate-600">

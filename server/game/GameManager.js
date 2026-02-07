@@ -14,6 +14,7 @@ class GameManager {
         socket.on("game:start", () => this.handleStartGame(socket));
         socket.on("game:vote", ({ targetId }) => this.handleVote(socket, targetId));
         socket.on("game:imposter_guess", ({ guess }) => this.handleImposterGuess(socket, guess));
+        socket.on("game:clue", ({ clue }) => this.handleClue(socket, clue));
 
         socket.on("disconnect", () => this.handleDisconnect(socket));
     }
@@ -59,12 +60,17 @@ class GameManager {
         if (room) room.imposterGuess(socket.id, guess);
     }
 
+    handleClue(socket, clue) {
+        const room = this.getRoomBySocket(socket);
+        if (room) room.handleClue(socket.id, clue);
+    }
+
     handleDisconnect(socket) {
         const room = this.getRoomBySocket(socket);
         if (room) {
             const isEmpty = room.removeUser(socket.id);
             if (isEmpty) {
-                
+
 
                 setTimeout(() => {
                     if (room.users.length === 0) {
