@@ -1,25 +1,17 @@
-const Player = require("../models/Player");
-
 class Room {
     constructor(code, io) {
         this.code = code;
         this.io = io;
         this.users = [];
         this.gameState = "LOBBY";
-        this.targetPlayer = null;
-        this.imposterId = null;
-        this.roundTime = 300;
+        
         this.turnTime = 30;
         this.timer = null;
-        this.timeLeft = this.roundTime;
-
-
-        this.currentTurnIndex = 0;
         this.turnTimeLeft = 0;
-        this.clueHistory = [];
+        this.currentTurnIndex = 0;
 
-        this.winner = null;
-        this.gameEndReason = "";
+        this.chatHistory = [];
+        this.winners = []; 
     }
 
     addUser(socketId, name) {
@@ -27,10 +19,11 @@ class Room {
         this.users.push({
             id: socketId,
             name,
-            score: 0,
             isHost,
-            role: null,
-            votedFor: null
+            avatar: 1,
+            targetId: null,
+            assignedWord: null,
+            status: 'playing' 
         });
         this.broadcastState();
     }
@@ -43,141 +36,165 @@ class Room {
             this.users[0].isHost = true;
         }
 
-        if (this.users.length < 3 && this.gameState === "PLAYING") {
-            this.endGame("imposter", "Not enough players!");
+        
+        const playingUsers = this.users.filter(u => u.status === 'playing');
+        if (playingUsers.length < 2 && (this.gameState === "PLAYING" || this.gameState === "WORD_SELECTION")) {
+            this.endGame();
         }
 
         this.broadcastState();
         return this.users.length === 0;
     }
 
-    async startGame() {
-        if (this.users.length < 3) {
-
+    updateAvatar(userId, avatarIndex) {
+        if (this.gameState !== "LOBBY") return;
+        const user = this.users.find(u => u.id === userId);
+        if (user) {
+            user.avatar = avatarIndex;
+            this.broadcastState();
         }
+    }
 
-        this.gameState = "PLAYING";
-        this.timeLeft = this.roundTime;
-        this.winner = null;
-        this.gameEndReason = "";
+    startGame() {
+        if (this.users.length < 2) return; // At least 2 players needed
 
+        this.gameState = "WORD_SELECTION";
+        this.chatHistory = [];
+        this.winners = [];
 
-        this.users.forEach(u => {
-            u.role = 'civilian';
-            u.votedFor = null;
-        });
-
-        const imposterIndex = Math.floor(Math.random() * this.users.length);
-        this.users[imposterIndex].role = 'imposter';
-        this.imposterId = this.users[imposterIndex].id;
-
-        try {
-            const count = await Player.countDocuments();
-            const random = Math.floor(Math.random() * count);
-            const randomPlayer = await Player.findOne().skip(random);
-            this.targetPlayer = randomPlayer;
-        } catch (error) {
-            console.error("Error fetching random player:", error);
+        
+        for (let i = 0; i < this.users.length; i++) {
+            this.users[i].status = 'playing';
+            this.users[i].assignedWord = null;
+            this.users[i].hasSubmittedWord = false;
             
-            this.endGame("imposter", "Database Error!");
-            return;
+            const nextIndex = (i + 1) % this.users.length;
+            this.users[i].targetId = this.users[nextIndex].id;
         }
 
-        this.clueHistory = [];
-        this.currentTurnIndex = Math.floor(Math.random() * this.users.length);
-        this.turnTimeLeft = this.turnTime;
+        this.broadcastState();
+    }
 
+    setWord(userId, word) {
+        if (this.gameState !== "WORD_SELECTION") return;
+
+        const user = this.users.find(u => u.id === userId);
+        if (!user || !user.targetId || user.hasSubmittedWord) return;
+
+        const targetUser = this.users.find(u => u.id === user.targetId);
+        if (targetUser) {
+            targetUser.assignedWord = word;
+            user.hasSubmittedWord = true;
+        }
+
+        const allAssigned = this.users.every(u => u.hasSubmittedWord);
+        if (allAssigned) {
+            this.startPlaying();
+        } else {
+            this.broadcastState();
+        }
+    }
+
+    startPlaying() {
+        this.gameState = "PLAYING";
+        this.currentTurnIndex = 0;
+        this.turnTimeLeft = this.turnTime;
         this.startTimer();
         this.broadcastState();
     }
 
-    handleClue(userId, clueText) {
-        if (this.gameState !== "PLAYING") return;
+    handleChat(userId, message) {
+        const user = this.users.find(u => u.id === userId);
+        if (!user) return;
 
-        const currentUser = this.users[this.currentTurnIndex];
-        if (currentUser.id !== userId) return;
-
-        this.clueHistory.push({
-            userId: currentUser.id,
-            name: currentUser.name,
-            clue: clueText,
+        this.chatHistory.push({
+            userId: user.id,
+            name: user.name,
+            message: message,
             timestamp: Date.now()
         });
+
+        this.broadcastState();
+    }
+
+    skipTurn(userId) {
+        if (this.gameState !== "PLAYING") return;
+        const currentUser = this.users[this.currentTurnIndex];
+        if (currentUser.id !== userId) return;
 
         this.nextTurn();
     }
 
-    nextTurn() {
-        this.currentTurnIndex = (this.currentTurnIndex + 1) % this.users.length;
-        this.turnTimeLeft = this.turnTime;
-        this.broadcastState();
-    }
-
-    vote(voterId, targetId) {
+    guessWord(userId, guess) {
         if (this.gameState !== "PLAYING") return;
-        if (voterId === targetId) return;
+        
+        const user = this.users.find(u => u.id === userId);
+        if (!user || user.status !== 'playing') return;
 
-        const voter = this.users.find(u => u.id === voterId);
-        if (!voter) return;
+        const normalizedTarget = (user.assignedWord || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+        const normalizedGuess = (guess || "").toLowerCase().replace(/[^a-z0-9]/g, "");
 
+        const isCorrect = normalizedTarget === normalizedGuess || 
+                         (normalizedTarget.includes(normalizedGuess) && normalizedGuess.length > 3) ||
+                         (normalizedGuess.includes(normalizedTarget) && normalizedTarget.length > 3);
 
-        if (voter.votedFor === targetId) {
-            voter.votedFor = null;
-        } else {
-            voter.votedFor = targetId;
-        }
+        if (isCorrect) {
+            user.status = 'spectator';
+            this.winners.push(user.id);
+            
+            this.chatHistory.push({
+                system: true,
+                message: `${user.name} doğru tahmin etti! Kelimesi: ${user.assignedWord}`,
+                timestamp: Date.now()
+            });
 
-        this.checkVoteOutcome();
-        this.broadcastState();
-    }
-
-    checkVoteOutcome() {
-
-        const votes = {};
-        const aliveCount = this.users.length;
-
-        this.users.forEach(u => {
-            if (u.votedFor) {
-                votes[u.votedFor] = (votes[u.votedFor] || 0) + 1;
-            }
-        });
-
-        for (const [targetId, count] of Object.entries(votes)) {
-            if (count > aliveCount / 2) {
-
-                const target = this.users.find(u => u.id === targetId);
-                if (target.role === 'imposter') {
-                    this.endGame('civilians', `Imposter ${target.name} yakalandı!`);
-                } else {
-                    this.endGame('imposter', `Masum ${target.name} atıldı! Imposter kazandı.`);
-                }
+            const playingUsers = this.users.filter(u => u.status === 'playing');
+            if (playingUsers.length <= 1) { // End game if 1 or 0 players left
+                this.endGame();
                 return;
             }
+
+            if (this.users[this.currentTurnIndex].id === userId) {
+                this.nextTurn();
+            } else {
+                this.broadcastState();
+            }
+        } else {
+            this.chatHistory.push({
+                system: true,
+                message: `${user.name} yanlış tahminde bulundu! (${guess})`,
+                timestamp: Date.now()
+            });
+            if (this.users[this.currentTurnIndex].id === userId) {
+                this.nextTurn();
+            } else {
+                this.broadcastState();
+            }
         }
     }
 
-    imposterGuess(guesserId, guessName) {
+    nextTurn() {
         if (this.gameState !== "PLAYING") return;
 
-        const user = this.users.find(u => u.id === guesserId);
-        if (!user || user.role !== 'imposter') return;
+        let attempts = 0;
+        do {
+            this.currentTurnIndex = (this.currentTurnIndex + 1) % this.users.length;
+            attempts++;
+            if (attempts > this.users.length) {
+                this.endGame();
+                return;
+            }
+        } while (this.users[this.currentTurnIndex].status !== 'playing');
 
-        const normalizedTarget = this.targetPlayer.name.toLowerCase().replace(/[^a-z0-9]/g, "");
-        const normalizedGuess = guessName.toLowerCase().replace(/[^a-z0-9]/g, "");
-
-        if (normalizedTarget === normalizedGuess || (normalizedTarget.includes(normalizedGuess) && normalizedGuess.length > 3)) {
-            this.endGame('imposter', `Imposter ${user.name} doğru bildi!`);
-        } else {
-            this.endGame('civilians', `Imposter ${user.name} yanlış bildi!`);
-        }
+        this.turnTimeLeft = this.turnTime;
+        this.broadcastState();
     }
 
     startTimer() {
         if (this.timer) clearInterval(this.timer);
         this.timer = setInterval(() => {
-            this.timeLeft--;
-            if (this.timeLeft <= 0) {
-                this.endGame('imposter', "Süre bitti! Imposter kazandı.");
+            if (this.gameState !== "PLAYING") {
+                clearInterval(this.timer);
                 return;
             }
 
@@ -190,47 +207,32 @@ class Room {
         }, 1000);
     }
 
-    endGame(winner, reason) {
+    endGame() {
         this.gameState = "ROUND_END";
-        this.winner = winner;
-        this.gameEndReason = reason;
         clearInterval(this.timer);
         this.broadcastState();
     }
 
     broadcastState() {
-
         this.users.forEach(user => {
-
-            const isImposter = user.role === 'imposter';
+            const usersPayload = this.users.map(u => ({
+                id: u.id,
+                name: u.name,
+                isHost: u.isHost,
+                avatar: u.avatar,
+                status: u.status,
+                targetId: u.targetId,
+                hasSubmittedWord: u.hasSubmittedWord,
+                assignedWord: (this.gameState === "ROUND_END" || u.id !== user.id) ? u.assignedWord : null
+            }));
 
             const payload = {
                 gameState: this.gameState,
-                users: this.users.map(u => ({
-                    id: u.id,
-                    name: u.name,
-                    isHost: u.isHost,
-
-
-
-
-                    score: u.score,
-                    votedFor: u.votedFor
-                })),
-                timeLeft: this.timeLeft,
-                winner: this.winner,
-                reason: this.gameEndReason,
-
-
-                targetPlayer: (this.gameState === "ROUND_END" || !isImposter) ? this.targetPlayer : null,
-
-
-                currentTurnUserId: this.users[this.currentTurnIndex]?.id,
+                users: usersPayload,
+                currentTurnUserId: this.gameState === "PLAYING" ? this.users[this.currentTurnIndex]?.id : null,
                 turnTimeLeft: this.turnTimeLeft,
-                clueHistory: this.clueHistory,
-
-
-                myRole: user.role
+                chatHistory: this.chatHistory,
+                winners: this.winners
             };
 
             this.io.to(user.id).emit("game:state", payload);

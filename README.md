@@ -1,26 +1,35 @@
-# Ben Kimim? Futbol — Multiplayer
+# Ben Kimim? — Multiplayer Klasik Kutu Oyunu
 
-Real-time multiplayer “Who Am I ? and Who Is The Imposter ?" mixture game themed around footballers.
+Arkadaşlarınızla oynayabileceğiniz, herkesin kafasında bir kelime/isim yazdığı ve kim olduğunu bulmaya çalıştığı klasik "Ben Kimim?" (Post-it) oyununun gerçek zamanlı çok oyunculu (multiplayer) versiyonudur.
 
-## Monorepo Structure
+## Oyun Mantığı
+1. **Oda Kur & Katıl:** Bir kişi oda kurar ve davet bağlantısını arkadaşlarına atar.
+2. **Kelime Belirleme:** Oyun başlayınca sistem herkesi birbiriyle eşleştirir. Her oyuncu, eşleştiği kişinin alnında yazacak olan kelimeyi (örn. bir futbolcu, ünlü, obje) yazar.
+3. **Oyun Sahnesi:** Herkes diğerlerinin alnındaki kelimeyi görebilir, ancak kendi kelimesini göremez.
+4. **Sırayla Soru Sorma:** Sırası gelen kişi 30 saniye içinde genel sorular sorar (örn: "Ben yaşıyor muyum?", "Futbolcu muyum?").
+5. **Tahmin Etme:** Kelimesini bulduğunu düşünen kişi **Tahmin Et** butonunu kullanır. Doğru bilirse oyunu kazanır ve izleyici moduna geçer, oyun diğerleri için devam eder.
 
-- `client/` — Next.js frontend
-- `server/` — Node.js + Socket.io backend
-- `docs/` — architecture notes, API/event contracts
+## Teknolojiler (Hibrit Yapı)
+- **Frontend (client/):** Next.js (App Router), React, Tailwind CSS (Düzen ve genel stil), Material UI (MUI - Komponentler ve Dialoglar), Socket.io-client.
+- **Backend (server/):** Node.js, Express, Socket.io.
 
-## Getting Started (dev)
+## Kurulum ve Çalıştırma
 
-> Coming soon
+### Sunucu (Server)
+```bash
+cd server
+npm install
+npm run dev
+```
+Sunucu `http://localhost:4000` adresinde çalışacaktır.
 
-## Roadmap
+### İstemci (Client)
+```bash
+cd client
+npm install
+npm run dev
+```
+Uygulama `http://localhost:3000` adresinde açılacaktır.
 
-- [ ] Room create/join
-- [ ] Ready system + start game
-- [ ] Turn-based questions
-- [ ] Guess + scoring
-- [ ] Player dataset + filtering
-- [ ] Auth + profiles (v2)
-
-## License
-
+## Lisans
 MIT

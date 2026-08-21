@@ -11,12 +11,27 @@ class GameManager {
 
         socket.on("room:create", ({ name }, cb) => this.handleCreateRoom(socket, name, cb));
         socket.on("room:join", ({ roomCode, name }, cb) => this.handleJoinRoom(socket, roomCode, name, cb));
+        socket.on("game:update_avatar", ({ avatarIndex }) => this.handleUpdateAvatar(socket, avatarIndex));
         socket.on("game:start", () => this.handleStartGame(socket));
-        socket.on("game:vote", ({ targetId }) => this.handleVote(socket, targetId));
-        socket.on("game:imposter_guess", ({ guess }) => this.handleImposterGuess(socket, guess));
-        socket.on("game:clue", ({ clue }) => this.handleClue(socket, clue));
+        socket.on("game:set_word", ({ word }) => this.handleSetWord(socket, word));
+        socket.on("game:chat", ({ message }) => this.handleChat(socket, message));
+        socket.on("game:skip_turn", () => this.handleSkipTurn(socket));
+        socket.on("game:guess", ({ guess }) => this.handleGuess(socket, guess));
+        socket.on("room:close", () => this.handleCloseRoom(socket));
 
         socket.on("disconnect", () => this.handleDisconnect(socket));
+    }
+
+    handleCloseRoom(socket) {
+        const room = this.getRoomBySocket(socket);
+        if (room) {
+            const user = room.users.find(u => u.id === socket.id);
+            if (user && user.isHost) {
+                this.io.to(room.code).emit("game:closed");
+                this.rooms.delete(room.code);
+                console.log(`Room ${room.code} closed by host.`);
+            }
+        }
     }
 
     handleCreateRoom(socket, name, cb) {
@@ -32,9 +47,12 @@ class GameManager {
 
     handleJoinRoom(socket, roomCode, name, cb) {
         const code = (roomCode || "").toUpperCase();
-        const room = this.rooms.get(code);
+        let room = this.rooms.get(code);
 
-        if (!room) return cb?.({ ok: false, error: "Oda bulunamadı" });
+        if (!room) {
+            room = new Room(code, this.io);
+            this.rooms.set(code, room);
+        }
 
         socket.join(code);
         room.addUser(socket.id, name);
@@ -42,27 +60,34 @@ class GameManager {
         cb?.({ ok: true });
     }
 
+    handleUpdateAvatar(socket, avatarIndex) {
+        const room = this.getRoomBySocket(socket);
+        if (room) room.updateAvatar(socket.id, avatarIndex);
+    }
+
     handleStartGame(socket) {
         const room = this.getRoomBySocket(socket);
-        if (!room) return;
-
-
-        room.startGame();
+        if (room) room.startGame();
     }
 
-    handleVote(socket, targetId) {
+    handleSetWord(socket, word) {
         const room = this.getRoomBySocket(socket);
-        if (room) room.vote(socket.id, targetId);
+        if (room) room.setWord(socket.id, word);
     }
 
-    handleImposterGuess(socket, guess) {
+    handleChat(socket, message) {
         const room = this.getRoomBySocket(socket);
-        if (room) room.imposterGuess(socket.id, guess);
+        if (room) room.handleChat(socket.id, message);
     }
 
-    handleClue(socket, clue) {
+    handleSkipTurn(socket) {
         const room = this.getRoomBySocket(socket);
-        if (room) room.handleClue(socket.id, clue);
+        if (room) room.skipTurn(socket.id);
+    }
+
+    handleGuess(socket, guess) {
+        const room = this.getRoomBySocket(socket);
+        if (room) room.guessWord(socket.id, guess);
     }
 
     handleDisconnect(socket) {
@@ -70,8 +95,6 @@ class GameManager {
         if (room) {
             const isEmpty = room.removeUser(socket.id);
             if (isEmpty) {
-
-
                 setTimeout(() => {
                     if (room.users.length === 0) {
                         this.rooms.delete(room.code);
@@ -83,7 +106,6 @@ class GameManager {
     }
 
     getRoomBySocket(socket) {
-
         for (const [code, room] of this.rooms) {
             if (room.users.find(u => u.id === socket.id)) return room;
         }
