@@ -14,7 +14,7 @@ export type GameState = {
     gameState: "LOBBY" | "WORD_SELECTION" | "PLAYING" | "ROUND_END";
     users: User[];
     currentTurnUserId: string | null;
-    turnEndsAt: number | null; // Milliseconds timestamp
+    turnEndsAt: number | null;
     chatHistory: any[];
     winners: string[];
 };

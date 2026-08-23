@@ -181,7 +181,6 @@ class Room {
 
         user.hasUsedHint = true;
         
-        // Generate hint e.g. "Ronaldo" -> "R _ _ _ _ _ _"
         const word = user.assignedWord;
         let hint = "";
         for (let i = 0; i < word.length; i++) {
