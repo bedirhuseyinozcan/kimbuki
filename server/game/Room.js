@@ -98,7 +98,6 @@ class Room {
     startPlaying() {
         this.gameState = "PLAYING";
         this.currentTurnIndex = 0;
-        this.turnTimeLeft = this.turnTime;
         this.startTimer();
         this.broadcastState();
     }
@@ -186,30 +185,25 @@ class Room {
             }
         } while (this.users[this.currentTurnIndex].status !== 'playing');
 
-        this.turnTimeLeft = this.turnTime;
+        this.startTimer();
         this.broadcastState();
     }
 
     startTimer() {
-        if (this.timer) clearInterval(this.timer);
-        this.timer = setInterval(() => {
-            if (this.gameState !== "PLAYING") {
-                clearInterval(this.timer);
-                return;
-            }
-
-            this.turnTimeLeft--;
-            if (this.turnTimeLeft <= 0) {
+        if (this.timer) clearTimeout(this.timer);
+        
+        this.turnStartTime = Date.now();
+        
+        this.timer = setTimeout(() => {
+            if (this.gameState === "PLAYING") {
                 this.nextTurn();
-            } else {
-                this.broadcastState();
             }
-        }, 1000);
+        }, this.turnTime * 1000);
     }
 
     endGame() {
         this.gameState = "ROUND_END";
-        clearInterval(this.timer);
+        if (this.timer) clearTimeout(this.timer);
         this.broadcastState();
     }
 
@@ -230,7 +224,7 @@ class Room {
                 gameState: this.gameState,
                 users: usersPayload,
                 currentTurnUserId: this.gameState === "PLAYING" ? this.users[this.currentTurnIndex]?.id : null,
-                turnTimeLeft: this.turnTimeLeft,
+                turnEndsAt: this.gameState === "PLAYING" ? this.turnStartTime + (this.turnTime * 1000) : null,
                 chatHistory: this.chatHistory,
                 winners: this.winners
             };
