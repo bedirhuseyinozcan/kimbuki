@@ -31,7 +31,7 @@ export default function WordSelection({
                 ) : (
                     <div className="space-y-6 text-left">
                         <div className="bg-slate-800 p-4 rounded-xl border border-slate-700">
-                            <p className="text-slate-400 text-sm mb-1">Şu oyuncu için bir kelime/futbolcu belirle:</p>
+                            <p className="text-slate-400 text-sm mb-1">Şu oyuncu için bir kelime/isim belirle:</p>
                             <p className="text-2xl font-bold text-white">{targetUser?.name}</p>
                         </div>
                         <TextField 

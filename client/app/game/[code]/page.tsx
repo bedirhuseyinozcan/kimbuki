@@ -10,6 +10,7 @@ import Lobby from "@/components/game/Lobby";
 import WordSelection from "@/components/game/WordSelection";
 import GameScene from "@/components/game/GameScene";
 import GameOver from "@/components/game/GameOver";
+import { useWebRTC } from "@/components/game/useWebRTC";
 
 export default function GamePage() {
     const { code } = useParams();
@@ -29,6 +30,10 @@ export default function GamePage() {
     const [notepad, setNotepad] = useState("");
     const [guessDialogOpen, setGuessDialogOpen] = useState(false);
     const [guessInput, setGuessInput] = useState("");
+
+    const myId = socket?.id || "";
+    const me = gameState?.users.find((u: User) => u.id === myId);
+    const { remoteStreams } = useWebRTC(socket, myId, me?.isVoiceEnabled || false, gameState?.users || []);
 
     useEffect(() => {
         if (code && typeof window !== 'undefined') {
@@ -119,9 +124,6 @@ export default function GamePage() {
 
     if (!gameState) return <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white text-2xl animate-pulse">Odaya bağlanıyor...</div>;
 
-    const myId = socket?.id;
-    const me = gameState.users.find((u: User) => u.id === myId);
-    
     const handleStart = () => socket?.emit("game:start");
     
     const handleSetWord = () => {
@@ -151,6 +153,10 @@ export default function GamePage() {
         socket?.emit("game:use_hint");
     };
 
+    const toggleVoice = (enabled: boolean) => {
+        socket?.emit("game:toggle_voice", { enabled });
+    };
+
     const copyLink = () => {
         navigator.clipboard.writeText(inviteUrl);
         alert("Davet linki kopyalandı!");
@@ -175,39 +181,46 @@ export default function GamePage() {
         }
     };
 
-    if (gameState.gameState === "LOBBY") {
-        return <Lobby 
-            gameState={gameState} me={me!} code={code as string} inviteUrl={inviteUrl} myId={myId!} 
-            onStart={handleStart} onCloseRoom={handleCloseRoom} onLeaveRoom={handleLeaveRoom} onCopyLink={copyLink} 
-            onSelectAvatar={handleSelectAvatar}
-        />;
-    }
+    const renderGameState = () => {
+        if (gameState.gameState === "LOBBY") {
+            return <Lobby 
+                gameState={gameState} me={me!} code={code as string} inviteUrl={inviteUrl} myId={myId!} 
+                onStart={handleStart} onCloseRoom={handleCloseRoom} onLeaveRoom={handleLeaveRoom} onCopyLink={copyLink} 
+                onSelectAvatar={handleSelectAvatar} onToggleVoice={toggleVoice}
+            />;
+        }
+        if (gameState.gameState === "WORD_SELECTION") {
+            return <WordSelection 
+                gameState={gameState} me={me!} wordInput={wordInput} setWordInput={setWordInput} 
+                onSetWord={handleSetWord} onLeaveRoom={handleLeaveRoom} 
+            />;
+        }
+        if (gameState.gameState === "PLAYING") {
+            return <GameScene 
+                gameState={gameState} me={me!} myId={myId!} 
+                chatInput={chatInput} setChatInput={setChatInput} handleChat={handleChat}
+                notepad={notepad} setNotepad={setNotepad}
+                handleSkip={handleSkip}
+                guessInput={guessInput} setGuessInput={setGuessInput} handleGuess={handleGuess}
+                guessDialogOpen={guessDialogOpen} setGuessDialogOpen={setGuessDialogOpen}
+                onLeaveRoom={handleLeaveRoom}
+                onUseHint={handleUseHint}
+            />;
+        }
+        if (gameState.gameState === "ROUND_END") {
+            return <GameOver 
+                gameState={gameState} me={me!} onStart={handleStart} onLeaveRoom={handleLeaveRoom} 
+            />;
+        }
+        return null;
+    };
 
-    if (gameState.gameState === "WORD_SELECTION") {
-        return <WordSelection 
-            gameState={gameState} me={me!} wordInput={wordInput} setWordInput={setWordInput} 
-            onSetWord={handleSetWord} onLeaveRoom={handleLeaveRoom} 
-        />;
-    }
-
-    if (gameState.gameState === "PLAYING") {
-        return <GameScene 
-            gameState={gameState} me={me!} myId={myId!} 
-            chatInput={chatInput} setChatInput={setChatInput} handleChat={handleChat}
-            notepad={notepad} setNotepad={setNotepad}
-            handleSkip={handleSkip}
-            guessInput={guessInput} setGuessInput={setGuessInput} handleGuess={handleGuess}
-            guessDialogOpen={guessDialogOpen} setGuessDialogOpen={setGuessDialogOpen}
-            onLeaveRoom={handleLeaveRoom}
-            onUseHint={handleUseHint}
-        />;
-    }
-
-    if (gameState.gameState === "ROUND_END") {
-        return <GameOver 
-            gameState={gameState} me={me!} onStart={handleStart} onLeaveRoom={handleLeaveRoom} 
-        />;
-    }
-
-    return null;
+    return (
+        <>
+            {renderGameState()}
+            {Object.entries(remoteStreams).map(([id, stream]) => (
+                <audio key={id} autoPlay ref={el => { if (el) el.srcObject = stream as any; }} />
+            ))}
+        </>
+    );
 }

@@ -107,7 +107,7 @@ export default function GameScene({
                     <TextField
                         multiline
                         fullWidth
-                        placeholder="Örn: İspanya'da oynadı. Forvet değil..."
+                        placeholder="Örn: Gerçek bir insan mı? Yaşıyor mu?..."
                         value={notepad}
                         onChange={e => setNotepad(e.target.value)}
                         variant="outlined"
@@ -161,11 +161,15 @@ export default function GameScene({
                                             BİLDİ!
                                         </div>
                                     )}
-                                    
                                     <div className={`relative ${u.id === gameState.currentTurnUserId ? 'ring-4 ring-green-400 ring-offset-4 ring-offset-slate-900 rounded-full' : ''}`}>
                                         <Avatar className={`w-20 h-20 md:w-24 md:h-24 border-2 ${isWinner ? 'border-green-500 opacity-50' : 'border-slate-400'} ${userAvatar.color}`}>
                                             <PersonIcon fontSize="large" />
                                         </Avatar>
+                                        {u.isVoiceEnabled && (
+                                            <div className="absolute -bottom-2 -right-2 bg-slate-800 rounded-full p-1 border border-slate-600 shadow-lg" title="Sesli Sohbet Açık">
+                                                🎙️
+                                            </div>
+                                        )}
                                     </div>
                                     <span className="mt-2 font-bold text-sm bg-black/50 px-3 py-1 rounded-full">{u.name}</span>
                                 </div>

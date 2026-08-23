@@ -25,7 +25,8 @@ class Room {
             assignedWord: null,
             status: 'playing',
             hasSubmittedWord: false,
-            hasUsedHint: false
+            hasUsedHint: false,
+            isVoiceEnabled: false
         });
         this.broadcastState();
     }
@@ -53,6 +54,14 @@ class Room {
         const user = this.users.find(u => u.id === userId);
         if (user) {
             user.avatar = avatarIndex;
+            this.broadcastState();
+        }
+    }
+
+    updateVoice(userId, enabled) {
+        const user = this.users.find(u => u.id === userId);
+        if (user) {
+            user.isVoiceEnabled = enabled;
             this.broadcastState();
         }
     }
@@ -243,6 +252,7 @@ class Room {
                 targetId: u.targetId,
                 hasSubmittedWord: u.hasSubmittedWord,
                 hasUsedHint: u.hasUsedHint,
+                isVoiceEnabled: u.isVoiceEnabled,
                 assignedWord: (this.gameState === "ROUND_END" || u.id !== user.id) ? u.assignedWord : null
             }));
 

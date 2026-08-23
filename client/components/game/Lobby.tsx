@@ -1,4 +1,4 @@
-import { Button, TextField, IconButton, Avatar, Chip } from "@mui/material";
+import { Button, TextField, IconButton, Avatar, Chip, FormControlLabel, Switch } from "@mui/material";
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CancelIcon from '@mui/icons-material/Cancel';
 import LogoutIcon from '@mui/icons-material/Logout';
@@ -17,8 +17,8 @@ interface LobbyProps {
 }
 
 export default function Lobby({
-    gameState, me, code, inviteUrl, myId, onStart, onCloseRoom, onLeaveRoom, onCopyLink, onSelectAvatar
-}: LobbyProps & { onSelectAvatar: (id: number) => void }) {
+    gameState, me, code, inviteUrl, myId, onStart, onCloseRoom, onLeaveRoom, onCopyLink, onSelectAvatar, onToggleVoice
+}: LobbyProps & { onSelectAvatar: (id: number) => void, onToggleVoice: (enabled: boolean) => void }) {
     return (
         <main className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center p-4 relative">
             <div className="absolute top-4 right-4 flex gap-2">
@@ -52,7 +52,6 @@ export default function Lobby({
                         <ContentCopyIcon />
                     </IconButton>
                 </div>
-
                 <div className="mb-6 border-b border-slate-700 pb-6">
                     <p className="text-slate-400 text-sm mb-3">Rengini Seç:</p>
                     <div className="flex justify-center gap-3">
@@ -67,6 +66,15 @@ export default function Lobby({
                     </div>
                 </div>
 
+                <div className="mb-6 bg-slate-800/50 p-4 rounded-xl border border-slate-700 flex flex-col items-center">
+                    <FormControlLabel 
+                        control={<Switch checked={me?.isVoiceEnabled || false} onChange={(e) => onToggleVoice(e.target.checked)} color="success" />} 
+                        label="🎙️ Oyun İçi Sesli Sohbet (Mikrofon İzni Gerekir)" 
+                        className="text-slate-200"
+                    />
+                    {me?.isVoiceEnabled && <p className="text-xs text-green-400 mt-1">Sesli sohbet açık! Kulaklık takmanız tavsiye edilir.</p>}
+                </div>
+
                 <div className="text-left space-y-3 mb-8">
                     <p className="text-slate-400 font-bold uppercase tracking-widest text-sm border-b border-slate-700 pb-2">Oyuncular ({gameState.users.length})</p>
                     <div className="space-y-2 max-h-[300px] overflow-y-auto custom-scrollbar pr-2">
@@ -77,6 +85,7 @@ export default function Lobby({
                                     <div className="flex items-center gap-3">
                                         <Avatar className={userAvatar.color}>{u.name.charAt(0).toUpperCase()}</Avatar>
                                         <span className="font-bold text-lg">{u.name} {u.id === myId ? '(Sen)' : ''}</span>
+                                        {u.isVoiceEnabled && <span title="Sesli Sohbet Açık" className="text-xl animate-pulse">🎤</span>}
                                     </div>
                                     {u.isHost && <Chip label="HOST" size="small" color="warning" variant="outlined" />}
                                 </div>

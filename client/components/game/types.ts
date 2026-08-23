@@ -7,6 +7,7 @@ export type User = {
     targetId: string | null;
     hasSubmittedWord: boolean;
     hasUsedHint: boolean;
+    isVoiceEnabled: boolean;
     assignedWord: string | null;
 };
 

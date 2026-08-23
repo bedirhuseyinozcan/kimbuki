@@ -5,8 +5,14 @@ const { Server } = require("socket.io");
 const PORT = process.env.PORT || 4000;
 const app = express();
 app.use(cors({ origin: "http://localhost:3000" }));
+app.use(express.json()); 
+
+const connectDB = require("./config/db");
+connectDB(); 
 
 const server = http.createServer(app);
+
+app.use("/api/auth", require("./routes/auth"));
 
 app.get("/health", (req, res) => {
   res.json({ ok: true, service: "ben-kimim-futbol-server" });
