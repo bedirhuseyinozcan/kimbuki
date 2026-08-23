@@ -12,9 +12,11 @@ class GameManager {
         socket.on("room:create", ({ name }, cb) => this.handleCreateRoom(socket, name, cb));
         socket.on("room:join", ({ roomCode, name }, cb) => this.handleJoinRoom(socket, roomCode, name, cb));
         socket.on("game:update_avatar", ({ avatarIndex }) => this.handleUpdateAvatar(socket, avatarIndex));
-        socket.on("game:start", () => this.handleStartGame(socket));
+        socket.on("game:start", ({ category } = {}) => this.handleStartGame(socket, category));
         socket.on("game:set_word", ({ word }) => this.handleSetWord(socket, word));
         socket.on("game:chat", ({ message }) => this.handleChat(socket, message));
+        socket.on("game:ask_question", ({ question }) => this.handleAskQuestion(socket, question));
+        socket.on("game:submit_vote", ({ vote }) => this.handleSubmitVote(socket, vote));
         socket.on("game:skip_turn", () => this.handleSkipTurn(socket));
         socket.on("game:guess", ({ guess }) => this.handleGuess(socket, guess));
         socket.on("game:use_hint", () => this.handleUseHint(socket));
@@ -87,9 +89,9 @@ class GameManager {
         }
     }
 
-    handleStartGame(socket) {
+    handleStartGame(socket, category) {
         const room = this.getRoomBySocket(socket);
-        if (room) room.startGame();
+        if (room) room.startGame(category);
     }
 
     handleSetWord(socket, word) {
@@ -100,6 +102,16 @@ class GameManager {
     handleChat(socket, message) {
         const room = this.getRoomBySocket(socket);
         if (room) room.handleChat(socket.id, message);
+    }
+
+    handleAskQuestion(socket, question) {
+        const room = this.getRoomBySocket(socket);
+        if (room) room.askQuestion(socket.id, question);
+    }
+
+    handleSubmitVote(socket, vote) {
+        const room = this.getRoomBySocket(socket);
+        if (room) room.submitVote(socket.id, vote);
     }
 
     handleSkipTurn(socket) {

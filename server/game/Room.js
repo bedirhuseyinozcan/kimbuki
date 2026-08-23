@@ -4,6 +4,8 @@ class Room {
         this.io = io;
         this.users = [];
         this.gameState = "LOBBY";
+        this.category = "";
+        this.activeQuestion = null;
         
         this.turnTime = 30;
         this.timer = null;
@@ -26,7 +28,8 @@ class Room {
             status: 'playing',
             hasSubmittedWord: false,
             hasUsedHint: false,
-            isVoiceEnabled: false
+            isVoiceEnabled: false,
+            lives: 3
         });
         this.broadcastState();
     }
@@ -66,10 +69,11 @@ class Room {
         }
     }
 
-    startGame() {
+    startGame(category = "Karışık") {
         if (this.users.length < 2) return; // At least 2 players needed
 
         this.gameState = "WORD_SELECTION";
+        this.category = category;
         this.chatHistory = [];
         this.winners = [];
 
@@ -109,6 +113,7 @@ class Room {
     startPlaying() {
         this.gameState = "PLAYING";
         this.currentTurnIndex = 0;
+        this.activeQuestion = null;
         this.startTimer();
         this.broadcastState();
     }
@@ -170,11 +175,28 @@ class Room {
                 this.broadcastState();
             }
         } else {
-            this.chatHistory.push({
-                system: true,
-                message: `${user.name} yanlış tahminde bulundu! (${guess})`,
-                timestamp: Date.now()
-            });
+            user.lives--;
+            if (user.lives <= 0) {
+                user.status = 'spectator';
+                this.chatHistory.push({
+                    system: true,
+                    message: `${user.name} tüm tahmin haklarını kaybetti ve izleyici oldu! Kelimesi: ${user.assignedWord}`,
+                    timestamp: Date.now()
+                });
+            } else {
+                this.chatHistory.push({
+                    system: true,
+                    message: `${user.name} yanlış tahminde bulundu! (${guess}) (Kalan Can: ${user.lives})`,
+                    timestamp: Date.now()
+                });
+            }
+
+            const playingUsers = this.users.filter(u => u.status === 'playing');
+            if (playingUsers.length <= 1) { 
+                this.endGame();
+                return;
+            }
+
             if (this.users[this.currentTurnIndex].id === userId) {
                 this.nextTurn();
             } else {
@@ -206,7 +228,29 @@ class Room {
         this.broadcastState();
     }
 
+    askQuestion(userId, question) {
+        if (this.gameState !== "PLAYING") return;
+        const currentUser = this.users[this.currentTurnIndex];
+        if (currentUser.id !== userId) return;
+
+        this.activeQuestion = {
+            askerId: userId,
+            question: question,
+            votes: {} 
+        };
+        this.broadcastState();
+    }
+
+    submitVote(userId, voteType) {
+        if (this.gameState !== "PLAYING" || !this.activeQuestion) return;
+        if (this.activeQuestion.askerId === userId) return; 
+
+        this.activeQuestion.votes[userId] = voteType;
+        this.broadcastState();
+    }
+
     nextTurn() {
+        this.activeQuestion = null;
         if (this.gameState !== "PLAYING") return;
 
         let attempts = 0;
@@ -253,11 +297,14 @@ class Room {
                 hasSubmittedWord: u.hasSubmittedWord,
                 hasUsedHint: u.hasUsedHint,
                 isVoiceEnabled: u.isVoiceEnabled,
+                lives: u.lives,
                 assignedWord: (this.gameState === "ROUND_END" || u.id !== user.id) ? u.assignedWord : null
             }));
 
             const payload = {
                 gameState: this.gameState,
+                category: this.category,
+                activeQuestion: this.activeQuestion,
                 users: usersPayload,
                 currentTurnUserId: this.gameState === "PLAYING" ? this.users[this.currentTurnIndex]?.id : null,
                 turnEndsAt: this.gameState === "PLAYING" ? this.turnStartTime + (this.turnTime * 1000) : null,

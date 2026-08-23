@@ -124,7 +124,7 @@ export default function GamePage() {
 
     if (!gameState) return <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white text-2xl animate-pulse">Odaya bağlanıyor...</div>;
 
-    const handleStart = () => socket?.emit("game:start");
+    const handleStart = (category?: string) => socket?.emit("game:start", { category });
     
     const handleSetWord = () => {
         if (!wordInput.trim()) return;
@@ -140,6 +140,14 @@ export default function GamePage() {
 
     const handleSkip = () => {
         socket?.emit("game:skip_turn");
+    };
+
+    const handleAskQuestion = (question: string) => {
+        socket?.emit("game:ask_question", { question });
+    };
+
+    const handleSubmitVote = (vote: string) => {
+        socket?.emit("game:submit_vote", { vote });
     };
 
     const handleGuess = () => {
@@ -205,6 +213,8 @@ export default function GamePage() {
                 guessDialogOpen={guessDialogOpen} setGuessDialogOpen={setGuessDialogOpen}
                 onLeaveRoom={handleLeaveRoom}
                 onUseHint={handleUseHint}
+                onAskQuestion={handleAskQuestion}
+                onSubmitVote={handleSubmitVote}
             />;
         }
         if (gameState.gameState === "ROUND_END") {

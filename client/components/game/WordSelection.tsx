@@ -22,7 +22,10 @@ export default function WordSelection({
             </Button>
 
             <div className="glass max-w-lg w-full p-8 rounded-3xl text-center shadow-2xl">
-                <h2 className="text-3xl font-bold mb-6 text-cyan-400">Kelime Seçimi</h2>
+                <h2 className="text-3xl font-bold mb-2 text-cyan-400">Kelime Seçimi</h2>
+                {gameState.category && (
+                    <Chip label={`Kategori: ${gameState.category}`} color="secondary" className="mb-6 font-bold" />
+                )}
                 {me?.hasSubmittedWord ? (
                     <div className="py-8">
                         <p className="text-xl mb-4">Kelimeyi gönderdin!</p>

@@ -9,10 +9,17 @@ export type User = {
     hasUsedHint: boolean;
     isVoiceEnabled: boolean;
     assignedWord: string | null;
+    lives: number;
 };
 
 export type GameState = {
     gameState: "LOBBY" | "WORD_SELECTION" | "PLAYING" | "ROUND_END";
+    category?: string;
+    activeQuestion?: {
+        askerId: string;
+        question: string;
+        votes: { [userId: string]: string };
+    } | null;
     users: User[];
     currentTurnUserId: string | null;
     turnEndsAt: number | null;

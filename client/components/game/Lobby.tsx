@@ -10,15 +10,20 @@ interface LobbyProps {
     code: string;
     inviteUrl: string;
     myId: string;
-    onStart: () => void;
+    onStart: (category: string) => void;
     onCloseRoom: () => void;
     onLeaveRoom: () => void;
     onCopyLink: () => void;
 }
 
+import { useState } from "react";
+import { Select, MenuItem } from "@mui/material";
+
 export default function Lobby({
     gameState, me, code, inviteUrl, myId, onStart, onCloseRoom, onLeaveRoom, onCopyLink, onSelectAvatar, onToggleVoice
 }: LobbyProps & { onSelectAvatar: (id: number) => void, onToggleVoice: (enabled: boolean) => void }) {
+    const [category, setCategory] = useState("Karışık");
+
     return (
         <main className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center p-4 relative">
             <div className="absolute top-4 right-4 flex gap-2">
@@ -98,9 +103,28 @@ export default function Lobby({
                     <p className="text-red-400 animate-pulse font-medium">Oynamak için en az 2 kişi gerekli!</p>
                 ) : (
                     me?.isHost ? (
-                        <Button variant="contained" color="secondary" size="large" fullWidth onClick={onStart} className="py-3 text-lg font-bold rounded-xl bg-gradient-to-r from-violet-600 to-cyan-600">
-                            OYUNU BAŞLAT
-                        </Button>
+                        <div className="space-y-4">
+                            <div className="bg-slate-800/80 p-4 rounded-xl text-left border border-slate-700">
+                                <p className="text-slate-400 text-sm mb-2 font-bold">Kategori Seçin:</p>
+                                <Select
+                                    value={category}
+                                    onChange={(e) => setCategory(e.target.value)}
+                                    size="small"
+                                    fullWidth
+                                    className="bg-slate-700 text-white"
+                                    sx={{ color: 'white', '.MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.2)' } }}
+                                >
+                                    <MenuItem value="Karışık">🎲 Karışık</MenuItem>
+                                    <MenuItem value="Ünlüler">⭐ Ünlüler</MenuItem>
+                                    <MenuItem value="Hayvanlar">🐾 Hayvanlar</MenuItem>
+                                    <MenuItem value="Tarihi Kişiler">📜 Tarihi Kişiler</MenuItem>
+                                    <MenuItem value="Filmler / Diziler">🎬 Filmler / Diziler</MenuItem>
+                                </Select>
+                            </div>
+                            <Button variant="contained" color="secondary" size="large" fullWidth onClick={() => onStart(category)} className="py-3 text-lg font-bold rounded-xl bg-gradient-to-r from-violet-600 to-cyan-600">
+                                OYUNU BAŞLAT
+                            </Button>
+                        </div>
                     ) : (
                         <p className="text-slate-500 italic">Host'un başlatması bekleniyor...</p>
                     )
