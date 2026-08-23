@@ -17,6 +17,8 @@ class GameManager {
         socket.on("game:chat", ({ message }) => this.handleChat(socket, message));
         socket.on("game:skip_turn", () => this.handleSkipTurn(socket));
         socket.on("game:guess", ({ guess }) => this.handleGuess(socket, guess));
+        socket.on("game:use_hint", () => this.handleUseHint(socket));
+        socket.on("game:set_avatar", ({ avatarId }) => this.handleSetAvatar(socket, avatarId));
         socket.on("room:close", () => this.handleCloseRoom(socket));
 
         socket.on("disconnect", () => this.handleDisconnect(socket));
@@ -65,6 +67,13 @@ class GameManager {
         if (room) room.updateAvatar(socket.id, avatarIndex);
     }
 
+    handleSetAvatar(socket, avatarId) {
+        const room = this.getRoomBySocket(socket);
+        if (room) {
+            room.updateAvatar(socket.id, avatarId);
+        }
+    }
+
     handleStartGame(socket) {
         const room = this.getRoomBySocket(socket);
         if (room) room.startGame();
@@ -88,6 +97,11 @@ class GameManager {
     handleGuess(socket, guess) {
         const room = this.getRoomBySocket(socket);
         if (room) room.guessWord(socket.id, guess);
+    }
+
+    handleUseHint(socket) {
+        const room = this.getRoomBySocket(socket);
+        if (room) room.useHint(socket.id);
     }
 
     handleDisconnect(socket) {

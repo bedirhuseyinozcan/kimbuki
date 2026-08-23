@@ -2,7 +2,7 @@ import { Button, TextField, IconButton, Avatar, Chip } from "@mui/material";
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CancelIcon from '@mui/icons-material/Cancel';
 import LogoutIcon from '@mui/icons-material/Logout';
-import { User, GameState } from "./types";
+import { User, GameState, AVATARS } from "./types";
 
 interface LobbyProps {
     gameState: GameState;
@@ -17,11 +17,10 @@ interface LobbyProps {
 }
 
 export default function Lobby({
-    gameState, me, code, inviteUrl, myId, onStart, onCloseRoom, onLeaveRoom, onCopyLink
-}: LobbyProps) {
+    gameState, me, code, inviteUrl, myId, onStart, onCloseRoom, onLeaveRoom, onCopyLink, onSelectAvatar
+}: LobbyProps & { onSelectAvatar: (id: number) => void }) {
     return (
         <main className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center p-4 relative">
-            {/* Top Action Buttons */}
             <div className="absolute top-4 right-4 flex gap-2">
                 {me?.isHost && (
                     <Button variant="outlined" color="error" size="small" onClick={onCloseRoom} startIcon={<CancelIcon />}>
@@ -54,18 +53,35 @@ export default function Lobby({
                     </IconButton>
                 </div>
 
+                <div className="mb-6 border-b border-slate-700 pb-6">
+                    <p className="text-slate-400 text-sm mb-3">Rengini Seç:</p>
+                    <div className="flex justify-center gap-3">
+                        {AVATARS.map(av => (
+                            <div 
+                                key={av.id} 
+                                onClick={() => onSelectAvatar(av.id)}
+                                className={`w-10 h-10 rounded-full cursor-pointer transition-all ${av.color} 
+                                    ${me?.avatar === av.id ? 'ring-4 ring-white scale-110 shadow-lg' : 'opacity-50 hover:opacity-100'}`}
+                            />
+                        ))}
+                    </div>
+                </div>
+
                 <div className="text-left space-y-3 mb-8">
                     <p className="text-slate-400 font-bold uppercase tracking-widest text-sm border-b border-slate-700 pb-2">Oyuncular ({gameState.users.length})</p>
                     <div className="space-y-2 max-h-[300px] overflow-y-auto custom-scrollbar pr-2">
-                        {gameState.users.map((u: User) => (
-                            <div key={u.id} className="flex justify-between items-center bg-slate-800/80 p-3 rounded-xl">
-                                <div className="flex items-center gap-3">
-                                    <Avatar className="bg-violet-600">{u.name.charAt(0).toUpperCase()}</Avatar>
-                                    <span className="font-bold text-lg">{u.name} {u.id === myId ? '(Sen)' : ''}</span>
+                        {gameState.users.map((u: User) => {
+                            const userAvatar = AVATARS.find(a => a.id === u.avatar) || AVATARS[0];
+                            return (
+                                <div key={u.id} className="flex justify-between items-center bg-slate-800/80 p-3 rounded-xl">
+                                    <div className="flex items-center gap-3">
+                                        <Avatar className={userAvatar.color}>{u.name.charAt(0).toUpperCase()}</Avatar>
+                                        <span className="font-bold text-lg">{u.name} {u.id === myId ? '(Sen)' : ''}</span>
+                                    </div>
+                                    {u.isHost && <Chip label="HOST" size="small" color="warning" variant="outlined" />}
                                 </div>
-                                {u.isHost && <Chip label="HOST" size="small" color="warning" variant="outlined" />}
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 </div>
 

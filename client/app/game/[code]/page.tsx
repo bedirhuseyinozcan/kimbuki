@@ -57,6 +57,9 @@ export default function GamePage() {
         });
 
         s.on("game:state", (state: GameState) => setGameState(state));
+        s.on("game:hint_result", ({ hint }: { hint: string }) => {
+            alert(`💡 İPUCU: ${hint}`);
+        });
         s.on("game:closed", () => {
             alert("Oda host tarafından kapatıldı!");
             sessionStorage.removeItem("username");
@@ -144,6 +147,10 @@ export default function GamePage() {
         setGuessDialogOpen(false);
     };
 
+    const handleUseHint = () => {
+        socket?.emit("game:use_hint");
+    };
+
     const copyLink = () => {
         navigator.clipboard.writeText(inviteUrl);
         alert("Davet linki kopyalandı!");
@@ -153,6 +160,10 @@ export default function GamePage() {
         if (socket) socket.disconnect();
         sessionStorage.removeItem("username");
         router.push("/");
+    };
+
+    const handleSelectAvatar = (id: number) => {
+        socket?.emit("game:set_avatar", { avatarId: id });
     };
 
     const handleCloseRoom = () => {
@@ -168,6 +179,7 @@ export default function GamePage() {
         return <Lobby 
             gameState={gameState} me={me!} code={code as string} inviteUrl={inviteUrl} myId={myId!} 
             onStart={handleStart} onCloseRoom={handleCloseRoom} onLeaveRoom={handleLeaveRoom} onCopyLink={copyLink} 
+            onSelectAvatar={handleSelectAvatar}
         />;
     }
 
@@ -187,6 +199,7 @@ export default function GamePage() {
             guessInput={guessInput} setGuessInput={setGuessInput} handleGuess={handleGuess}
             guessDialogOpen={guessDialogOpen} setGuessDialogOpen={setGuessDialogOpen}
             onLeaveRoom={handleLeaveRoom}
+            onUseHint={handleUseHint}
         />;
     }
 

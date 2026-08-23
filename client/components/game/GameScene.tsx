@@ -4,7 +4,9 @@ import SendIcon from '@mui/icons-material/Send';
 import SkipNextIcon from '@mui/icons-material/SkipNext';
 import HelpIcon from '@mui/icons-material/Help';
 import PersonIcon from '@mui/icons-material/Person';
-import { User, GameState } from "./types";
+import { User, GameState, AVATARS } from "./types";
+import { playTurnSound, playWinSound } from "@/utils/audio";
+import confetti from "canvas-confetti";
 
 interface GameSceneProps {
     gameState: GameState;
@@ -22,6 +24,7 @@ interface GameSceneProps {
     guessDialogOpen: boolean;
     setGuessDialogOpen: (val: boolean) => void;
     onLeaveRoom: () => void;
+    onUseHint: () => void;
 }
 
 export default function GameScene({
@@ -31,7 +34,7 @@ export default function GameScene({
     handleSkip,
     guessInput, setGuessInput, handleGuess,
     guessDialogOpen, setGuessDialogOpen,
-    onLeaveRoom
+    onLeaveRoom, onUseHint
 }: GameSceneProps) {
     const isMyTurn = gameState.currentTurnUserId === myId;
     const currentTurnUser = gameState.users.find((u: User) => u.id === gameState.currentTurnUserId);
@@ -51,10 +54,33 @@ export default function GameScene({
             setTimeLeft(remaining);
         };
 
-        updateTimer(); // Initial call
+        updateTimer();
         const interval = setInterval(updateTimer, 500);
         return () => clearInterval(interval);
     }, [gameState.turnEndsAt]);
+
+    const previousTurnRef = useRef<string | null>(null);
+    const previousWinnersRef = useRef<number>(0);
+
+    useEffect(() => {
+        if (gameState.currentTurnUserId && gameState.currentTurnUserId !== previousTurnRef.current) {
+            if (gameState.currentTurnUserId === myId) {
+                playTurnSound();
+            }
+            previousTurnRef.current = gameState.currentTurnUserId;
+        }
+
+        if (gameState.winners.length > previousWinnersRef.current) {
+            playWinSound();
+            confetti({
+                particleCount: 100,
+                spread: 70,
+                origin: { y: 0.6 },
+                colors: ['#22c55e', '#3b82f6', '#a855f7']
+            });
+            previousWinnersRef.current = gameState.winners.length;
+        }
+    }, [gameState.currentTurnUserId, gameState.winners, myId]);
 
     useEffect(() => {
         if (gameState?.chatHistory) {
@@ -116,6 +142,7 @@ export default function GameScene({
                         {gameState.users.map((u: User) => {
                             const isMe = u.id === myId;
                             const isWinner = gameState.winners.includes(u.id);
+                            const userAvatar = AVATARS.find(a => a.id === u.avatar) || AVATARS[0];
                             
                             return (
                                 <div key={u.id} className={`flex flex-col items-center transition-all ${u.id === gameState.currentTurnUserId ? 'scale-110' : 'opacity-80'}`}>
@@ -136,7 +163,7 @@ export default function GameScene({
                                     )}
                                     
                                     <div className={`relative ${u.id === gameState.currentTurnUserId ? 'ring-4 ring-green-400 ring-offset-4 ring-offset-slate-900 rounded-full' : ''}`}>
-                                        <Avatar className={`w-20 h-20 md:w-24 md:h-24 border-2 ${isWinner ? 'border-green-500 opacity-50' : 'border-slate-400'}`}>
+                                        <Avatar className={`w-20 h-20 md:w-24 md:h-24 border-2 ${isWinner ? 'border-green-500 opacity-50' : 'border-slate-400'} ${userAvatar.color}`}>
                                             <PersonIcon fontSize="large" />
                                         </Avatar>
                                     </div>
@@ -199,12 +226,25 @@ export default function GameScene({
                             >
                                 TAHMİN ET
                             </Button>
+
+                            {!me?.hasUsedHint && (
+                                <Button 
+                                    variant="outlined" 
+                                    color="info" 
+                                    size="small" 
+                                    fullWidth 
+                                    onClick={onUseHint}
+                                    className="py-2 rounded-xl mt-2 border-slate-600 text-cyan-400"
+                                >
+                                    💡 İpucu Al (1 Hakkın Var)
+                                </Button>
+                            )}
                         </div>
                     )}
                 </div>
             </div>
 
-            <Dialog open={guessDialogOpen} onClose={() => setGuessDialogOpen(false)} PaperProps={{ className: "bg-slate-800 text-white rounded-2xl min-w-[300px]" }}>
+            <Dialog open={guessDialogOpen} onClose={() => setGuessDialogOpen(false)} slotProps={{ paper: { className: "bg-slate-800 text-white rounded-2xl min-w-[300px]" } }}>
                 <DialogTitle className="text-center font-bold">Ben Kimim?</DialogTitle>
                 <DialogContent>
                     <p className="text-slate-400 mb-4 text-sm text-center">Eğer yanlış bilirsen turunu kaybedersin!</p>

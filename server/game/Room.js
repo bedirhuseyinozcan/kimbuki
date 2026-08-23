@@ -23,7 +23,9 @@ class Room {
             avatar: 1,
             targetId: null,
             assignedWord: null,
-            status: 'playing' 
+            status: 'playing',
+            hasSubmittedWord: false,
+            hasUsedHint: false
         });
         this.broadcastState();
     }
@@ -172,6 +174,30 @@ class Room {
         }
     }
 
+    useHint(userId) {
+        if (this.gameState !== "PLAYING") return;
+        const user = this.users.find(u => u.id === userId);
+        if (!user || user.status !== 'playing' || user.hasUsedHint || !user.assignedWord) return;
+
+        user.hasUsedHint = true;
+        
+        // Generate hint e.g. "Ronaldo" -> "R _ _ _ _ _ _"
+        const word = user.assignedWord;
+        let hint = "";
+        for (let i = 0; i < word.length; i++) {
+            if (word[i] === ' ') {
+                hint += "  ";
+            } else if (i === 0 || word[i-1] === ' ') {
+                hint += word[i] + " ";
+            } else {
+                hint += "_ ";
+            }
+        }
+
+        this.io.to(user.id).emit("game:hint_result", { hint: hint.trim() });
+        this.broadcastState();
+    }
+
     nextTurn() {
         if (this.gameState !== "PLAYING") return;
 
@@ -217,6 +243,7 @@ class Room {
                 status: u.status,
                 targetId: u.targetId,
                 hasSubmittedWord: u.hasSubmittedWord,
+                hasUsedHint: u.hasUsedHint,
                 assignedWord: (this.gameState === "ROUND_END" || u.id !== user.id) ? u.assignedWord : null
             }));
 
