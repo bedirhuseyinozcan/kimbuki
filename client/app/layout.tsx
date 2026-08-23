@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Ben Kimim?",
+  title: "Notekim",
   description: "Arkadaşlarınla oynayabileceğin eğlenceli bir tahmin oyunu.",
 };
 

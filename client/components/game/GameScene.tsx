@@ -249,7 +249,7 @@ export default function GameScene({
             </div>
 
             <Dialog open={guessDialogOpen} onClose={() => setGuessDialogOpen(false)} slotProps={{ paper: { className: "bg-slate-800 text-white rounded-2xl min-w-[300px]" } }}>
-                <DialogTitle className="text-center font-bold">Ben Kimim?</DialogTitle>
+                <DialogTitle className="text-center font-bold">Notekim - Soru Sırası</DialogTitle>
                 <DialogContent>
                     <p className="text-slate-400 mb-4 text-sm text-center">Eğer yanlış bilirsen turunu kaybedersin!</p>
                     <TextField 

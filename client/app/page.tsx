@@ -7,7 +7,7 @@ import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import GroupIcon from '@mui/icons-material/Group';
 import LightbulbIcon from '@mui/icons-material/Lightbulb';
 import QuestionMarkIcon from '@mui/icons-material/QuestionMark';
-import SportsEsportsIcon from '@mui/icons-material/SportsEsports';
+import Logo from "@/components/Logo";
 
 export default function Home() {
   const [roomCode, setRoomCode] = useState("");
@@ -74,33 +74,34 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-slate-900 text-white selection:bg-violet-500/30">
       
-      <AppBar position="sticky" elevation={0} className="bg-slate-900/80 backdrop-blur-md border-b border-slate-800">
+      <AppBar position="sticky" elevation={0} color="transparent" className="bg-slate-900/60 backdrop-blur-xl border-b border-white/10 shadow-lg shadow-black/20">
         <Container maxWidth="lg">
-          <Toolbar disableGutters className="flex justify-between">
-            <Typography variant="h6" className="font-black text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400 cursor-pointer" onClick={() => window.scrollTo(0, 0)}>
-              BEN KİMİM?
-            </Typography>
+          <Toolbar disableGutters className="flex justify-between py-3">
+            <div className="flex items-center gap-3 cursor-pointer" onClick={() => window.scrollTo(0, 0)}>
+                <Logo size="sm" />
+                <Typography variant="h6" className="font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-amber-500 hidden sm:block tracking-wider">
+                  NOTEKİM
+                </Typography>
+            </div>
             <div className="hidden md:flex gap-6 items-center">
               <Button color="inherit" className="text-slate-300 hover:text-white" onClick={() => scrollToSection('nasil-oynanir')}>Nasıl Oynanır?</Button>
               <Button color="inherit" className="text-slate-300 hover:text-white" onClick={() => scrollToSection('biz-kimiz')}>Biz Kimiz?</Button>
-              <Button variant="contained" className="bg-violet-600 hover:bg-violet-500 font-bold rounded-full px-6" onClick={() => setPlayDialogOpen(true)}>
+              <Button variant="contained" className="bg-gradient-to-r from-violet-600 to-cyan-600 hover:from-violet-500 hover:to-cyan-500 shadow-lg shadow-violet-500/25 font-bold rounded-full px-8 py-2" onClick={() => setPlayDialogOpen(true)}>
                 Oyna
               </Button>
             </div>
           </Toolbar>
         </Container>
       </AppBar>
-
-      {/* Hero Section */}
       <section className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden">
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-5 pointer-events-none"></div>
         <Container maxWidth="md" className="relative z-10 text-center">
-          <div className="inline-block mb-6 p-4 bg-slate-800/50 rounded-full border border-slate-700 shadow-2xl animate-bounce">
-            <SportsEsportsIcon sx={{ fontSize: 60 }} className="text-cyan-400" />
+          <div className="flex justify-center mb-10 animate-bounce">
+            <Logo size="xl" />
           </div>
           <h1 className="text-5xl md:text-7xl font-black mb-6 tracking-tight">
             Arkadaşlarınla Eğlenceli <br/> 
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400">Tahmin Oyunu</span>
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-amber-500">Tahmin Oyunu</span>
           </h1>
           <p className="text-xl text-slate-400 mb-10 max-w-2xl mx-auto leading-relaxed">
             Klasik "Alnımdaki kağıtta ne yazıyor?" oyununun modern ve dijital hali. 
@@ -184,7 +185,7 @@ export default function Home() {
       </section>
 
       <footer className="py-8 border-t border-slate-800 text-center text-slate-500">
-        <p>© 2026 Ben Kimim? Tüm hakları saklıdır.</p>
+        <p>© 2026 Notekim. Tüm hakları saklıdır.</p>
       </footer>
       <Dialog 
         open={playDialogOpen} 
