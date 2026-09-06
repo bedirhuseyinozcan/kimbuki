@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Socket } from 'socket.io-client';
 import { User } from './types';
+import { toast } from 'react-toastify';
 
 export function useWebRTC(socket: Socket | null, myId: string, isVoiceEnabled: boolean, users: User[]) {
     const [myStream, setMyStream] = useState<MediaStream | null>(null);
@@ -24,7 +25,7 @@ export function useWebRTC(socket: Socket | null, myId: string, isVoiceEnabled: b
             }).catch(err => {
                 console.error("Microphone access denied", err);
                 socket?.emit("game:toggle_voice", { enabled: false });
-                alert("Mikrofon izni reddedildi!");
+                toast.error("Mikrofon izni reddedildi!");
             });
         }
     }, [isVoiceEnabled]);

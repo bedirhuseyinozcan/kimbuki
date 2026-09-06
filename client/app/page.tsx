@@ -12,6 +12,7 @@ import PersonOutlineIcon from '@mui/icons-material/PersonOutlined';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
 import { InputAdornment } from "@mui/material";
+import { toast } from 'react-toastify';
 import Logo from "@/components/Logo";
 
 export default function Home() {
@@ -56,28 +57,28 @@ export default function Home() {
   }, []);
 
   const handleAuth = async () => {
-    if (authTab === 0 && (!loginEmail.trim() || !loginPassword.trim())) return alert("Lütfen e-posta ve şifre girin!");
-    if (authTab === 1 && (!loginEmail.trim() || !loginName.trim() || !loginPassword.trim())) return alert("Lütfen tüm alanları doldurun!");
+    if (authTab === 0 && (!loginEmail.trim() || !loginPassword.trim())) return toast.error("Lütfen e-posta ve şifre girin!");
+    if (authTab === 1 && (!loginEmail.trim() || !loginName.trim() || !loginPassword.trim())) return toast.error("Lütfen tüm alanları doldurun!");
     
     if (authTab === 1) {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(loginEmail)) {
-            return alert("Lütfen geçerli bir e-posta adresi girin.");
+            return toast.error("Lütfen geçerli bir e-posta adresi girin.");
         }
         if (loginName.length < 3) {
-            return alert("Kullanıcı adı en az 3 karakter olmalıdır.");
+            return toast.error("Kullanıcı adı en az 3 karakter olmalıdır.");
         }
         if (loginPassword.length < 8) {
-            return alert("Şifre en az 8 karakter olmalıdır.");
+            return toast.error("Şifre en az 8 karakter olmalıdır.");
         }
         if (!/(?=.*[a-z])/.test(loginPassword)) {
-            return alert("Şifre en az bir küçük harf içermelidir.");
+            return toast.error("Şifre en az bir küçük harf içermelidir.");
         }
         if (!/(?=.*[A-Z])/.test(loginPassword)) {
-            return alert("Şifre en az bir büyük harf içermelidir.");
+            return toast.error("Şifre en az bir büyük harf içermelidir.");
         }
         if (!/(?=.*\d)/.test(loginPassword)) {
-            return alert("Şifre en az bir rakam (sayı) içermelidir.");
+            return toast.error("Şifre en az bir rakam (sayı) içermelidir.");
         }
     }
 
@@ -102,11 +103,12 @@ export default function Home() {
         setLoginName("");
         setLoginEmail("");
         setLoginPassword("");
+        toast.success(`Hoş geldin ${data.user.username}!`);
       } else {
-        alert(data.error || "İşlem başarısız.");
+        toast.error(data.error || "İşlem başarısız.");
       }
     } catch (err) {
-      alert("Sunucuya bağlanılamadı.");
+      toast.error("Sunucuya bağlanılamadı.");
     }
     setLoginLoading(false);
   };
@@ -127,11 +129,13 @@ export default function Home() {
           if (data.id) {
               setUser(data);
               setProfileDialogOpen(false);
-              alert("Profil güncellendi!");
+              toast.success("Profil güncellendi!");
           } else {
-              alert(data.error || "Hata oluştu");
+              toast.error(data.error || "Hata oluştu");
           }
-      } catch (err) {}
+      } catch (err) {
+          toast.error("Sunucuya bağlanılamadı.");
+      }
   };
 
   const handleLogout = () => {
@@ -151,7 +155,7 @@ export default function Home() {
   };
 
   const handleJoin = () => {
-    if (!roomCode.trim()) return alert("Lütfen oda kodunu gir!");
+    if (!roomCode.trim()) return toast.warning("Lütfen oda kodunu gir!");
     router.push(`/game/${roomCode.toUpperCase()}`);
   };
 
@@ -266,6 +270,24 @@ export default function Home() {
           </div>
         </Container>
       </section>
+
+      <section id="biz-kimiz" className="py-20">
+        <Container maxWidth="md" className="text-center">
+          <h2 className="text-3xl md:text-5xl font-black mb-6">Biz Kimiz?</h2>
+          <p className="text-slate-400 text-lg leading-relaxed mb-8">
+            Amacımız, klasik masa oyunlarının verdiği samimi ve eğlenceli hissi dijital dünyaya taşımak. 
+            Arkadaşlarınızla yan yana veya uzaklarda olsanız bile, sesli sohbet altyapımız ve hızlı oyun motorumuz 
+            sayesinde sanki aynı masadaymışsınız gibi kahkaha dolu anlar yaşamanızı sağlamak istiyoruz.
+          </p>
+          <p className="text-slate-500">
+            Geliştirici: Bedir Hüseyin Özcan
+          </p>
+        </Container>
+      </section>
+
+      <footer className="py-8 border-t border-slate-800 text-center text-slate-500">
+        <p>© 2026 Notekim. Tüm hakları saklıdır.</p>
+      </footer>
 
       <Dialog 
         open={playDialogOpen} 
@@ -460,7 +482,7 @@ export default function Home() {
             <Button
                 variant="contained"
                 fullWidth
-                onClick={() => { alert("Şifre sıfırlama maili gönderildi (Simülasyon)."); setForgotPasswordDialogOpen(false); }}
+                onClick={() => { toast.success("Şifre sıfırlama maili gönderildi (Simülasyon)."); setForgotPasswordDialogOpen(false); }}
                 className="py-3 mt-4 rounded-xl bg-violet-600 hover:bg-violet-500 font-bold shadow-lg shadow-violet-500/20"
             >
                 Bağlantı Gönder

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { io, Socket } from "socket.io-client";
 import { Button, TextField } from "@mui/material";
+import { toast } from "react-toastify";
 
 import { User, GameState } from "@/components/game/types";
 import Lobby from "@/components/game/Lobby";
@@ -71,7 +72,7 @@ export default function GamePage() {
 
         s.emit("room:join", { roomCode: code, name: username }, (res: any) => {
             if (!res.ok) {
-                alert("Hata: " + res.error);
+                toast.error("Hata: " + res.error);
                 router.push("/");
             } else {
                 setIsJoined(true);
@@ -81,10 +82,10 @@ export default function GamePage() {
 
         s.on("game:state", (state: GameState) => setGameState(state));
         s.on("game:hint_result", ({ hint }: { hint: string }) => {
-            alert(`💡 İPUCU: ${hint}`);
+            toast.info(`💡 İPUCU: ${hint}`);
         });
         s.on("game:closed", () => {
-            alert("Oda host tarafından kapatıldı!");
+            toast.error("Oda host tarafından kapatıldı!");
             if (s) s.disconnect();
             router.push("/");
         });
@@ -152,7 +153,7 @@ export default function GamePage() {
 
     const copyLink = () => {
         navigator.clipboard.writeText(inviteUrl);
-        alert("Davet linki kopyalandı!");
+        toast.success("Davet linki kopyalandı!");
     };
 
     const handleLeaveRoom = () => {
@@ -166,12 +167,44 @@ export default function GamePage() {
     };
 
     const handleCloseRoom = () => {
-        if (confirm("Odayı tamamen kapatmak istediğine emin misin? Herkes atılacak.")) {
-            socket?.emit("room:close");
-            if (socket) socket.disconnect();
-            sessionStorage.removeItem("username");
-            router.push("/");
-        }
+        toast(
+            ({ closeToast }) => (
+                <div className="flex flex-col gap-3">
+                    <p className="font-bold">Odayı kapatmak istediğine emin misin?</p>
+                    <p className="text-sm">Odada bulunan herkes atılacak.</p>
+                    <div className="flex gap-2 justify-end mt-2">
+                        <Button 
+                            size="small" 
+                            variant="outlined" 
+                            color="inherit" 
+                            onClick={closeToast}
+                        >
+                            İptal
+                        </Button>
+                        <Button 
+                            size="small" 
+                            variant="contained" 
+                            color="error" 
+                            onClick={() => {
+                                socket?.emit("room:close");
+                                if (socket) socket.disconnect();
+                                sessionStorage.removeItem("username");
+                                router.push("/");
+                                if (closeToast) closeToast();
+                            }}
+                        >
+                            Kapat
+                        </Button>
+                    </div>
+                </div>
+            ),
+            { 
+                autoClose: false, 
+                closeOnClick: false, 
+                draggable: false, 
+                position: "top-center" 
+            }
+        );
     };
 
     const renderGameState = () => {
