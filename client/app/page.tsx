@@ -2,59 +2,147 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { TextField, Button, Dialog, DialogTitle, DialogContent, AppBar, Toolbar, Typography, Container, Card, CardContent } from "@mui/material";
+import { TextField, Button, Dialog, DialogTitle, DialogContent, AppBar, Toolbar, Typography, Container, Card, CardContent, Tabs, Tab, Link as MuiLink } from "@mui/material";
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import GroupIcon from '@mui/icons-material/Group';
 import LightbulbIcon from '@mui/icons-material/Lightbulb';
 import QuestionMarkIcon from '@mui/icons-material/QuestionMark';
+import AccountCircleIcon from '@mui/icons-material/AccountCircle';
+import PersonOutlineIcon from '@mui/icons-material/PersonOutlined';
+import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
+import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
+import { InputAdornment } from "@mui/material";
 import Logo from "@/components/Logo";
 
 export default function Home() {
   const [roomCode, setRoomCode] = useState("");
   const [playDialogOpen, setPlayDialogOpen] = useState(false);
+  const [profileDialogOpen, setProfileDialogOpen] = useState(false);
+  const [forgotPasswordDialogOpen, setForgotPasswordDialogOpen] = useState(false);
+  
   const [user, setUser] = useState<{ id: string, username: string, avatar: number } | null>(null);
+  
+  const [authTab, setAuthTab] = useState(0);
+  const [loginEmail, setLoginEmail] = useState("");
   const [loginName, setLoginName] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
   
   const router = useRouter();
 
   useEffect(() => {
-    const storedUser = localStorage.getItem("gameUser");
-    if (storedUser) {
-      const parsed = JSON.parse(storedUser);
-      fetch(`http://localhost:4000/api/auth/me/${parsed.id}`)
+    const params = new URLSearchParams(window.location.search);
+    const inviteCode = params.get("invite");
+    if (inviteCode) {
+        setRoomCode(inviteCode);
+        setPlayDialogOpen(true);
+    }
+
+    const token = localStorage.getItem("gameToken");
+    if (token) {
+      fetch("http://localhost:4000/api/auth/me", {
+        headers: { "Authorization": `Bearer ${token}` }
+      })
         .then(res => res.json())
         .then(data => {
-          if (data.id) {
-            setUser(data);
+          if (data._id) {
+            setUser({ id: data._id, username: data.username, avatar: data.avatar });
           } else {
-            localStorage.removeItem("gameUser");
+            localStorage.removeItem("gameToken");
           }
         })
-        .catch(() => localStorage.removeItem("gameUser"));
+        .catch(() => localStorage.removeItem("gameToken"));
     }
   }, []);
 
-  const handleLogin = async () => {
-    if (!loginName.trim()) return alert("Lütfen bir isim gir!");
+  const handleAuth = async () => {
+    if (authTab === 0 && (!loginEmail.trim() || !loginPassword.trim())) return alert("Lütfen e-posta ve şifre girin!");
+    if (authTab === 1 && (!loginEmail.trim() || !loginName.trim() || !loginPassword.trim())) return alert("Lütfen tüm alanları doldurun!");
+    
+    if (authTab === 1) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(loginEmail)) {
+            return alert("Lütfen geçerli bir e-posta adresi girin.");
+        }
+        if (loginName.length < 3) {
+            return alert("Kullanıcı adı en az 3 karakter olmalıdır.");
+        }
+        if (loginPassword.length < 8) {
+            return alert("Şifre en az 8 karakter olmalıdır.");
+        }
+        if (!/(?=.*[a-z])/.test(loginPassword)) {
+            return alert("Şifre en az bir küçük harf içermelidir.");
+        }
+        if (!/(?=.*[A-Z])/.test(loginPassword)) {
+            return alert("Şifre en az bir büyük harf içermelidir.");
+        }
+        if (!/(?=.*\d)/.test(loginPassword)) {
+            return alert("Şifre en az bir rakam (sayı) içermelidir.");
+        }
+    }
+
     setLoginLoading(true);
+    
+    const endpoint = authTab === 0 ? "login" : "register";
+    const payload = authTab === 0 
+        ? { email: loginEmail, password: loginPassword }
+        : { email: loginEmail, username: loginName, password: loginPassword };
+    
     try {
-      const res = await fetch("http://localhost:4000/api/auth/login", {
+      const res = await fetch(`http://localhost:4000/api/auth/${endpoint}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: loginName })
+        body: JSON.stringify(payload)
       });
       const data = await res.json();
-      if (data.id) {
-        setUser(data);
-        localStorage.setItem("gameUser", JSON.stringify(data));
+      
+      if (data.token) {
+        setUser(data.user);
+        localStorage.setItem("gameToken", data.token);
+        setLoginName("");
+        setLoginEmail("");
+        setLoginPassword("");
       } else {
-        alert(data.error || "Giriş başarısız.");
+        alert(data.error || "İşlem başarısız.");
       }
     } catch (err) {
       alert("Sunucuya bağlanılamadı.");
     }
     setLoginLoading(false);
+  };
+
+  const handleUpdateProfile = async () => {
+      const token = localStorage.getItem("gameToken");
+      if (!token) return;
+      try {
+          const res = await fetch("http://localhost:4000/api/auth/profile", {
+              method: "PUT",
+              headers: { 
+                  "Content-Type": "application/json",
+                  "Authorization": `Bearer ${token}`
+              },
+              body: JSON.stringify({ username: loginName })
+          });
+          const data = await res.json();
+          if (data.id) {
+              setUser(data);
+              setProfileDialogOpen(false);
+              alert("Profil güncellendi!");
+          } else {
+              alert(data.error || "Hata oluştu");
+          }
+      } catch (err) {}
+  };
+
+  const handleLogout = () => {
+      localStorage.removeItem("gameToken");
+      setUser(null);
+      setProfileDialogOpen(false);
+  };
+
+  const openProfile = () => {
+      setLoginName(user?.username || "");
+      setProfileDialogOpen(true);
   };
 
   const handleCreate = () => {
@@ -69,6 +157,10 @@ export default function Home() {
 
   const scrollToSection = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const handleForgotPassword = () => {
+      setForgotPasswordDialogOpen(true);
   };
 
   return (
@@ -86,6 +178,13 @@ export default function Home() {
             <div className="hidden md:flex gap-6 items-center">
               <Button color="inherit" className="text-slate-300 hover:text-white" onClick={() => scrollToSection('nasil-oynanir')}>Nasıl Oynanır?</Button>
               <Button color="inherit" className="text-slate-300 hover:text-white" onClick={() => scrollToSection('biz-kimiz')}>Biz Kimiz?</Button>
+              
+              {user && (
+                <Button color="inherit" className="text-cyan-400 hover:text-cyan-300 font-bold" onClick={openProfile} startIcon={<AccountCircleIcon />}>
+                    {user.username}
+                </Button>
+              )}
+
               <Button variant="contained" className="bg-gradient-to-r from-violet-600 to-cyan-600 hover:from-violet-500 hover:to-cyan-500 shadow-lg shadow-violet-500/25 font-bold rounded-full px-8 py-2" onClick={() => setPlayDialogOpen(true)}>
                 Oyna
               </Button>
@@ -93,6 +192,7 @@ export default function Home() {
           </Toolbar>
         </Container>
       </AppBar>
+
       <section className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden">
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-5 pointer-events-none"></div>
         <Container maxWidth="md" className="relative z-10 text-center">
@@ -105,7 +205,7 @@ export default function Home() {
           </h1>
           <p className="text-xl text-slate-400 mb-10 max-w-2xl mx-auto leading-relaxed">
             Klasik "Alnımdaki kağıtta ne yazıyor?" oyununun modern ve dijital hali. 
-            Hemen bir oda kur, arkadaşlarını davet et ve kim olduğunu bulmaya çalış!
+            Hemen kayıt ol, bir oda kur, arkadaşlarını davet et ve kim olduğunu bulmaya çalış!
           </p>
           <div className="flex flex-col sm:flex-row justify-center gap-4">
             <Button 
@@ -135,7 +235,6 @@ export default function Home() {
             <h2 className="text-3xl md:text-5xl font-black mb-4">Nasıl Oynanır?</h2>
             <p className="text-slate-400 text-lg">Sadece 3 basit adımda oynamaya başla.</p>
           </div>
-          
           <div className="grid md:grid-cols-3 gap-8">
             <Card className="bg-slate-800 border border-slate-700 text-white shadow-xl hover:-translate-y-2 transition-transform duration-300">
               <CardContent className="p-8 text-center flex flex-col items-center">
@@ -143,86 +242,147 @@ export default function Home() {
                   <GroupIcon fontSize="large" />
                 </div>
                 <h3 className="text-2xl font-bold mb-3">1. Odada Toplanın</h3>
-                <p className="text-slate-400">Bir oda kur ve davet linkini arkadaşlarınla paylaş. Herkes kendi rengini ve adını seçip lobiye katılsın.</p>
+                <p className="text-slate-400">Giriş yapıp bir oda kur ve davet linkini arkadaşlarınla paylaş.</p>
               </CardContent>
             </Card>
-
             <Card className="bg-slate-800 border border-slate-700 text-white shadow-xl hover:-translate-y-2 transition-transform duration-300">
               <CardContent className="p-8 text-center flex flex-col items-center">
                 <div className="w-16 h-16 bg-violet-500/20 rounded-2xl flex items-center justify-center mb-6 text-violet-400">
                   <LightbulbIcon fontSize="large" />
                 </div>
                 <h3 className="text-2xl font-bold mb-3">2. Kelimeleri Seçin</h3>
-                <p className="text-slate-400">Oyun başladığında, eşleştiğin arkadaşının alnında yazacak kelimeyi (kişi, nesne, ünlü vb.) sen belirle.</p>
+                <p className="text-slate-400">Oyun başladığında, eşleştiğin arkadaşının alnında yazacak kelimeyi sen belirle.</p>
               </CardContent>
             </Card>
-
             <Card className="bg-slate-800 border border-slate-700 text-white shadow-xl hover:-translate-y-2 transition-transform duration-300">
               <CardContent className="p-8 text-center flex flex-col items-center">
                 <div className="w-16 h-16 bg-green-500/20 rounded-2xl flex items-center justify-center mb-6 text-green-400">
                   <QuestionMarkIcon fontSize="large" />
                 </div>
                 <h3 className="text-2xl font-bold mb-3">3. Sorular Sor</h3>
-                <p className="text-slate-400">30 saniyelik sıran geldiğinde diğerlerine "Ben yaşıyor muyum?" gibi sorular sorarak kim olduğunu tahmin et!</p>
+                <p className="text-slate-400">Sıran geldiğinde diğerlerine sorular sorarak kim olduğunu tahmin et!</p>
               </CardContent>
             </Card>
           </div>
         </Container>
       </section>
 
-      <section id="biz-kimiz" className="py-20">
-        <Container maxWidth="md" className="text-center">
-          <h2 className="text-3xl md:text-5xl font-black mb-6">Biz Kimiz?</h2>
-          <p className="text-slate-400 text-lg leading-relaxed mb-8">
-            Amacımız, klasik masa oyunlarının verdiği samimi ve eğlenceli hissi dijital dünyaya taşımak. 
-            Arkadaşlarınızla yan yana veya uzaklarda olsanız bile, sesli sohbet altyapımız ve hızlı oyun motorumuz 
-            sayesinde sanki aynı masadaymışsınız gibi kahkaha dolu anlar yaşamanızı sağlamak istiyoruz.
-          </p>
-          <p className="text-slate-500">
-            Geliştirici: Bedir Hüseyin Özcan
-          </p>
-        </Container>
-      </section>
-
-      <footer className="py-8 border-t border-slate-800 text-center text-slate-500">
-        <p>© 2026 Notekim. Tüm hakları saklıdır.</p>
-      </footer>
       <Dialog 
         open={playDialogOpen} 
         onClose={() => setPlayDialogOpen(false)}
-        slotProps={{ paper: { className: "bg-slate-900 border border-slate-700 text-white rounded-3xl min-w-[320px] sm:min-w-[400px]" } }}
+        slotProps={{ 
+            paper: { 
+              style: { backgroundColor: '#0f172a', color: 'white', borderRadius: '1.5rem', border: '1px solid #334155' },
+              className: "shadow-2xl shadow-violet-500/10 min-w-[320px] sm:min-w-[400px]" 
+            }
+        }}
       >
         <DialogTitle className="text-center font-black text-2xl pt-8 pb-2">
-          {user ? "Odaya Katıl veya Kur" : "Oyuna Giriş Yap"}
+          {user ? "Odaya Katıl veya Kur" : "Platforma Giriş Yap"}
         </DialogTitle>
         <DialogContent className="p-8">
           
           {!user ? (
-            <div className="space-y-4">
-              <p className="text-slate-400 text-center text-sm mb-6">24 saat geçerli geçici bir profil oluşturulacak.</p>
+            <div className="space-y-5">
+              <Tabs 
+                value={authTab} 
+                onChange={(_, v) => setAuthTab(v)} 
+                centered 
+                textColor="inherit"
+                slotProps={{ indicator: { style: { backgroundColor: '#8b5cf6', height: '3px', borderRadius: '3px' } } }}
+                className="mb-4"
+              >
+                <Tab label="Giriş Yap" className="font-bold text-base" />
+                <Tab label="Kayıt Ol" className="font-bold text-base" />
+              </Tabs>
+              
               <TextField
-                placeholder="Takma Adın"
-                value={loginName}
-                onChange={(e) => setLoginName(e.target.value)}
-                slotProps={{ input: { className: "text-center font-bold text-white bg-slate-800 rounded-2xl h-14" } }}
+                placeholder="E-posta"
+                type="email"
+                value={loginEmail}
+                onChange={(e) => setLoginEmail(e.target.value)}
+                slotProps={{ 
+                  input: {
+                    style: { color: 'white', backgroundColor: '#1e293b', borderRadius: '0.75rem', fontWeight: 'bold' },
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <EmailOutlinedIcon sx={{ color: '#94a3b8' }} />
+                      </InputAdornment>
+                    )
+                  }
+                }}
                 fullWidth
               />
+
+              {authTab === 1 && (
+                <TextField
+                  placeholder="Kullanıcı Adı (Nick)"
+                  value={loginName}
+                  onChange={(e) => setLoginName(e.target.value)}
+                  slotProps={{ 
+                    input: {
+                      style: { color: 'white', backgroundColor: '#1e293b', borderRadius: '0.75rem', fontWeight: 'bold' },
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <PersonOutlineIcon sx={{ color: '#94a3b8' }} />
+                        </InputAdornment>
+                      )
+                    }
+                  }}
+                  fullWidth
+                />
+              )}
+
+              <div>
+                <TextField
+                  placeholder="Şifre"
+                  type="password"
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
+                  slotProps={{ 
+                    input: {
+                      style: { color: 'white', backgroundColor: '#1e293b', borderRadius: '0.75rem', fontWeight: 'bold' },
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <LockOutlinedIcon sx={{ color: '#94a3b8' }} />
+                        </InputAdornment>
+                      )
+                    }
+                  }}
+                  fullWidth
+                />
+                {authTab === 0 && (
+                    <div className="text-right mt-2">
+                        <MuiLink 
+                            component="button" 
+                            variant="body2" 
+                            onClick={handleForgotPassword}
+                            className="text-slate-400 hover:text-violet-400 font-medium"
+                            underline="hover"
+                        >
+                            Şifremi Unuttum?
+                        </MuiLink>
+                    </div>
+                )}
+              </div>
+
               <Button
                 variant="contained"
                 fullWidth
                 size="large"
                 disabled={loginLoading}
-                onClick={handleLogin}
-                className="py-4 rounded-2xl bg-gradient-to-r from-violet-600 to-cyan-600 font-bold text-lg shadow-lg shadow-violet-500/20"
+                onClick={handleAuth}
+                className="py-4 mt-2 rounded-xl bg-gradient-to-r from-violet-600 to-cyan-600 font-bold text-lg shadow-lg shadow-violet-500/30 hover:shadow-violet-500/50 transition-shadow"
               >
-                {loginLoading ? "Giriş Yapılıyor..." : "Devam Et 🚀"}
+                {loginLoading ? "İşleniyor..." : (authTab === 0 ? "GİRİŞ YAP" : "KAYIT OL")}
               </Button>
             </div>
           ) : (
             <div className="space-y-6">
-              <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700 text-center mb-6">
+              <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700 text-center mb-6 relative">
                 <p className="text-sm text-slate-400">Hoş geldin,</p>
                 <p className="text-xl font-bold text-cyan-400">{user.username}</p>
+                <Button size="small" className="absolute top-2 right-2 text-slate-500 text-xs" onClick={openProfile}>Düzenle</Button>
               </div>
 
               <Button
@@ -230,7 +390,7 @@ export default function Home() {
                 fullWidth
                 size="large"
                 onClick={handleCreate}
-                className="py-4 rounded-2xl bg-gradient-to-r from-violet-600 to-cyan-600 font-bold text-lg shadow-lg shadow-violet-500/20"
+                className="py-4 rounded-2xl bg-gradient-to-r from-violet-600 to-cyan-600 font-bold text-lg shadow-lg shadow-violet-500/20 hover:scale-[1.02] transition-transform"
               >
                 Yeni Oda Kur
               </Button>
@@ -246,7 +406,11 @@ export default function Home() {
                   placeholder="ODA KODU"
                   value={roomCode}
                   onChange={(e) => setRoomCode(e.target.value)}
-                  slotProps={{ input: { className: "text-center uppercase tracking-widest font-mono text-white bg-slate-800 rounded-2xl h-14" } }}
+                  slotProps={{ 
+                      input: {
+                        style: { color: 'white', backgroundColor: '#1e293b', borderRadius: '1rem', textAlign: 'center', fontFamily: 'monospace', letterSpacing: '0.1em' }
+                      }
+                  }}
                   fullWidth
                 />
                 <Button
@@ -254,13 +418,94 @@ export default function Home() {
                   fullWidth
                   size="large"
                   onClick={handleJoin}
-                  className="py-3 rounded-2xl border-slate-600 text-slate-300 font-bold hover:bg-slate-800"
+                  className="py-3 rounded-2xl border-slate-600 text-slate-300 font-bold hover:bg-slate-800 hover:text-white transition-colors"
                 >
                   Odaya Katıl 🚀
                 </Button>
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+      <Dialog 
+        open={forgotPasswordDialogOpen} 
+        onClose={() => setForgotPasswordDialogOpen(false)}
+        slotProps={{ 
+            paper: { 
+              style: { backgroundColor: '#0f172a', color: 'white', borderRadius: '1.5rem', border: '1px solid #334155' },
+              className: "shadow-2xl shadow-violet-500/10 min-w-[320px]" 
+            }
+        }}
+      >
+        <DialogTitle className="text-center font-black text-xl pt-6 pb-2">Şifremi Unuttum</DialogTitle>
+        <DialogContent className="p-6 space-y-5 text-center">
+            <p className="text-slate-400 text-sm mb-4">
+                Kayıt olduğunuz e-posta adresinizi girin. Size bir şifre sıfırlama bağlantısı göndereceğiz.
+            </p>
+            <TextField
+                placeholder="E-posta adresiniz"
+                type="email"
+                slotProps={{ 
+                  input: {
+                    style: { color: 'white', backgroundColor: '#1e293b', borderRadius: '0.75rem', fontWeight: 'bold' },
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <EmailOutlinedIcon sx={{ color: '#94a3b8' }} />
+                      </InputAdornment>
+                    )
+                  }
+                }}
+                fullWidth
+            />
+            <Button
+                variant="contained"
+                fullWidth
+                onClick={() => { alert("Şifre sıfırlama maili gönderildi (Simülasyon)."); setForgotPasswordDialogOpen(false); }}
+                className="py-3 mt-4 rounded-xl bg-violet-600 hover:bg-violet-500 font-bold shadow-lg shadow-violet-500/20"
+            >
+                Bağlantı Gönder
+            </Button>
+        </DialogContent>
+      </Dialog>
+      <Dialog 
+        open={profileDialogOpen} 
+        onClose={() => setProfileDialogOpen(false)}
+        slotProps={{ 
+            paper: { 
+              style: { backgroundColor: '#0f172a', color: 'white', borderRadius: '1.5rem', border: '1px solid #334155' },
+              className: "shadow-2xl shadow-cyan-500/10 min-w-[320px]" 
+            }
+        }}
+      >
+        <DialogTitle className="text-center font-black text-2xl pt-6 pb-2">Profilim</DialogTitle>
+        <DialogContent className="p-6 space-y-5">
+            <TextField
+                label="Kullanıcı Adı"
+                value={loginName}
+                onChange={(e) => setLoginName(e.target.value)}
+                slotProps={{ 
+                  input: { style: { color: 'white', backgroundColor: '#1e293b', borderRadius: '0.75rem', fontWeight: 'bold' } },
+                  inputLabel: { style: { color: '#94a3b8' } }
+                }}
+                fullWidth
+            />
+            <Button
+                variant="contained"
+                fullWidth
+                onClick={handleUpdateProfile}
+                className="py-3 mt-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 font-bold shadow-lg shadow-cyan-500/20"
+            >
+                Güncelle
+            </Button>
+            <Button
+                variant="text"
+                color="error"
+                fullWidth
+                onClick={handleLogout}
+                className="mt-2 font-bold hover:bg-red-500/10"
+            >
+                Çıkış Yap
+            </Button>
         </DialogContent>
       </Dialog>
     </div>

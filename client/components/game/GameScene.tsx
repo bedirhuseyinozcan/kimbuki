@@ -8,6 +8,7 @@ import QuestionAnswerIcon from '@mui/icons-material/QuestionAnswer';
 import { User, GameState, AVATARS } from "./types";
 import { playTurnSound, playWinSound } from "@/utils/audio";
 import confetti from "canvas-confetti";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface GameSceneProps {
     gameState: GameState;
@@ -47,6 +48,7 @@ export default function GameScene({
     const [timeLeft, setTimeLeft] = useState(0);
     const [questionDialogOpen, setQuestionDialogOpen] = useState(false);
     const [questionInput, setQuestionInput] = useState("");
+    const [activeBubbles, setActiveBubbles] = useState<{[key:string]: string}>({});
 
     // Client-side timer logic
     useEffect(() => {
@@ -91,6 +93,22 @@ export default function GameScene({
     useEffect(() => {
         if (gameState?.chatHistory) {
             chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+            
+            if (gameState.chatHistory.length > 0) {
+                const lastMsg = gameState.chatHistory[gameState.chatHistory.length - 1];
+                if (!lastMsg.system && lastMsg.userId) {
+                    setActiveBubbles(prev => ({ ...prev, [lastMsg.userId]: lastMsg.message }));
+                    setTimeout(() => {
+                        setActiveBubbles(prev => {
+                            const next = { ...prev };
+                            if (next[lastMsg.userId] === lastMsg.message) {
+                                delete next[lastMsg.userId];
+                            }
+                            return next;
+                        });
+                    }, 4000);
+                }
+            }
         }
     }, [gameState?.chatHistory]);
 
@@ -143,40 +161,60 @@ export default function GameScene({
                     />
                 </div>
 
-                <div className="flex-1 glass rounded-3xl p-6 flex flex-col border border-slate-700/50 relative">
+                <div className="flex-1 glass rounded-3xl p-6 flex flex-col border border-slate-700/50 relative overflow-hidden">
                     
-                    {gameState.activeQuestion && (
-                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 glass p-6 rounded-3xl border border-slate-600 shadow-[0_0_50px_rgba(0,0,0,0.8)] text-center w-[95%] max-w-lg backdrop-blur-2xl bg-slate-900/90">
-                            <h4 className="text-lg font-bold mb-2 text-cyan-400">
-                                {gameState.users.find((u:User) => u.id === gameState.activeQuestion!.askerId)?.name} soruyor:
-                            </h4>
-                            <p className="text-3xl font-black mb-8 leading-tight">"{gameState.activeQuestion.question}"</p>
-                            
-                            {gameState.activeQuestion.askerId !== myId && me?.status === 'playing' ? (
-                                <div className="flex justify-center gap-4">
-                                    <Button variant="contained" color="success" size="large" onClick={() => onSubmitVote("yes")} className="text-xl py-3 px-6 rounded-xl font-black">Evet 👍</Button>
-                                    <Button variant="contained" color="error" size="large" onClick={() => onSubmitVote("no")} className="text-xl py-3 px-6 rounded-xl font-black">Hayır 👎</Button>
-                                    <Button variant="contained" color="warning" size="large" onClick={() => onSubmitVote("sometimes")} className="text-xl py-3 px-6 rounded-xl font-black">Bazen 🤔</Button>
+                    <AnimatePresence>
+                        {gameState.activeQuestion && (
+                            <motion.div 
+                                initial={{ opacity: 0, scale: 0.8, y: "-50%", x: "-50%" }}
+                                animate={{ opacity: 1, scale: 1, y: "-50%", x: "-50%" }}
+                                exit={{ opacity: 0, scale: 0.8, y: "-50%", x: "-50%" }}
+                                className="absolute top-1/2 left-1/2 z-50 glass p-6 rounded-3xl border border-slate-600 shadow-[0_0_50px_rgba(0,0,0,0.8)] text-center w-[95%] max-w-lg backdrop-blur-2xl bg-slate-900/90"
+                            >
+                                <h4 className="text-lg font-bold mb-2 text-cyan-400">
+                                    {gameState.users.find((u:User) => u.id === gameState.activeQuestion!.askerId)?.name} soruyor:
+                                </h4>
+                                <p className="text-3xl font-black mb-8 leading-tight">"{gameState.activeQuestion.question}"</p>
+                                
+                                {gameState.activeQuestion.askerId !== myId && me?.status === 'playing' ? (
+                                    <div className="flex justify-center gap-4">
+                                        <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                                            <Button variant="contained" color="success" size="large" onClick={() => onSubmitVote("yes")} className="text-xl py-3 px-6 rounded-xl font-black">Evet 👍</Button>
+                                        </motion.div>
+                                        <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                                            <Button variant="contained" color="error" size="large" onClick={() => onSubmitVote("no")} className="text-xl py-3 px-6 rounded-xl font-black">Hayır 👎</Button>
+                                        </motion.div>
+                                        <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                                            <Button variant="contained" color="warning" size="large" onClick={() => onSubmitVote("sometimes")} className="text-xl py-3 px-6 rounded-xl font-black">Bazen 🤔</Button>
+                                        </motion.div>
+                                    </div>
+                                ) : (
+                                    <p className="text-slate-400 animate-pulse text-lg mb-4">Diğer oyuncuların oylaması bekleniyor...</p>
+                                )}
+                                
+                                <div className="mt-6 pt-4 border-t border-slate-700 flex flex-wrap justify-center gap-3">
+                                    <AnimatePresence>
+                                        {Object.entries(gameState.activeQuestion.votes).map(([voterId, vote]) => (
+                                            <motion.div
+                                                key={voterId}
+                                                initial={{ opacity: 0, y: 20, scale: 0 }}
+                                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                            >
+                                                <Chip 
+                                                    label={`${gameState.users.find((u:User) => u.id === voterId)?.name}: ${vote === 'yes' ? '👍' : vote === 'no' ? '👎' : '🤔'}`} 
+                                                    color={vote === 'yes' ? "success" : vote === 'no' ? "error" : "warning"}
+                                                    variant="outlined"
+                                                    className="font-bold bg-slate-900"
+                                                />
+                                            </motion.div>
+                                        ))}
+                                    </AnimatePresence>
                                 </div>
-                            ) : (
-                                <p className="text-slate-400 animate-pulse text-lg mb-4">Diğer oyuncuların oylaması bekleniyor...</p>
-                            )}
-                            
-                            <div className="mt-6 pt-4 border-t border-slate-700 flex flex-wrap justify-center gap-3">
-                                {Object.entries(gameState.activeQuestion.votes).map(([voterId, vote]) => (
-                                    <Chip 
-                                        key={voterId} 
-                                        label={`${gameState.users.find((u:User) => u.id === voterId)?.name}: ${vote === 'yes' ? '👍' : vote === 'no' ? '👎' : '🤔'}`} 
-                                        color={vote === 'yes' ? "success" : vote === 'no' ? "error" : "warning"}
-                                        variant="outlined"
-                                        className="font-bold"
-                                    />
-                                ))}
-                            </div>
-                        </div>
-                    )}
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
 
-                    <div className="flex justify-between items-center mb-6 bg-slate-800/50 p-4 rounded-2xl">
+                    <div className="flex justify-between items-center mb-6 bg-slate-800/50 p-4 rounded-2xl relative z-10">
                         <div>
                             <p className="text-xs text-slate-400 uppercase tracking-widest">Sıra Kimde</p>
                             <p className={`text-xl font-bold ${isMyTurn ? 'text-green-400 animate-pulse' : 'text-white'}`}>
@@ -188,59 +226,88 @@ export default function GameScene({
                         </div>
                     </div>
 
-                    <div className="flex-1 flex flex-wrap justify-center items-center gap-8 md:gap-12 py-8 overflow-y-auto">
-                        {gameState.users.map((u: User) => {
+                    <div className="flex-1 relative w-full h-full min-h-[300px] flex items-center justify-center my-4 overflow-hidden z-0">
+                        <div className="absolute w-40 h-16 bg-slate-700/20 rounded-[100%] border border-slate-600/30 shadow-inner blur-md pointer-events-none"></div>
+
+                        {gameState.users.map((u: User, index: number) => {
                             const isMe = u.id === myId;
                             const isWinner = gameState.winners.includes(u.id);
+                            const isCurrentTurn = u.id === gameState.currentTurnUserId;
                             const userAvatar = AVATARS.find(a => a.id === u.avatar) || AVATARS[0];
                             
+                            const totalUsers = gameState.users.length;
+                            const radiusX = totalUsers > 4 ? 180 : 140; 
+                            const radiusY = totalUsers > 4 ? 120 : 90;
+                            const angle = (index / totalUsers) * (2 * Math.PI) - (Math.PI / 2);
+                            const x = Math.cos(angle) * radiusX;
+                            const y = Math.sin(angle) * radiusY;
+
                             return (
-                                <div key={u.id} className={`flex flex-col items-center transition-all ${u.id === gameState.currentTurnUserId ? 'scale-110' : 'opacity-80'}`}>
+                                <motion.div 
+                                    key={u.id} 
+                                    initial={{ opacity: 0, scale: 0 }}
+                                    animate={{ 
+                                        opacity: 1, 
+                                        scale: isCurrentTurn ? 1.15 : (u.status === 'spectator' ? 0.8 : 1),
+                                        x,
+                                        y,
+                                        zIndex: isCurrentTurn ? 40 : (y > 0 ? 30 : 10)
+                                    }}
+                                    transition={{ type: "spring", stiffness: 200, damping: 20 }}
+                                    className="absolute flex flex-col items-center"
+                                >
+                                    <AnimatePresence>
+                                        {activeBubbles[u.id] && (
+                                            <motion.div 
+                                                initial={{ opacity: 0, y: 10, scale: 0.5 }}
+                                                animate={{ opacity: 1, y: -10, scale: 1 }}
+                                                exit={{ opacity: 0, scale: 0.5 }}
+                                                className="absolute -top-14 bg-white text-black px-3 py-1.5 rounded-2xl rounded-bl-none text-xs font-bold shadow-xl z-50 text-center"
+                                                style={{ minWidth: 'max-content', maxWidth: '140px', wordWrap: 'break-word', whiteSpace: 'normal' }}
+                                            >
+                                                {activeBubbles[u.id]}
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+
                                     {!isWinner && (
-                                        <div className={`mb-3 px-4 py-2 rounded-lg border shadow-lg font-bold text-center max-w-[120px] break-words
+                                        <div className={`mb-1 px-3 py-1 rounded-lg border shadow-lg font-bold text-center text-xs max-w-[100px] break-words z-20
                                             ${isMe ? 'bg-slate-800 border-slate-600 text-slate-400' : 'bg-yellow-100 border-yellow-400 text-black transform -rotate-2'}`}>
                                             {isMe && gameState.gameState !== "ROUND_END" ? (
-                                                <span className="flex items-center justify-center gap-1"><HelpIcon fontSize="small" /> KİMİM BEN?</span>
+                                                <span className="flex items-center justify-center gap-1"><HelpIcon style={{fontSize: '14px'}} /> KİMİM BEN?</span>
                                             ) : (
                                                 u.assignedWord
                                             )}
                                         </div>
                                     )}
-                                    {isWinner && (
-                                        <div className="mb-3 px-3 py-1 rounded-full bg-green-500/20 border border-green-500 text-green-400 text-xs font-bold shadow-[0_0_15px_rgba(34,197,94,0.3)]">
-                                            BİLDİ!
-                                        </div>
-                                    )}
-                                    {u.status === 'spectator' && !isWinner && (
-                                        <div className="mb-3 px-3 py-1 rounded-full bg-red-500/20 border border-red-500 text-red-400 text-xs font-bold">
-                                            ELENDİ
-                                        </div>
-                                    )}
-                                    <div className={`relative ${u.id === gameState.currentTurnUserId ? 'ring-4 ring-green-400 ring-offset-4 ring-offset-slate-900 rounded-full' : ''}`}>
-                                        <Avatar className={`w-20 h-20 md:w-24 md:h-24 border-2 ${isWinner || u.status === 'spectator' ? 'border-slate-600 opacity-50 grayscale' : 'border-slate-400'} ${userAvatar.color}`}>
+                                    
+                                    <div className={`relative ${isCurrentTurn ? 'ring-4 ring-green-400 ring-offset-4 ring-offset-slate-900 rounded-full shadow-[0_0_20px_rgba(74,222,128,0.5)]' : ''}`}>
+                                        <Avatar className={`w-16 h-16 md:w-20 md:h-20 border-2 ${isWinner || u.status === 'spectator' ? 'border-slate-600 opacity-50 grayscale' : 'border-slate-400'} ${userAvatar.color}`}>
                                             <PersonIcon fontSize="large" />
                                         </Avatar>
                                         {u.isVoiceEnabled && (
-                                            <div className="absolute -bottom-2 -right-2 bg-slate-800 rounded-full p-1 border border-slate-600 shadow-lg" title="Sesli Sohbet Açık">
+                                            <div className="absolute -bottom-1 -right-1 bg-slate-800 rounded-full p-1 border border-slate-600 shadow-lg text-[10px]" title="Sesli Sohbet Açık">
                                                 🎙️
                                             </div>
                                         )}
                                     </div>
-                                    <span className={`mt-2 font-bold text-sm bg-black/50 px-3 py-1 rounded-full ${u.status === 'spectator' ? 'line-through text-slate-500' : ''}`}>{u.name}</span>
+                                    <span className={`mt-2 font-bold text-[11px] bg-black/70 px-2 py-0.5 rounded-full whitespace-nowrap ${u.status === 'spectator' ? 'line-through text-slate-500' : ''}`}>
+                                        {u.name}
+                                    </span>
                                     
                                     {u.status !== 'spectator' && !isWinner && (
-                                        <div className="flex gap-1 text-xs mt-1 bg-black/30 px-2 py-1 rounded-full">
+                                        <div className="flex gap-1 mt-1 bg-black/30 px-1.5 py-0.5 rounded-full">
                                             {[...Array(3)].map((_, i) => (
-                                                <span key={i} className="drop-shadow-md" style={{fontSize: '10px'}}>{i < (u.lives ?? 3) ? '❤️' : '🖤'}</span>
+                                                <span key={i} className="drop-shadow-md text-[8px]">{i < (u.lives ?? 3) ? '❤️' : '🖤'}</span>
                                             ))}
                                         </div>
                                     )}
-                                </div>
+                                </motion.div>
                             );
                         })}
                     </div>
 
-                    <div className="mt-4 bg-slate-900/50 rounded-2xl h-40 flex flex-col z-0 relative">
+                    <div className="mt-4 bg-slate-900/50 rounded-2xl h-40 flex flex-col z-10 relative">
                         <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar">
                             {gameState.chatHistory.map((msg: any, i: number) => (
                                 <div key={i} className={`text-sm ${msg.system ? 'text-cyan-400 text-center italic my-2' : ''}`}>
@@ -271,44 +338,50 @@ export default function GameScene({
                     {me?.status === 'playing' && gameState.gameState === "PLAYING" && (
                         <div className="glass p-6 rounded-3xl flex flex-col justify-center items-center gap-4 border border-slate-700/50">
                             
-                            <Button 
-                                variant="contained" 
-                                color="info" 
-                                size="large" 
-                                fullWidth 
-                                startIcon={<QuestionAnswerIcon />}
-                                onClick={() => setQuestionDialogOpen(true)}
-                                disabled={!isMyTurn}
-                                className={`py-4 rounded-xl border-2 font-bold ${isMyTurn ? 'bg-cyan-600 shadow-lg shadow-cyan-500/30' : 'opacity-50'}`}
-                            >
-                                Soru Sor & Oylat
-                            </Button>
+                            <motion.div whileHover={{ scale: isMyTurn ? 1.05 : 1 }} whileTap={{ scale: isMyTurn ? 0.95 : 1 }} className="w-full">
+                                <Button 
+                                    variant="contained" 
+                                    color="info" 
+                                    size="large" 
+                                    fullWidth 
+                                    startIcon={<QuestionAnswerIcon />}
+                                    onClick={() => setQuestionDialogOpen(true)}
+                                    disabled={!isMyTurn}
+                                    className={`py-4 rounded-xl border-2 font-bold ${isMyTurn ? 'bg-cyan-600 shadow-lg shadow-cyan-500/30' : 'opacity-50'}`}
+                                >
+                                    Soru Sor & Oylat
+                                </Button>
+                            </motion.div>
 
                             <div className="w-full h-px bg-slate-700 my-2"></div>
 
-                            <Button 
-                                variant="contained" 
-                                color="success" 
-                                size="large" 
-                                fullWidth 
-                                onClick={() => setGuessDialogOpen(true)}
-                                className="py-4 rounded-xl text-lg font-bold shadow-lg shadow-green-500/20"
-                            >
-                                TAHMİN ET
-                            </Button>
+                            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="w-full">
+                                <Button 
+                                    variant="contained" 
+                                    color="success" 
+                                    size="large" 
+                                    fullWidth 
+                                    onClick={() => setGuessDialogOpen(true)}
+                                    className="py-4 rounded-xl text-lg font-bold shadow-lg shadow-green-500/20"
+                                >
+                                    TAHMİN ET
+                                </Button>
+                            </motion.div>
 
-                            <Button 
-                                variant="outlined" 
-                                color="warning" 
-                                size="large" 
-                                fullWidth 
-                                startIcon={<SkipNextIcon />}
-                                onClick={handleSkip}
-                                disabled={!isMyTurn}
-                                className={`py-3 rounded-xl border-2 ${isMyTurn ? 'hover:bg-warning-main/10' : 'opacity-50'}`}
-                            >
-                                Turu Geç
-                            </Button>
+                            <motion.div whileHover={{ scale: isMyTurn ? 1.05 : 1 }} whileTap={{ scale: isMyTurn ? 0.95 : 1 }} className="w-full">
+                                <Button 
+                                    variant="outlined" 
+                                    color="warning" 
+                                    size="large" 
+                                    fullWidth 
+                                    startIcon={<SkipNextIcon />}
+                                    onClick={handleSkip}
+                                    disabled={!isMyTurn}
+                                    className={`py-3 rounded-xl border-2 ${isMyTurn ? 'hover:bg-warning-main/10' : 'opacity-50'}`}
+                                >
+                                    Turu Geç
+                                </Button>
+                            </motion.div>
 
                             {!me?.hasUsedHint && (
                                 <Button 

@@ -22,10 +22,8 @@ export default function GamePage() {
     const [nameInput, setNameInput] = useState("");
     const [isJoined, setIsJoined] = useState(false);
 
-    // Word selection
     const [wordInput, setWordInput] = useState("");
 
-    // Playing phase
     const [chatInput, setChatInput] = useState("");
     const [notepad, setNotepad] = useState("");
     const [guessDialogOpen, setGuessDialogOpen] = useState(false);
@@ -35,6 +33,8 @@ export default function GamePage() {
     const me = gameState?.users.find((u: User) => u.id === myId);
     const { remoteStreams } = useWebRTC(socket, myId, me?.isVoiceEnabled || false, gameState?.users || []);
 
+    const [checkingAuth, setCheckingAuth] = useState(true);
+
     useEffect(() => {
         if (code && typeof window !== 'undefined') {
             setInviteUrl(`${window.location.origin}/game/${code}`);
@@ -42,10 +42,27 @@ export default function GamePage() {
     }, [code]);
 
     useEffect(() => {
-        const storedName = sessionStorage.getItem("username");
-        if (storedName) {
-            connectToRoom(storedName);
+        const token = localStorage.getItem("gameToken");
+        if (!token) {
+            router.push(`/?invite=${code}`);
+            return;
         }
+
+        fetch("http://localhost:4000/api/auth/me", {
+            headers: { "Authorization": `Bearer ${token}` }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.username) {
+                connectToRoom(data.username);
+            } else {
+                localStorage.removeItem("gameToken");
+                router.push(`/?invite=${code}`);
+            }
+        })
+        .catch(() => {
+            router.push(`/?invite=${code}`);
+        });
     }, [code]);
 
     const connectToRoom = (username: string) => {
@@ -58,6 +75,7 @@ export default function GamePage() {
                 router.push("/");
             } else {
                 setIsJoined(true);
+                setCheckingAuth(false);
             }
         });
 
@@ -67,16 +85,9 @@ export default function GamePage() {
         });
         s.on("game:closed", () => {
             alert("Oda host tarafından kapatıldı!");
-            sessionStorage.removeItem("username");
             if (s) s.disconnect();
             router.push("/");
         });
-    };
-
-    const handleJoinSubmit = () => {
-        if (!nameInput.trim()) return alert("Lütfen ismini gir!");
-        sessionStorage.setItem("username", nameInput);
-        connectToRoom(nameInput);
     };
 
     useEffect(() => {
@@ -85,38 +96,12 @@ export default function GamePage() {
         };
     }, [socket]);
 
-    if (!isJoined) {
+    if (checkingAuth || !isJoined) {
         return (
             <main className="flex min-h-screen flex-col items-center justify-center p-6 text-center bg-slate-900 text-white">
-                <div className="glass w-full max-w-sm p-8 rounded-3xl shadow-2xl space-y-6 animate-fade-in-up border border-slate-700">
-                    <h2 className="text-3xl font-extrabold text-cyan-400">Lobiye Katıl</h2>
-                    <p className="text-slate-400 font-mono text-xl tracking-widest bg-slate-800 p-2 rounded-lg">{code}</p>
-                    
-                    <div className="text-left space-y-2">
-                        <label className="text-sm font-medium text-slate-300 ml-1">Kullanıcı Adı</label>
-                        <TextField 
-                            fullWidth
-                            size="small"
-                            placeholder="Oyuncu adınızı girin..."
-                            value={nameInput}
-                            onChange={e => setNameInput(e.target.value)}
-                            slotProps={{ input: { className: "text-white bg-slate-800 rounded-xl" } }}
-                        />
-                    </div>
-                    
-                    <Button 
-                        variant="contained" 
-                        color="primary" 
-                        fullWidth 
-                        size="large"
-                        onClick={handleJoinSubmit}
-                        className="py-3 rounded-xl bg-gradient-to-r from-violet-600 to-cyan-600 font-bold text-lg"
-                    >
-                        GİRİŞ YAP
-                    </Button>
-                    <Button onClick={() => router.push("/")} color="inherit" className="mt-2 text-slate-400">
-                        Geri Dön
-                    </Button>
+                <div className="glass w-full max-w-sm p-8 rounded-3xl shadow-2xl animate-pulse border border-slate-700">
+                    <h2 className="text-2xl font-bold text-cyan-400">Odaya Bağlanılıyor...</h2>
+                    <p className="text-slate-400 mt-2">Lütfen bekleyin.</p>
                 </div>
             </main>
         );
