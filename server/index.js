@@ -13,6 +13,8 @@ connectDB();
 const server = http.createServer(app);
 
 app.use("/api/auth", require("./routes/auth"));
+app.use("/api/shop", require("./routes/shop"));
+app.use("/api/stats", require("./routes/stats"));
 
 app.get("/health", (req, res) => {
   res.json({ ok: true, service: "ben-kimim-futbol-server" });
@@ -26,6 +28,7 @@ const io = new Server(server, {
 const GameManager = require("./game/GameManager");
 
 const gameManager = new GameManager(io);
+app.locals.gameManager = gameManager;
 
 io.on("connection", (socket) => {
   gameManager.handleConnection(socket);

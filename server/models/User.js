@@ -19,8 +19,16 @@ const userSchema = new mongoose.Schema({
         required: true,
     },
     avatar: {
+        type: String,
+        default: 'default-violet'
+    },
+    gold: {
         type: Number,
-        default: 1
+        default: 0
+    },
+    unlockedAvatars: {
+        type: [String],
+        default: ['default-violet', 'default-red', 'default-blue', 'default-green', 'default-yellow', 'default-pink']
     },
     createdAt: {
         type: Date,

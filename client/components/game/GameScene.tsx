@@ -283,7 +283,11 @@ export default function GameScene({
                                     
                                     <div className={`relative ${isCurrentTurn ? 'ring-4 ring-green-400 ring-offset-4 ring-offset-slate-900 rounded-full shadow-[0_0_20px_rgba(74,222,128,0.5)]' : ''}`}>
                                         <Avatar className={`w-16 h-16 md:w-20 md:h-20 border-2 ${isWinner || u.status === 'spectator' ? 'border-slate-600 opacity-50 grayscale' : 'border-slate-400'} ${userAvatar.color}`}>
-                                            <PersonIcon fontSize="large" />
+                                            {userAvatar.icon ? (
+                                                <span className="text-3xl flex items-center justify-center">{userAvatar.icon}</span>
+                                            ) : (
+                                                <span className="text-2xl">{u.name.charAt(0).toUpperCase()}</span>
+                                            )}
                                         </Avatar>
                                         {u.isVoiceEnabled && (
                                             <div className="absolute -bottom-1 -right-1 bg-slate-800 rounded-full p-1 border border-slate-600 shadow-lg text-[10px]" title="Sesli Sohbet Açık">
@@ -291,8 +295,8 @@ export default function GameScene({
                                             </div>
                                         )}
                                     </div>
-                                    <span className={`mt-2 font-bold text-[11px] bg-black/70 px-2 py-0.5 rounded-full whitespace-nowrap ${u.status === 'spectator' ? 'line-through text-slate-500' : ''}`}>
-                                        {u.name}
+                                    <span className={`mt-2 font-bold text-[11px] bg-black/70 px-2 py-0.5 rounded-full whitespace-nowrap ${u.status === 'spectator' ? 'line-through text-slate-500' : ''} ${u.disconnected ? 'text-red-400' : ''}`}>
+                                        {u.name} {u.disconnected && '(Koptu)'}
                                     </span>
                                     
                                     {u.status !== 'spectator' && !isWinner && (
@@ -355,14 +359,15 @@ export default function GameScene({
 
                             <div className="w-full h-px bg-slate-700 my-2"></div>
 
-                            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="w-full">
+                            <motion.div whileHover={{ scale: isMyTurn ? 1.05 : 1 }} whileTap={{ scale: isMyTurn ? 0.95 : 1 }} className="w-full">
                                 <Button 
                                     variant="contained" 
                                     color="success" 
                                     size="large" 
                                     fullWidth 
                                     onClick={() => setGuessDialogOpen(true)}
-                                    className="py-4 rounded-xl text-lg font-bold shadow-lg shadow-green-500/20"
+                                    disabled={!isMyTurn}
+                                    className={`py-4 rounded-xl text-lg font-bold shadow-lg shadow-green-500/20 ${!isMyTurn ? 'opacity-50' : ''}`}
                                 >
                                     TAHMİN ET
                                 </Button>
