@@ -22,7 +22,10 @@ export default function GameOver({
                             <div key={u.id} className="flex justify-between items-center text-lg">
                                 <span className="font-bold">{i + 1}. {u.name}</span>
                                 {gameState.winners.includes(u.id) ? (
-                                    <span className="text-green-400 font-bold">Bildin: {u.assignedWord}</span>
+                                    <div className="flex flex-col items-end">
+                                        <span className="text-green-400 font-bold">Bildin: {u.assignedWord}</span>
+                                        <span className="text-yellow-400 text-sm font-black">+50 Altın 💰</span>
+                                    </div>
                                 ) : (
                                     <span className="text-red-400">Bilemedin: {u.assignedWord}</span>
                                 )}

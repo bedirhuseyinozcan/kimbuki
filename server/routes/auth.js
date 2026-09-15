@@ -60,7 +60,9 @@ router.post("/register", async (req, res) => {
             username,
             email,
             password: hashedPassword,
-            avatar: 1
+            avatar: "default-violet",
+            gold: 0,
+            unlockedAvatars: ["default-violet", "default-red", "default-blue", "default-green", "default-yellow", "default-pink"]
         });
         await user.save();
 
@@ -68,7 +70,14 @@ router.post("/register", async (req, res) => {
 
         res.status(201).json({
             token,
-            user: { id: user._id, username: user.username, email: user.email, avatar: user.avatar }
+            user: { 
+                id: user._id, 
+                username: user.username, 
+                email: user.email, 
+                avatar: user.avatar,
+                gold: user.gold,
+                unlockedAvatars: user.unlockedAvatars
+            }
         });
     } catch (error) {
         console.error("Register error:", error);
@@ -97,7 +106,14 @@ router.post("/login", async (req, res) => {
 
         res.json({
             token,
-            user: { id: user._id, username: user.username, email: user.email, avatar: user.avatar }
+            user: { 
+                id: user._id, 
+                username: user.username, 
+                email: user.email, 
+                avatar: user.avatar,
+                gold: user.gold,
+                unlockedAvatars: user.unlockedAvatars
+            }
         });
     } catch (error) {
         console.error("Login error:", error);
@@ -111,7 +127,14 @@ router.get("/me", authMiddleware, async (req, res) => {
         if (!user) {
             return res.status(404).json({ error: "Kullanıcı bulunamadı." });
         }
-        res.json(user);
+        res.json({
+            id: user._id,
+            username: user.username,
+            email: user.email,
+            avatar: user.avatar,
+            gold: user.gold,
+            unlockedAvatars: user.unlockedAvatars
+        });
     } catch (error) {
         res.status(500).json({ error: "Sunucu hatası" });
     }
@@ -130,10 +153,21 @@ router.put("/profile", authMiddleware, async (req, res) => {
             user.username = username;
         }
 
-        if (avatar) user.avatar = avatar;
+        if (avatar) {
+            if (!user.unlockedAvatars.includes(avatar)) {
+                return res.status(400).json({ error: "Bu karaktere sahip değilsiniz." });
+            }
+            user.avatar = avatar;
+        }
 
         await user.save();
-        res.json({ id: user._id, username: user.username, avatar: user.avatar });
+        res.json({ 
+            id: user._id, 
+            username: user.username, 
+            avatar: user.avatar,
+            gold: user.gold,
+            unlockedAvatars: user.unlockedAvatars
+        });
     } catch (error) {
         res.status(500).json({ error: "Sunucu hatası" });
     }

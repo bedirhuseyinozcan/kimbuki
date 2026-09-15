@@ -9,8 +9,8 @@ class GameManager {
     handleConnection(socket) {
         console.log("New client connected:", socket.id);
 
-        socket.on("room:create", ({ name }, cb) => this.handleCreateRoom(socket, name, cb));
-        socket.on("room:join", ({ roomCode, name }, cb) => this.handleJoinRoom(socket, roomCode, name, cb));
+        socket.on("room:create", ({ name, userId, avatar }, cb) => this.handleCreateRoom(socket, name, userId, avatar, cb));
+        socket.on("room:join", ({ roomCode, name, userId, avatar }, cb) => this.handleJoinRoom(socket, roomCode, name, userId, avatar, cb));
         socket.on("game:update_avatar", ({ avatarIndex }) => this.handleUpdateAvatar(socket, avatarIndex));
         socket.on("game:start", ({ category } = {}) => this.handleStartGame(socket, category));
         socket.on("game:set_word", ({ word }) => this.handleSetWord(socket, word));
@@ -44,18 +44,18 @@ class GameManager {
         }
     }
 
-    handleCreateRoom(socket, name, cb) {
+    handleCreateRoom(socket, name, userId, avatar, cb) {
         const code = Math.random().toString(36).slice(2, 8).toUpperCase();
         const room = new Room(code, this.io);
         this.rooms.set(code, room);
 
         socket.join(code);
-        room.addUser(socket.id, name);
+        room.addUser(socket.id, name, userId, avatar);
 
         cb?.({ ok: true, roomCode: code });
     }
 
-    handleJoinRoom(socket, roomCode, name, cb) {
+    handleJoinRoom(socket, roomCode, name, userId, avatar, cb) {
         const code = (roomCode || "").toUpperCase();
         let room = this.rooms.get(code);
 
@@ -65,7 +65,7 @@ class GameManager {
         }
 
         socket.join(code);
-        room.addUser(socket.id, name);
+        room.addUser(socket.id, name, userId, avatar);
 
         cb?.({ ok: true });
     }
@@ -135,7 +135,7 @@ class GameManager {
             const isEmpty = room.removeUser(socket.id);
             if (isEmpty) {
                 setTimeout(() => {
-                    if (room.users.length === 0) {
+                    if (room.users.every(u => u.disconnected)) {
                         this.rooms.delete(room.code);
                         console.log(`Room ${room.code} deleted (empty).`);
                     }
@@ -149,6 +149,17 @@ class GameManager {
             if (room.users.find(u => u.id === socket.id)) return room;
         }
         return null;
+    }
+
+    getStats() {
+        let totalPlayers = 0;
+        this.rooms.forEach(room => {
+            totalPlayers += room.users.filter(u => !u.disconnected).length;
+        });
+        return {
+            activeRooms: this.rooms.size,
+            activePlayers: totalPlayers
+        };
     }
 }
 

@@ -55,7 +55,7 @@ export default function GamePage() {
         .then(res => res.json())
         .then(data => {
             if (data.username) {
-                connectToRoom(data.username);
+                connectToRoom(data);
             } else {
                 localStorage.removeItem("gameToken");
                 router.push(`/?invite=${code}`);
@@ -66,11 +66,11 @@ export default function GamePage() {
         });
     }, [code]);
 
-    const connectToRoom = (username: string) => {
+    const connectToRoom = (user: any) => {
         const s = io("http://localhost:4000");
         setSocket(s);
 
-        s.emit("room:join", { roomCode: code, name: username }, (res: any) => {
+        s.emit("room:join", { roomCode: code, name: user.username, userId: user.id, avatar: user.avatar }, (res: any) => {
             if (!res.ok) {
                 toast.error("Hata: " + res.error);
                 router.push("/");

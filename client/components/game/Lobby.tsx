@@ -57,20 +57,6 @@ export default function Lobby({
                         <ContentCopyIcon />
                     </IconButton>
                 </div>
-                <div className="mb-6 border-b border-slate-700 pb-6">
-                    <p className="text-slate-400 text-sm mb-3">Rengini Seç:</p>
-                    <div className="flex justify-center gap-3">
-                        {AVATARS.map(av => (
-                            <div 
-                                key={av.id} 
-                                onClick={() => onSelectAvatar(av.id)}
-                                className={`w-10 h-10 rounded-full cursor-pointer transition-all ${av.color} 
-                                    ${me?.avatar === av.id ? 'ring-4 ring-white scale-110 shadow-lg' : 'opacity-50 hover:opacity-100'}`}
-                            />
-                        ))}
-                    </div>
-                </div>
-
                 <div className="mb-6 bg-slate-800/50 p-4 rounded-xl border border-slate-700 flex flex-col items-center">
                     <FormControlLabel 
                         control={<Switch checked={me?.isVoiceEnabled || false} onChange={(e) => onToggleVoice(e.target.checked)} color="success" />} 
@@ -88,8 +74,15 @@ export default function Lobby({
                             return (
                                 <div key={u.id} className="flex justify-between items-center bg-slate-800/80 p-3 rounded-xl">
                                     <div className="flex items-center gap-3">
-                                        <Avatar className={userAvatar.color}>{u.name.charAt(0).toUpperCase()}</Avatar>
+                                        <Avatar className={userAvatar.color}>
+                                            {userAvatar.icon ? (
+                                                <span className="text-2xl flex items-center justify-center">{userAvatar.icon}</span>
+                                            ) : (
+                                                u.name.charAt(0).toUpperCase()
+                                            )}
+                                        </Avatar>
                                         <span className="font-bold text-lg">{u.name} {u.id === myId ? '(Sen)' : ''}</span>
+                                        {u.disconnected && <Chip label="Koptu" size="small" color="error" />}
                                         {u.isVoiceEnabled && <span title="Sesli Sohbet Açık" className="text-xl animate-pulse">🎤</span>}
                                     </div>
                                     {u.isHost && <Chip label="HOST" size="small" color="warning" variant="outlined" />}

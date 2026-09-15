@@ -16,40 +16,97 @@ class Room {
         this.winners = []; 
     }
 
-    addUser(socketId, name) {
+    addUser(socketId, name, dbId, avatar) {
+        if (dbId) {
+            const existingUser = this.users.find(u => u.dbId === dbId && u.disconnected);
+            if (existingUser) {
+                const oldId = existingUser.id;
+                if (existingUser.disconnectTimer) {
+                    clearTimeout(existingUser.disconnectTimer);
+                    existingUser.disconnectTimer = null;
+                }
+                existingUser.id = socketId;
+                existingUser.disconnected = false;
+                
+                this.users.forEach(u => {
+                    if (u.targetId === oldId) u.targetId = socketId;
+                });
+                const winnerIndex = this.winners.indexOf(oldId);
+                if (winnerIndex !== -1) this.winners[winnerIndex] = socketId;
+                if (this.activeQuestion) {
+                    if (this.activeQuestion.askerId === oldId) this.activeQuestion.askerId = socketId;
+                    if (this.activeQuestion.votes[oldId]) {
+                        this.activeQuestion.votes[socketId] = this.activeQuestion.votes[oldId];
+                        delete this.activeQuestion.votes[oldId];
+                    }
+                }
+                this.broadcastState();
+                return;
+            }
+        }
+
         const isHost = this.users.length === 0;
         this.users.push({
             id: socketId,
+            dbId: dbId,
             name,
             isHost,
-            avatar: 1,
+            avatar: avatar || 'default-violet',
             targetId: null,
             assignedWord: null,
             status: 'playing',
             hasSubmittedWord: false,
             hasUsedHint: false,
             isVoiceEnabled: false,
-            lives: 3
+            lives: 3,
+            disconnected: false
         });
         this.broadcastState();
     }
 
     removeUser(socketId) {
-        const wasHost = this.users.find(u => u.id === socketId)?.isHost;
-        this.users = this.users.filter((u) => u.id !== socketId);
+        const user = this.users.find(u => u.id === socketId);
+        if (!user) return this.users.length === 0;
+
+        user.disconnected = true;
+        this.broadcastState();
+
+        const allDisconnected = this.users.every(u => u.disconnected);
+        if (allDisconnected) return true; 
+
+        user.disconnectTimer = setTimeout(() => {
+            this.permanentlyRemoveUser(socketId);
+        }, 60000);
+
+        return false;
+    }
+
+    permanentlyRemoveUser(socketId) {
+        const userIndex = this.users.findIndex(u => u.id === socketId);
+        if (userIndex === -1) return;
+        const user = this.users[userIndex];
+        if (!user.disconnected) return; 
+        const wasHost = user.isHost;
+        const wasCurrentTurn = this.gameState === "PLAYING" && this.currentTurnIndex === userIndex;
+
+        this.users.splice(userIndex, 1);
 
         if (this.users.length > 0 && wasHost) {
-            this.users[0].isHost = true;
+            const nextHost = this.users.find(u => !u.disconnected) || this.users[0];
+            if (nextHost) nextHost.isHost = true;
         }
 
-        
-        const playingUsers = this.users.filter(u => u.status === 'playing');
+        const playingUsers = this.users.filter(u => u.status === 'playing' && !u.disconnected);
         if (playingUsers.length < 2 && (this.gameState === "PLAYING" || this.gameState === "WORD_SELECTION")) {
             this.endGame();
+        } else if (wasCurrentTurn && this.gameState === "PLAYING") {
+            
+            this.currentTurnIndex = this.currentTurnIndex % this.users.length;
+            
+            this.nextTurn();
         }
 
         this.broadcastState();
-        return this.users.length === 0;
     }
 
     updateAvatar(userId, avatarIndex) {
@@ -143,6 +200,9 @@ class Room {
     guessWord(userId, guess) {
         if (this.gameState !== "PLAYING") return;
         
+        const currentUser = this.users[this.currentTurnIndex];
+        if (currentUser.id !== userId) return;
+
         const user = this.users.find(u => u.id === userId);
         if (!user || user.status !== 'playing') return;
 
@@ -157,14 +217,20 @@ class Room {
             user.status = 'spectator';
             this.winners.push(user.id);
             
+            const User = require('../models/User');
+            if (user.dbId) {
+                User.findByIdAndUpdate(user.dbId, { $inc: { gold: 50 } })
+                    .catch(err => console.error("Gold update error:", err));
+            }
+
             this.chatHistory.push({
                 system: true,
-                message: `${user.name} doğru tahmin etti! Kelimesi: ${user.assignedWord}`,
+                message: `${user.name} doğru tahmin etti ve 50 Altın kazandı! Kelimesi: ${user.assignedWord}`,
                 timestamp: Date.now()
             });
 
             const playingUsers = this.users.filter(u => u.status === 'playing');
-            if (playingUsers.length <= 1) { // End game if 1 or 0 players left
+            if (playingUsers.length <= 1) { 
                 this.endGame();
                 return;
             }

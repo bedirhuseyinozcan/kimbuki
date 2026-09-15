@@ -11,9 +11,12 @@ import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutlined';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
-import { InputAdornment } from "@mui/material";
+import StorefrontIcon from '@mui/icons-material/Storefront';
+import SavingsIcon from '@mui/icons-material/Savings';
+import { InputAdornment, Avatar } from "@mui/material";
 import { toast } from 'react-toastify';
 import Logo from "@/components/Logo";
+import { AVATARS } from "@/components/game/types";
 
 export default function Home() {
   const [roomCode, setRoomCode] = useState("");
@@ -21,12 +24,20 @@ export default function Home() {
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
   const [forgotPasswordDialogOpen, setForgotPasswordDialogOpen] = useState(false);
   
-  const [user, setUser] = useState<{ id: string, username: string, avatar: number } | null>(null);
+  const [user, setUser] = useState<{ id: string, username: string, avatar: string, gold: number, unlockedAvatars: string[] } | null>(null);
   
+  const [shopDialogOpen, setShopDialogOpen] = useState(false);
+  const [shopItems, setShopItems] = useState<any[]>([]);
+
+  const [leaderboardDialogOpen, setLeaderboardDialogOpen] = useState(false);
+  const [leaderboard, setLeaderboard] = useState<any[]>([]);
+  const [liveStats, setLiveStats] = useState({ activeRooms: 0, activePlayers: 0 });
+
   const [authTab, setAuthTab] = useState(0);
   const [loginEmail, setLoginEmail] = useState("");
   const [loginName, setLoginName] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
+  const [selectedAvatar, setSelectedAvatar] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
   
   const router = useRouter();
@@ -39,6 +50,11 @@ export default function Home() {
         setPlayDialogOpen(true);
     }
 
+    fetch("http://localhost:4000/api/stats/live")
+      .then(res => res.json())
+      .then(data => setLiveStats(data))
+      .catch(() => {});
+
     const token = localStorage.getItem("gameToken");
     if (token) {
       fetch("http://localhost:4000/api/auth/me", {
@@ -46,15 +62,30 @@ export default function Home() {
       })
         .then(res => res.json())
         .then(data => {
-          if (data._id) {
-            setUser({ id: data._id, username: data.username, avatar: data.avatar });
+          if (data.id) {
+            setUser({ id: data.id, username: data.username, avatar: data.avatar, gold: data.gold, unlockedAvatars: data.unlockedAvatars });
           } else {
             localStorage.removeItem("gameToken");
           }
         })
         .catch(() => localStorage.removeItem("gameToken"));
     }
+
+    fetch("http://localhost:4000/api/shop/items")
+      .then(res => res.json())
+      .then(data => setShopItems(data))
+      .catch(() => {});
   }, []);
+
+  const handleOpenLeaderboard = () => {
+      fetch("http://localhost:4000/api/stats/leaderboard")
+        .then(res => res.json())
+        .then(data => {
+            setLeaderboard(data);
+            setLeaderboardDialogOpen(true);
+        })
+        .catch(() => toast.error("Liderlik tablosu yüklenemedi."));
+  };
 
   const handleAuth = async () => {
     if (authTab === 0 && (!loginEmail.trim() || !loginPassword.trim())) return toast.error("Lütfen e-posta ve şifre girin!");
@@ -123,7 +154,7 @@ export default function Home() {
                   "Content-Type": "application/json",
                   "Authorization": `Bearer ${token}`
               },
-              body: JSON.stringify({ username: loginName })
+              body: JSON.stringify({ username: loginName, avatar: selectedAvatar })
           });
           const data = await res.json();
           if (data.id) {
@@ -144,8 +175,36 @@ export default function Home() {
       setProfileDialogOpen(false);
   };
 
+  const handleBuyAvatar = async (avatarId: string) => {
+    const token = localStorage.getItem("gameToken");
+    if (!token) return toast.error("Giriş yapmanız gerekiyor.");
+    
+    try {
+      const res = await fetch("http://localhost:4000/api/shop/buy", {
+          method: "POST",
+          headers: { 
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${token}`
+          },
+          body: JSON.stringify({ avatarId })
+      });
+      const data = await res.json();
+      if (res.ok) {
+          toast.success(data.message);
+          if (user) {
+              setUser({ ...user, gold: data.gold, unlockedAvatars: data.unlockedAvatars });
+          }
+      } else {
+          toast.error(data.error);
+      }
+    } catch (err) {
+      toast.error("Sunucuya bağlanılamadı.");
+    }
+  };
+
   const openProfile = () => {
       setLoginName(user?.username || "");
+      setSelectedAvatar(user?.avatar || "default-violet");
       setProfileDialogOpen(true);
   };
 
@@ -184,9 +243,20 @@ export default function Home() {
               <Button color="inherit" className="text-slate-300 hover:text-white" onClick={() => scrollToSection('biz-kimiz')}>Biz Kimiz?</Button>
               
               {user && (
-                <Button color="inherit" className="text-cyan-400 hover:text-cyan-300 font-bold" onClick={openProfile} startIcon={<AccountCircleIcon />}>
-                    {user.username}
-                </Button>
+                <>
+                    <Button color="warning" className="font-bold border border-yellow-500/50 bg-yellow-500/10 rounded-full px-4" startIcon={<SavingsIcon />}>
+                        {user.gold || 0}
+                    </Button>
+                    <Button color="inherit" className="text-cyan-400 hover:text-cyan-300 font-bold" onClick={() => setShopDialogOpen(true)} startIcon={<StorefrontIcon />}>
+                        Mağaza
+                    </Button>
+                    <Button color="inherit" className="text-amber-400 hover:text-amber-300 font-bold" onClick={handleOpenLeaderboard}>
+                        🏆 Liderlik
+                    </Button>
+                    <Button color="inherit" className="text-cyan-400 hover:text-cyan-300 font-bold" onClick={openProfile} startIcon={<AccountCircleIcon />}>
+                        {user.username}
+                    </Button>
+                </>
               )}
 
               <Button variant="contained" className="bg-gradient-to-r from-violet-600 to-cyan-600 hover:from-violet-500 hover:to-cyan-500 shadow-lg shadow-violet-500/25 font-bold rounded-full px-8 py-2" onClick={() => setPlayDialogOpen(true)}>
@@ -207,10 +277,23 @@ export default function Home() {
             Arkadaşlarınla Eğlenceli <br/> 
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-amber-500">Tahmin Oyunu</span>
           </h1>
-          <p className="text-xl text-slate-400 mb-10 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-xl text-slate-400 mb-6 max-w-2xl mx-auto leading-relaxed">
             Klasik "Alnımdaki kağıtta ne yazıyor?" oyununun modern ve dijital hali. 
             Hemen kayıt ol, bir oda kur, arkadaşlarını davet et ve kim olduğunu bulmaya çalış!
           </p>
+          
+          <div className="flex justify-center items-center gap-6 mb-10 text-slate-300 bg-slate-800/50 w-max mx-auto px-6 py-2 rounded-full border border-slate-700 shadow-xl">
+              <div className="flex items-center gap-2">
+                  <span className="relative flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                  </span>
+                  <span className="font-bold">{liveStats.activePlayers} Oyuncu</span>
+              </div>
+              <div className="w-px h-4 bg-slate-600"></div>
+              <div className="font-bold text-cyan-400">{liveStats.activeRooms} Aktif Oda</div>
+          </div>
+
           <div className="flex flex-col sm:flex-row justify-center gap-4">
             <Button 
               variant="contained" 
@@ -495,7 +578,7 @@ export default function Home() {
         slotProps={{ 
             paper: { 
               style: { backgroundColor: '#0f172a', color: 'white', borderRadius: '1.5rem', border: '1px solid #334155' },
-              className: "shadow-2xl shadow-cyan-500/10 min-w-[320px]" 
+              className: "shadow-2xl shadow-cyan-500/10 min-w-[320px] sm:min-w-[400px]" 
             }
         }}
       >
@@ -511,6 +594,31 @@ export default function Home() {
                 }}
                 fullWidth
             />
+
+            <div>
+                <p className="text-slate-400 text-sm mb-3">Karakterini Seç (Envanter):</p>
+                <div className="flex flex-wrap gap-3 max-h-[150px] overflow-y-auto custom-scrollbar p-1">
+                    {user?.unlockedAvatars?.map(avId => {
+                        const av = AVATARS.find(a => a.id === avId);
+                        if (!av) return null;
+                        return (
+                            <div 
+                                key={av.id} 
+                                onClick={() => setSelectedAvatar(av.id)}
+                                className={`w-12 h-12 rounded-full cursor-pointer flex justify-center items-center transition-all ${av.color} 
+                                    ${selectedAvatar === av.id ? 'ring-4 ring-white scale-110 shadow-lg' : 'opacity-60 hover:opacity-100'}`}
+                            >
+                                {av.icon ? (
+                                    <span className="text-2xl flex items-center justify-center w-full h-full">{av.icon}</span>
+                                ) : (
+                                    <span className="text-xl font-bold">{user.username.charAt(0).toUpperCase()}</span>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+
             <Button
                 variant="contained"
                 fullWidth
@@ -530,6 +638,112 @@ export default function Home() {
             </Button>
         </DialogContent>
       </Dialog>
+
+      <Dialog 
+        open={shopDialogOpen} 
+        onClose={() => setShopDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        slotProps={{ 
+            paper: { 
+              style: { backgroundColor: '#0f172a', color: 'white', borderRadius: '1.5rem', border: '1px solid #334155' },
+              className: "shadow-2xl shadow-yellow-500/10" 
+            }
+        }}
+      >
+        <DialogTitle className="text-center font-black text-2xl pt-6 pb-2">
+            Mağaza 🛒
+            <p className="text-sm text-yellow-500 mt-1 font-bold">Mevcut Altının: {user?.gold || 0}</p>
+        </DialogTitle>
+        <DialogContent className="p-6">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {shopItems.map((item) => {
+                    const isUnlocked = user?.unlockedAvatars?.includes(item.id);
+                    const avMeta = AVATARS.find(a => a.id === item.id);
+                    return (
+                        <div key={item.id} className="bg-slate-800/80 p-4 rounded-2xl border border-slate-700 flex flex-col items-center text-center">
+                            {avMeta?.icon ? (
+                                <span className="text-5xl mb-2 flex justify-center items-center h-[60px] w-[60px]">{avMeta.icon}</span>
+                            ) : (
+                                <span className="text-5xl mb-2 flex justify-center items-center h-[60px] w-[60px]">{item.icon}</span>
+                            )}
+                            <span className="font-bold text-slate-200">{item.label}</span>
+                            <div className="mt-3 w-full">
+                                {isUnlocked ? (
+                                    <Button disabled fullWidth size="small" variant="contained" className="bg-slate-700 text-slate-400 !cursor-not-allowed rounded-lg">
+                                        Alındı
+                                    </Button>
+                                ) : (
+                                    <Button 
+                                        fullWidth size="small" variant="contained" color="warning"
+                                        onClick={() => handleBuyAvatar(item.id)}
+                                        className="font-bold rounded-lg shadow-lg"
+                                        startIcon={<SavingsIcon fontSize="small" />}
+                                    >
+                                        {item.price}
+                                    </Button>
+                                )}
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog 
+        open={leaderboardDialogOpen} 
+        onClose={() => setLeaderboardDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        slotProps={{ 
+            paper: { 
+              style: { backgroundColor: '#0f172a', color: 'white', borderRadius: '1.5rem', border: '1px solid #334155' },
+              className: "shadow-2xl shadow-amber-500/10" 
+            }
+        }}
+      >
+        <DialogTitle className="text-center font-black text-3xl pt-8 pb-4 text-amber-400">
+            🏆 Liderler Tablosu
+        </DialogTitle>
+        <DialogContent className="p-6">
+            <div className="space-y-3">
+                {leaderboard.length === 0 ? (
+                    <p className="text-center text-slate-500">Henüz kimse listeye giremedi.</p>
+                ) : (
+                    leaderboard.map((u, index) => {
+                        const avMeta = AVATARS.find(a => a.id === u.avatar);
+                        return (
+                            <div key={u._id} className={`flex justify-between items-center p-4 rounded-xl border ${index < 3 ? 'bg-amber-500/10 border-amber-500/30' : 'bg-slate-800 border-slate-700'}`}>
+                                <div className="flex items-center gap-4">
+                                    <span className={`font-black text-2xl w-8 text-center ${index === 0 ? 'text-yellow-400' : index === 1 ? 'text-slate-300' : index === 2 ? 'text-amber-600' : 'text-slate-500'}`}>
+                                        #{index + 1}
+                                    </span>
+                                    <Avatar className={avMeta?.color || 'bg-violet-600'}>
+                                        {avMeta?.icon ? <span className="text-xl flex items-center justify-center h-full w-full">{avMeta.icon}</span> : u.username.charAt(0).toUpperCase()}
+                                    </Avatar>
+                                    <span className="font-bold text-lg">{u.username}</span>
+                                </div>
+                                <div className="flex items-center gap-1 text-yellow-400 font-bold bg-yellow-400/10 px-3 py-1 rounded-full">
+                                    <SavingsIcon fontSize="small" />
+                                    <span>{u.gold || 0}</span>
+                                </div>
+                            </div>
+                        );
+                    })
+                )}
+            </div>
+            <Button
+                variant="outlined"
+                fullWidth
+                onClick={() => setLeaderboardDialogOpen(false)}
+                className="mt-6 py-3 rounded-xl border-slate-600 text-slate-300 font-bold hover:bg-slate-800"
+            >
+                Kapat
+            </Button>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }
