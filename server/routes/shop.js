@@ -19,12 +19,12 @@ const authMiddleware = (req, res, next) => {
 };
 
 const PREMIUM_AVATARS = [
-    { id: 'knight', price: 500, label: 'Şövalye', icon: '🤺' },
-    { id: 'donkey', price: 200, label: 'Eşek', icon: '🫏' },
-    { id: 'bear', price: 300, label: 'Ayı', icon: '🐻' },
-    { id: 'king', price: 1000, label: 'Kral', icon: '👑' },
-    { id: 'alien', price: 400, label: 'Uzaylı', icon: '👽' },
-    { id: 'ninja', price: 600, label: 'Ninja', icon: '🥷' }
+    { id: 'Warrior', price: 100, label: 'Savaşçı', icon: '⚔️' },
+    { id: 'Wizard', price: 200, label: 'Büyücü', icon: '🔮' },
+    { id: 'Rogue', price: 300, label: 'Suikastçi', icon: '🗡️' },
+    { id: 'Ranger', price: 400, label: 'Okçu', icon: '🏹' },
+    { id: 'Monk', price: 500, label: 'Keşiş', icon: '🥋' },
+    { id: 'Cleric', price: 600, label: 'Şifacı', icon: '✨' }
 ];
 
 router.get("/items", (req, res) => {

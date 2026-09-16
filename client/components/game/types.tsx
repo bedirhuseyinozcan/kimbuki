@@ -46,10 +46,10 @@ export const AVATARS = [
     { id: 'default-green', color: "bg-green-500" },
     { id: 'default-yellow', color: "bg-yellow-500" },
     { id: 'default-pink', color: "bg-pink-500" },
-    { id: 'knight', color: "bg-slate-700", icon: <ShieldIcon fontSize="inherit" />, label: "Şövalye" },
-    { id: 'donkey', color: "bg-stone-600", icon: <CrueltyFreeIcon fontSize="inherit" />, label: "Eşek" },
-    { id: 'bear', color: "bg-orange-800", icon: <PetsIcon fontSize="inherit" />, label: "Ayı" },
-    { id: 'king', color: "bg-yellow-600", icon: <WorkspacePremiumIcon fontSize="inherit" />, label: "Kral" },
-    { id: 'alien', color: "bg-teal-700", icon: <RocketLaunchIcon fontSize="inherit" />, label: "Uzaylı" },
-    { id: 'ninja', color: "bg-zinc-800", icon: <SportsMartialArtsIcon fontSize="inherit" />, label: "Ninja" }
+    { id: 'Warrior', color: "bg-red-600", icon: <ShieldIcon fontSize="inherit" />, label: "Savaşçı", model: "Warrior.gltf" },
+    { id: 'Wizard', color: "bg-blue-600", icon: <ColorizeIcon fontSize="inherit" />, label: "Büyücü", model: "Wizard.gltf" },
+    { id: 'Rogue', color: "bg-purple-600", icon: <StarIcon fontSize="inherit" />, label: "Suikastçi", model: "Rogue.gltf" },
+    { id: 'Ranger', color: "bg-green-600", icon: <CrueltyFreeIcon fontSize="inherit" />, label: "Okçu", model: "Ranger.gltf" },
+    { id: 'Monk', color: "bg-orange-600", icon: <SportsMartialArtsIcon fontSize="inherit" />, label: "Keşiş", model: "Monk.gltf" },
+    { id: 'Cleric', color: "bg-yellow-500", icon: <WorkspacePremiumIcon fontSize="inherit" />, label: "Şifacı", model: "Cleric.gltf" }
 ];
