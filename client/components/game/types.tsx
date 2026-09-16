@@ -1,12 +1,5 @@
 import React from 'react';
-import ShieldIcon from '@mui/icons-material/Shield';
-import PetsIcon from '@mui/icons-material/Pets';
-import CrueltyFreeIcon from '@mui/icons-material/CrueltyFree';
-import WorkspacePremiumIcon from '@mui/icons-material/WorkspacePremium';
-import RocketLaunchIcon from '@mui/icons-material/RocketLaunch';
-import SportsMartialArtsIcon from '@mui/icons-material/SportsMartialArts';
-import ColorizeIcon from '@mui/icons-material/Colorize';
-import StarIcon from '@mui/icons-material/Star';
+import { GiBroadsword, GiWizardStaff, GiDaggers, GiBowArrow, GiHighKick, GiHolySymbol } from 'react-icons/gi';
 
 export type User = {
     id: string;
@@ -46,10 +39,10 @@ export const AVATARS = [
     { id: 'default-green', color: "bg-green-500" },
     { id: 'default-yellow', color: "bg-yellow-500" },
     { id: 'default-pink', color: "bg-pink-500" },
-    { id: 'Warrior', color: "bg-red-600", icon: <ShieldIcon fontSize="inherit" />, label: "Savaşçı", model: "Warrior.gltf" },
-    { id: 'Wizard', color: "bg-blue-600", icon: <ColorizeIcon fontSize="inherit" />, label: "Büyücü", model: "Wizard.gltf" },
-    { id: 'Rogue', color: "bg-purple-600", icon: <StarIcon fontSize="inherit" />, label: "Suikastçi", model: "Rogue.gltf" },
-    { id: 'Ranger', color: "bg-green-600", icon: <CrueltyFreeIcon fontSize="inherit" />, label: "Okçu", model: "Ranger.gltf" },
-    { id: 'Monk', color: "bg-orange-600", icon: <SportsMartialArtsIcon fontSize="inherit" />, label: "Keşiş", model: "Monk.gltf" },
-    { id: 'Cleric', color: "bg-yellow-500", icon: <WorkspacePremiumIcon fontSize="inherit" />, label: "Şifacı", model: "Cleric.gltf" }
+    { id: 'Warrior', color: "bg-red-600", icon: <GiBroadsword />, label: "Savaşçı", model: "Warrior.gltf" },
+    { id: 'Wizard', color: "bg-blue-600", icon: <GiWizardStaff />, label: "Büyücü", model: "Wizard.gltf" },
+    { id: 'Rogue', color: "bg-purple-600", icon: <GiDaggers />, label: "Suikastçi", model: "Rogue.gltf" },
+    { id: 'Ranger', color: "bg-green-600", icon: <GiBowArrow />, label: "Okçu", model: "Ranger.gltf" },
+    { id: 'Monk', color: "bg-orange-600", icon: <GiHighKick />, label: "Keşiş", model: "Monk.gltf" },
+    { id: 'Cleric', color: "bg-yellow-500", icon: <GiHolySymbol />, label: "Şifacı", model: "Cleric.gltf" }
 ];

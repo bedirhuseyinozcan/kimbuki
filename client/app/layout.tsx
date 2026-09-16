@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Notekim",
+  title: "Kimbuki",
   description: "Arkadaşlarınla oynayabileceğin eğlenceli bir tahmin oyunu.",
 };
 

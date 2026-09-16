@@ -12,7 +12,7 @@ import PersonOutlineIcon from '@mui/icons-material/PersonOutlined';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
 import StorefrontIcon from '@mui/icons-material/Storefront';
-import SavingsIcon from '@mui/icons-material/Savings';
+import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import { InputAdornment, Avatar } from "@mui/material";
 import { toast } from 'react-toastify';
 import Logo from "@/components/Logo";
@@ -235,7 +235,7 @@ export default function Home() {
             <div className="flex items-center gap-3 cursor-pointer" onClick={() => window.scrollTo(0, 0)}>
                 <Logo size="sm" />
                 <Typography variant="h6" className="font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-amber-500 hidden sm:block tracking-wider">
-                  NOTEKİM
+                  KİMBUKİ
                 </Typography>
             </div>
             <div className="hidden md:flex gap-6 items-center">
@@ -244,7 +244,7 @@ export default function Home() {
               
               {user && (
                 <>
-                    <Button color="warning" className="font-bold border border-yellow-500/50 bg-yellow-500/10 rounded-full px-4" startIcon={<SavingsIcon />}>
+                    <Button color="warning" className="font-bold border border-yellow-500/50 bg-yellow-500/10 rounded-full px-4" startIcon={<AttachMoneyIcon />}>
                         {user.gold || 0}
                     </Button>
                     <Button color="inherit" className="text-cyan-400 hover:text-cyan-300 font-bold" onClick={() => setShopDialogOpen(true)} startIcon={<StorefrontIcon />}>
@@ -369,7 +369,7 @@ export default function Home() {
       </section>
 
       <footer className="py-8 border-t border-slate-800 text-center text-slate-500">
-        <p>© 2026 Notekim. Tüm hakları saklıdır.</p>
+        <p>© 2026 Kimbuki. Tüm hakları saklıdır.</p>
       </footer>
 
       <Dialog 
@@ -678,7 +678,7 @@ export default function Home() {
                                         fullWidth size="small" variant="contained" color="warning"
                                         onClick={() => handleBuyAvatar(item.id)}
                                         className="font-bold rounded-lg shadow-lg"
-                                        startIcon={<SavingsIcon fontSize="small" />}
+                                        startIcon={<AttachMoneyIcon fontSize="small" />}
                                     >
                                         {item.price}
                                     </Button>
@@ -725,7 +725,7 @@ export default function Home() {
                                     <span className="font-bold text-lg">{u.username}</span>
                                 </div>
                                 <div className="flex items-center gap-1 text-yellow-400 font-bold bg-yellow-400/10 px-3 py-1 rounded-full">
-                                    <SavingsIcon fontSize="small" />
+                                    <AttachMoneyIcon fontSize="small" />
                                     <span>{u.gold || 0}</span>
                                 </div>
                             </div>
