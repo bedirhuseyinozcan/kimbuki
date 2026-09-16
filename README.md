@@ -1,4 +1,4 @@
-# Notekim — Multiplayer Eğlenceli Tahmin Oyunu
+# Kimbuki — Multiplayer Eğlenceli Tahmin Oyunu
 
 Arkadaşlarınızla oynayabileceğiniz, herkesin kafasında bir kelime/isim yazdığı ve kim olduğunu bulmaya çalıştığı klasik "Ben Kimim?" (Post-it) oyununun modern, dijital ve çok oyunculu (multiplayer) versiyonudur.
 
