@@ -9,6 +9,7 @@ import { User, GameState, AVATARS } from "./types";
 import { playTurnSound, playWinSound } from "@/utils/audio";
 import confetti from "canvas-confetti";
 import { motion, AnimatePresence } from "framer-motion";
+import Scene3D from "./Scene3D";
 
 interface GameSceneProps {
     gameState: GameState;
@@ -120,24 +121,27 @@ export default function GameScene({
     };
 
     return (
-        <main className="min-h-screen bg-gradient-to-b from-sky-900 to-slate-900 text-white p-4 flex flex-col overflow-hidden relative">
-            <div className="absolute inset-0 pointer-events-none opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] mix-blend-overlay"></div>
+        <main className="min-h-screen text-white p-4 flex flex-col overflow-hidden relative">
             
-            <div className="absolute top-4 left-4 z-20 flex gap-2">
+            <div className="fixed inset-0 z-0 pointer-events-auto bg-slate-900">
+                <Scene3D gameState={gameState} myId={myId} activeBubbles={activeBubbles} />
+            </div>
+            
+            <div className="absolute top-4 left-4 z-20 flex gap-2 pointer-events-auto">
                 {gameState.category && (
-                    <Chip label={`Kategori: ${gameState.category}`} color="secondary" className="font-bold border border-slate-700" />
+                    <Chip label={`Kategori: ${gameState.category}`} color="secondary" className="font-bold border border-slate-700 bg-slate-800/80 backdrop-blur-md" />
                 )}
             </div>
 
-            <div className="absolute top-4 right-4 z-20">
-                <Button variant="outlined" color="inherit" size="small" onClick={onLeaveRoom} className="border-slate-700 text-slate-400 text-xs py-1">
+            <div className="absolute top-4 right-4 z-20 pointer-events-auto">
+                <Button variant="outlined" color="inherit" size="small" onClick={onLeaveRoom} className="border-slate-700 text-slate-400 bg-slate-800/80 backdrop-blur-md text-xs py-1 hover:bg-red-500/20 hover:text-red-400">
                     Odadan Ayrıl
                 </Button>
             </div>
 
-            <div className="max-w-7xl mx-auto w-full flex-1 flex flex-col md:flex-row gap-6 relative z-10 mt-12 md:mt-10">
+            <div className="w-full h-full flex-1 flex flex-col md:flex-row gap-6 relative z-10 mt-12 md:mt-10 px-2 md:px-6 pointer-events-none">
                 
-                <div className="w-full md:w-1/4 glass p-4 rounded-3xl flex flex-col border border-slate-700/50 h-[300px] md:h-auto">
+                <div className="w-full md:w-1/4 glass p-4 rounded-3xl flex flex-col border border-slate-700/50 h-[300px] md:h-auto pointer-events-auto shadow-2xl bg-slate-900/60 backdrop-blur-lg">
                     <h3 className="font-bold text-lg mb-2 flex items-center gap-2 text-yellow-400">
                         <span>📝 Not Defterim</span>
                     </h3>
@@ -148,20 +152,20 @@ export default function GameScene({
                         value={notepad}
                         onChange={e => setNotepad(e.target.value)}
                         variant="outlined"
-                        className="flex-1 bg-yellow-900/10 rounded-xl"
+                        className="flex-1 bg-yellow-900/20 rounded-xl"
                         slotProps={{
-                            input: { className: "text-slate-300 h-full items-start p-3", style: { height: '100%' } }
+                            input: { className: "text-slate-200 h-full items-start p-3", style: { height: '100%' } }
                         }}
                         sx={{
                             '& .MuiOutlinedInput-root': {
-                                '& fieldset': { borderColor: 'rgba(234, 179, 8, 0.2)' },
-                                '&:hover fieldset': { borderColor: 'rgba(234, 179, 8, 0.4)' },
+                                '& fieldset': { borderColor: 'rgba(234, 179, 8, 0.3)' },
+                                '&:hover fieldset': { borderColor: 'rgba(234, 179, 8, 0.5)' },
                             }
                         }}
                     />
                 </div>
 
-                <div className="flex-1 glass rounded-3xl p-6 flex flex-col border border-slate-700/50 relative overflow-hidden">
+                <div className="flex-1 flex flex-col relative justify-between">
                     
                     <AnimatePresence>
                         {gameState.activeQuestion && (
@@ -169,7 +173,7 @@ export default function GameScene({
                                 initial={{ opacity: 0, scale: 0.8, y: "-50%", x: "-50%" }}
                                 animate={{ opacity: 1, scale: 1, y: "-50%", x: "-50%" }}
                                 exit={{ opacity: 0, scale: 0.8, y: "-50%", x: "-50%" }}
-                                className="absolute top-1/2 left-1/2 z-50 glass p-6 rounded-3xl border border-slate-600 shadow-[0_0_50px_rgba(0,0,0,0.8)] text-center w-[95%] max-w-lg backdrop-blur-2xl bg-slate-900/90"
+                                className="absolute top-1/2 left-1/2 z-50 glass p-6 rounded-3xl border border-slate-600 shadow-[0_0_50px_rgba(0,0,0,0.8)] text-center w-[95%] max-w-lg backdrop-blur-2xl bg-slate-900/90 pointer-events-auto"
                             >
                                 <h4 className="text-lg font-bold mb-2 text-cyan-400">
                                     {gameState.users.find((u:User) => u.id === gameState.activeQuestion!.askerId)?.name} soruyor:
@@ -214,7 +218,7 @@ export default function GameScene({
                         )}
                     </AnimatePresence>
 
-                    <div className="flex justify-between items-center mb-6 bg-slate-800/50 p-4 rounded-2xl relative z-10">
+                    <div className="flex justify-between items-center bg-slate-900/70 backdrop-blur-md border border-slate-700/50 p-4 rounded-2xl relative z-10 pointer-events-auto shadow-2xl">
                         <div>
                             <p className="text-xs text-slate-400 uppercase tracking-widest">Sıra Kimde</p>
                             <p className={`text-xl font-bold ${isMyTurn ? 'text-green-400 animate-pulse' : 'text-white'}`}>
@@ -226,93 +230,12 @@ export default function GameScene({
                         </div>
                     </div>
 
-                    <div className="flex-1 relative w-full h-full min-h-[300px] flex items-center justify-center my-4 overflow-hidden z-0">
-                        <div className="absolute w-40 h-16 bg-slate-700/20 rounded-[100%] border border-slate-600/30 shadow-inner blur-md pointer-events-none"></div>
+                   
+                    <div className="flex-1" />
 
-                        {gameState.users.map((u: User, index: number) => {
-                            const isMe = u.id === myId;
-                            const isWinner = gameState.winners.includes(u.id);
-                            const isCurrentTurn = u.id === gameState.currentTurnUserId;
-                            const userAvatar = AVATARS.find(a => a.id === u.avatar) || AVATARS[0];
-                            
-                            const totalUsers = gameState.users.length;
-                            const radiusX = totalUsers > 4 ? 180 : 140; 
-                            const radiusY = totalUsers > 4 ? 120 : 90;
-                            const angle = (index / totalUsers) * (2 * Math.PI) - (Math.PI / 2);
-                            const x = Math.cos(angle) * radiusX;
-                            const y = Math.sin(angle) * radiusY;
-
-                            return (
-                                <motion.div 
-                                    key={u.id} 
-                                    initial={{ opacity: 0, scale: 0 }}
-                                    animate={{ 
-                                        opacity: 1, 
-                                        scale: isCurrentTurn ? 1.15 : (u.status === 'spectator' ? 0.8 : 1),
-                                        x,
-                                        y,
-                                        zIndex: isCurrentTurn ? 40 : (y > 0 ? 30 : 10)
-                                    }}
-                                    transition={{ type: "spring", stiffness: 200, damping: 20 }}
-                                    className="absolute flex flex-col items-center"
-                                >
-                                    <AnimatePresence>
-                                        {activeBubbles[u.id] && (
-                                            <motion.div 
-                                                initial={{ opacity: 0, y: 10, scale: 0.5 }}
-                                                animate={{ opacity: 1, y: -10, scale: 1 }}
-                                                exit={{ opacity: 0, scale: 0.5 }}
-                                                className="absolute -top-14 bg-white text-black px-3 py-1.5 rounded-2xl rounded-bl-none text-xs font-bold shadow-xl z-50 text-center"
-                                                style={{ minWidth: 'max-content', maxWidth: '140px', wordWrap: 'break-word', whiteSpace: 'normal' }}
-                                            >
-                                                {activeBubbles[u.id]}
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
-
-                                    {!isWinner && (
-                                        <div className={`mb-1 px-3 py-1 rounded-lg border shadow-lg font-bold text-center text-xs max-w-[100px] break-words z-20
-                                            ${isMe ? 'bg-slate-800 border-slate-600 text-slate-400' : 'bg-yellow-100 border-yellow-400 text-black transform -rotate-2'}`}>
-                                            {isMe && gameState.gameState !== "ROUND_END" ? (
-                                                <span className="flex items-center justify-center gap-1"><HelpIcon style={{fontSize: '14px'}} /> KİMİM BEN?</span>
-                                            ) : (
-                                                u.assignedWord
-                                            )}
-                                        </div>
-                                    )}
-                                    
-                                    <div className={`relative ${isCurrentTurn ? 'ring-4 ring-green-400 ring-offset-4 ring-offset-slate-900 rounded-full shadow-[0_0_20px_rgba(74,222,128,0.5)]' : ''}`}>
-                                        <Avatar className={`w-16 h-16 md:w-20 md:h-20 border-2 ${isWinner || u.status === 'spectator' ? 'border-slate-600 opacity-50 grayscale' : 'border-slate-400'} ${userAvatar.color}`}>
-                                            {userAvatar.icon ? (
-                                                <span className="text-3xl flex items-center justify-center">{userAvatar.icon}</span>
-                                            ) : (
-                                                <span className="text-2xl">{u.name.charAt(0).toUpperCase()}</span>
-                                            )}
-                                        </Avatar>
-                                        {u.isVoiceEnabled && (
-                                            <div className="absolute -bottom-1 -right-1 bg-slate-800 rounded-full p-1 border border-slate-600 shadow-lg text-[10px]" title="Sesli Sohbet Açık">
-                                                🎙️
-                                            </div>
-                                        )}
-                                    </div>
-                                    <span className={`mt-2 font-bold text-[11px] bg-black/70 px-2 py-0.5 rounded-full whitespace-nowrap ${u.status === 'spectator' ? 'line-through text-slate-500' : ''} ${u.disconnected ? 'text-red-400' : ''}`}>
-                                        {u.name} {u.disconnected && '(Koptu)'}
-                                    </span>
-                                    
-                                    {u.status !== 'spectator' && !isWinner && (
-                                        <div className="flex gap-1 mt-1 bg-black/30 px-1.5 py-0.5 rounded-full">
-                                            {[...Array(3)].map((_, i) => (
-                                                <span key={i} className="drop-shadow-md text-[8px]">{i < (u.lives ?? 3) ? '❤️' : '🖤'}</span>
-                                            ))}
-                                        </div>
-                                    )}
-                                </motion.div>
-                            );
-                        })}
-                    </div>
-
-                    <div className="mt-4 bg-slate-900/50 rounded-2xl h-40 flex flex-col z-10 relative">
-                        <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar">
+                 
+                    <div className="bg-slate-900/80 backdrop-blur-md border border-slate-700/50 rounded-2xl h-40 flex flex-col z-10 relative pointer-events-auto shadow-2xl">
+                        <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar pointer-events-auto">
                             {gameState.chatHistory.map((msg: any, i: number) => (
                                 <div key={i} className={`text-sm ${msg.system ? 'text-cyan-400 text-center italic my-2' : ''}`}>
                                     {!msg.system && <strong className="text-violet-400">{msg.name}: </strong>}
@@ -321,14 +244,14 @@ export default function GameScene({
                             ))}
                             <div ref={chatEndRef} />
                         </div>
-                        <form onSubmit={handleChat} className="p-2 border-t border-slate-700 flex gap-2">
+                        <form onSubmit={handleChat} className="p-2 border-t border-slate-700 flex gap-2 pointer-events-auto">
                             <TextField 
                                 fullWidth 
                                 size="small"
                                 placeholder={me?.status === 'playing' ? "Soru sor veya cevapla..." : "İzleyici sohbeti..."}
                                 value={chatInput}
                                 onChange={e => setChatInput(e.target.value)}
-                                slotProps={{ input: { className: "text-white bg-slate-800" } }}
+                                slotProps={{ input: { className: "text-white bg-slate-800/80" } }}
                             />
                             <IconButton type="submit" color="primary" className="bg-violet-600 hover:bg-violet-500 text-white rounded-lg px-4">
                                 <SendIcon />
@@ -340,7 +263,7 @@ export default function GameScene({
 
                 <div className="w-full md:w-1/4 flex flex-col gap-4">
                     {me?.status === 'playing' && gameState.gameState === "PLAYING" && (
-                        <div className="glass p-6 rounded-3xl flex flex-col justify-center items-center gap-4 border border-slate-700/50">
+                        <div className="glass p-6 rounded-3xl flex flex-col justify-center items-center gap-4 border border-slate-700/50 pointer-events-auto shadow-2xl bg-slate-900/60 backdrop-blur-lg">
                             
                             <motion.div whileHover={{ scale: isMyTurn ? 1.05 : 1 }} whileTap={{ scale: isMyTurn ? 0.95 : 1 }} className="w-full">
                                 <Button 
