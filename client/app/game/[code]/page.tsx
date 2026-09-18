@@ -233,6 +233,7 @@ export default function GamePage() {
                 onAskQuestion={handleAskQuestion}
                 onSubmitVote={handleSubmitVote}
                 onUseJoker={handleUseJoker}
+                onToggleVoice={toggleVoice}
             />;
         }
         if (gameState.gameState === "ROUND_END") {
