@@ -172,6 +172,21 @@ export default function GameScene({
                         spellCheck="false"
                         className="flex-1 w-full bg-yellow-900/20 rounded-xl text-slate-200 p-3 border border-yellow-500/30 focus:border-yellow-500/60 outline-none resize-none min-h-0 custom-scrollbar"
                     />
+                    
+                    {me?.joker !== undefined && me?.joker !== null && (
+                        <div className={`mt-4 p-3 rounded-xl border ${me.hasUsedJoker ? 'bg-slate-800/50 border-slate-700/50 opacity-60' : 'bg-fuchsia-900/30 border-fuchsia-500/30'}`}>
+                            <h4 className={`font-bold text-sm flex items-center gap-1 mb-1 ${me.hasUsedJoker ? 'text-slate-400' : 'text-fuchsia-400'}`}>
+                                🃏 Senin Jokerin {me.hasUsedJoker && <span className="text-red-400 text-xs ml-auto">(Kullanıldı)</span>}
+                            </h4>
+                            <p className="text-xs text-slate-300">
+                                {me.joker === 0 && "Sıra sendeyken sürene +1 Dakika ekler."}
+                                {me.joker === 1 && "Seçtiğin bir oyuncunun kelimesini değiştirir."}
+                                {me.joker === 2 && "Sana ekstra 3 soru sorma hakkı verir."}
+                                {me.joker === 3 && "Kendi kelimenden rastgele 1 harfi açar."}
+                                {me.joker === 4 && "Seçtiğin bir oyuncuyu 2 tur susturur."}
+                            </p>
+                        </div>
+                    )}
                 </div>
 
                 <div className="flex-1 flex flex-col relative justify-between">
