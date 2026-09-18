@@ -33,6 +33,8 @@ interface GameSceneProps {
     onSubmitVote: (v: string) => void;
     onUseJoker: (payload: any) => void;
     onToggleVoice: (enabled: boolean) => void;
+    headRotations: { [key: string]: { pitch: number, yaw: number } };
+    onHeadRotation: (pitch: number, yaw: number) => void;
 }
 
 export default function GameScene({
@@ -44,7 +46,8 @@ export default function GameScene({
     guessDialogOpen, setGuessDialogOpen,
     onLeaveRoom,
     onAskQuestion, onSubmitVote,
-    onUseJoker, onToggleVoice
+    onUseJoker, onToggleVoice,
+    headRotations, onHeadRotation
 }: GameSceneProps) {
     const isMyTurn = gameState.currentTurnUserId === myId;
     const currentTurnUser = gameState.users.find((u: User) => u.id === gameState.currentTurnUserId);
@@ -138,9 +141,23 @@ export default function GameScene({
         <main className="min-h-screen text-white p-4 flex flex-col overflow-hidden relative">
             
             <div className="fixed inset-0 z-0 pointer-events-auto bg-slate-900">
-                <Scene3D gameState={gameState} myId={myId} activeBubbles={activeBubbles} />
+                <Scene3D 
+                    gameState={gameState} 
+                    myId={myId} 
+                    activeBubbles={activeBubbles} 
+                    headRotations={headRotations}
+                    onHeadRotation={onHeadRotation}
+                />
             </div>
             
+            <div className="absolute bottom-6 right-6 z-20 pointer-events-none flex flex-col items-end">
+                <div className="flex gap-1 bg-black/60 px-4 py-2 rounded-full border border-slate-700/50">
+                    {[...Array(3)].map((_, i) => (
+                        <span key={i} className='drop-shadow-md text-lg'>{i < (me?.lives ?? 3) ? '❤️' : '🖤'}</span>
+                    ))}
+                </div>
+            </div>
+
             <div className="absolute top-4 left-4 z-20 flex gap-2 pointer-events-auto">
                 {gameState.category && (
                     <Chip label={`Kategori: ${gameState.category}`} color="secondary" className="font-bold border border-slate-700 bg-slate-800/80 backdrop-blur-md" />
