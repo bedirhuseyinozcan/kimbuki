@@ -7,7 +7,7 @@ class Room {
         this.category = "";
         this.activeQuestion = null;
         
-        this.turnTime = 30;
+        this.turnTime = 60;
         this.timer = null;
         this.turnTimeLeft = 0;
         this.currentTurnIndex = 0;
@@ -56,10 +56,13 @@ class Room {
             assignedWord: null,
             status: 'playing',
             hasSubmittedWord: false,
-            hasUsedHint: false,
             isVoiceEnabled: false,
             lives: 3,
-            disconnected: false
+            disconnected: false,
+            joker: null,
+            hasUsedJoker: false,
+            silencedTurns: 0,
+            extraQuestions: 0
         });
         this.broadcastState();
     }
@@ -134,11 +137,20 @@ class Room {
         this.chatHistory = [];
         this.winners = [];
 
+        const availableJokers = [0, 1, 2, 3, 4];
+        for(let i = availableJokers.length - 1; i > 0; i--){
+            const j = Math.floor(Math.random() * (i + 1));
+            [availableJokers[i], availableJokers[j]] = [availableJokers[j], availableJokers[i]];
+        }
         
         for (let i = 0; i < this.users.length; i++) {
             this.users[i].status = 'playing';
             this.users[i].assignedWord = null;
             this.users[i].hasSubmittedWord = false;
+            this.users[i].joker = availableJokers[i % availableJokers.length];
+            this.users[i].hasUsedJoker = false;
+            this.users[i].silencedTurns = 0;
+            this.users[i].extraQuestions = 0;
             
             const nextIndex = (i + 1) % this.users.length;
             this.users[i].targetId = this.users[nextIndex].id;
@@ -271,26 +283,78 @@ class Room {
         }
     }
 
-    useHint(userId) {
+    useJoker(userId, payload) {
         if (this.gameState !== "PLAYING") return;
         const user = this.users.find(u => u.id === userId);
-        if (!user || user.status !== 'playing' || user.hasUsedHint || !user.assignedWord) return;
+        if (!user || user.status !== 'playing' || user.hasUsedJoker || user.joker === null) return;
 
-        user.hasUsedHint = true;
-        
-        const word = user.assignedWord;
-        let hint = "";
-        for (let i = 0; i < word.length; i++) {
-            if (word[i] === ' ') {
-                hint += "  ";
-            } else if (i === 0 || word[i-1] === ' ') {
-                hint += word[i] + " ";
-            } else {
-                hint += "_ ";
-            }
+        user.hasUsedJoker = true;
+        const jokerType = user.joker;
+
+        switch (jokerType) {
+            case 0: 
+                if (this.currentTurnIndex !== -1 && this.users[this.currentTurnIndex].id === userId) {
+                    if (this.timer) clearTimeout(this.timer);
+                    this.turnTimeLeft = (this.turnStartTime + (this.turnTime * 1000) - Date.now()) / 1000;
+                    const newTime = this.turnTimeLeft + 60;
+                    this.turnStartTime = Date.now() - (this.turnTime * 1000 - newTime * 1000); 
+                    
+                    this.timer = setTimeout(() => {
+                        if (this.gameState === "PLAYING") {
+                            this.nextTurn();
+                        }
+                    }, newTime * 1000);
+                    
+                    this.chatHistory.push({ system: true, message: `${user.name} joker kullanarak süresine 1 dakika ekledi!`, timestamp: Date.now() });
+                }
+                break;
+            case 1: 
+                if (payload && payload.targetId && payload.newWord) {
+                    const target = this.users.find(u => u.id === payload.targetId);
+                    if (target) {
+                        target.assignedWord = payload.newWord;
+                        this.chatHistory.push({ system: true, message: `${user.name}, bir oyuncunun kelimesini değiştirdi!`, timestamp: Date.now() });
+                    }
+                }
+                break;
+            case 2: 
+                user.extraQuestions = 3;
+                this.chatHistory.push({ system: true, message: `${user.name}, joker kullanarak 3 ekstra soru sorma hakkı kazandı!`, timestamp: Date.now() });
+                break;
+            case 3: 
+                if (user.assignedWord) {
+                    const word = user.assignedWord;
+                    
+                    let hintStr = "";
+                    let hiddenIndices = [];
+                    for(let i=0; i<word.length; i++) {
+                        if(word[i] !== ' ') hiddenIndices.push(i);
+                    }
+                    if(hiddenIndices.length > 0) {
+                        const randomIdx = hiddenIndices[Math.floor(Math.random() * hiddenIndices.length)];
+                        for(let i=0; i<word.length; i++) {
+                            if (i === randomIdx || word[i] === ' ') {
+                                hintStr += word[i] + " ";
+                            } else {
+                                hintStr += "_ ";
+                            }
+                        }
+                        this.io.to(user.id).emit("game:joker_hint_result", { hint: hintStr.trim() });
+                        this.chatHistory.push({ system: true, message: `${user.name}, joker kullanarak bir ipucu aldı! (Bir harf açıldı)`, timestamp: Date.now() });
+                    }
+                }
+                break;
+            case 4: 
+                if (payload && payload.targetId) {
+                    const silenceTarget = this.users.find(u => u.id === payload.targetId);
+                    if (silenceTarget) {
+                        silenceTarget.silencedTurns = 2;
+                        this.chatHistory.push({ system: true, message: `${user.name}, bir oyuncuyu 2 tur susturdu!`, timestamp: Date.now() });
+                    }
+                }
+                break;
         }
-
-        this.io.to(user.id).emit("game:hint_result", { hint: hint.trim() });
+        
         this.broadcastState();
     }
 
@@ -327,7 +391,22 @@ class Room {
                 this.endGame();
                 return;
             }
-        } while (this.users[this.currentTurnIndex].status !== 'playing');
+            
+            const nextUser = this.users[this.currentTurnIndex];
+            if (nextUser.status === 'playing') {
+                if (nextUser.silencedTurns > 0) {
+                    nextUser.silencedTurns--;
+                    this.chatHistory.push({
+                        system: true,
+                        message: `${nextUser.name} susturulduğu için sırasını atlıyor.`,
+                        timestamp: Date.now()
+                    });
+                    continue; 
+                } else {
+                    break; 
+                }
+            }
+        } while (true);
 
         this.startTimer();
         this.broadcastState();
@@ -361,9 +440,11 @@ class Room {
                 status: u.status,
                 targetId: u.targetId,
                 hasSubmittedWord: u.hasSubmittedWord,
-                hasUsedHint: u.hasUsedHint,
                 isVoiceEnabled: u.isVoiceEnabled,
                 lives: u.lives,
+                joker: u.id === user.id ? u.joker : null,
+                hasUsedJoker: u.hasUsedJoker,
+                silencedTurns: u.silencedTurns,
                 assignedWord: (this.gameState === "ROUND_END" || u.id !== user.id) ? u.assignedWord : null
             }));
 

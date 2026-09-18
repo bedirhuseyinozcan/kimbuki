@@ -19,9 +19,9 @@ class GameManager {
         socket.on("game:submit_vote", ({ vote }) => this.handleSubmitVote(socket, vote));
         socket.on("game:skip_turn", () => this.handleSkipTurn(socket));
         socket.on("game:guess", ({ guess }) => this.handleGuess(socket, guess));
-        socket.on("game:use_hint", () => this.handleUseHint(socket));
         socket.on("game:set_avatar", ({ avatarId }) => this.handleSetAvatar(socket, avatarId));
         socket.on("game:toggle_voice", ({ enabled }) => this.handleToggleVoice(socket, enabled));
+        socket.on("game:use_joker", (payload) => this.handleUseJoker(socket, payload));
         socket.on("room:close", () => this.handleCloseRoom(socket));
 
         // WebRTC Signaling
@@ -124,9 +124,9 @@ class GameManager {
         if (room) room.guessWord(socket.id, guess);
     }
 
-    handleUseHint(socket) {
+    handleUseJoker(socket, payload) {
         const room = this.getRoomBySocket(socket);
-        if (room) room.useHint(socket.id);
+        if (room) room.useJoker(socket.id, payload);
     }
 
     handleDisconnect(socket) {
