@@ -22,6 +22,7 @@ class GameManager {
         socket.on("game:set_avatar", ({ avatarId }) => this.handleSetAvatar(socket, avatarId));
         socket.on("game:toggle_voice", ({ enabled }) => this.handleToggleVoice(socket, enabled));
         socket.on("game:use_joker", (payload) => this.handleUseJoker(socket, payload));
+        socket.on("game:head_rotation", (payload) => this.handleHeadRotation(socket, payload));
         socket.on("room:close", () => this.handleCloseRoom(socket));
 
         // WebRTC Signaling
@@ -127,6 +128,11 @@ class GameManager {
     handleUseJoker(socket, payload) {
         const room = this.getRoomBySocket(socket);
         if (room) room.useJoker(socket.id, payload);
+    }
+
+    handleHeadRotation(socket, payload) {
+        const room = this.getRoomBySocket(socket);
+        if (room) room.broadcastHeadRotation(socket.id, payload);
     }
 
     handleDisconnect(socket) {

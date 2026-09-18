@@ -29,6 +29,7 @@ export default function GamePage() {
     const [notepad, setNotepad] = useState("");
     const [guessDialogOpen, setGuessDialogOpen] = useState(false);
     const [guessInput, setGuessInput] = useState("");
+    const [headRotations, setHeadRotations] = useState<{ [key: string]: { pitch: number, yaw: number } }>({});
 
     const myId = socket?.id || "";
     const me = gameState?.users.find((u: User) => u.id === myId);
@@ -83,6 +84,9 @@ export default function GamePage() {
         s.on("game:state", (state: GameState) => setGameState(state));
         s.on("game:hint_result", ({ hint }: { hint: string }) => {
             toast.info(`💡 İPUCU: ${hint}`);
+        });
+        s.on("game:head_update", ({ userId, pitch, yaw }: any) => {
+            setHeadRotations(prev => ({ ...prev, [userId]: { pitch, yaw } }));
         });
         s.on("game:closed", () => {
             toast.error("Oda host tarafından kapatıldı!");
@@ -234,6 +238,8 @@ export default function GamePage() {
                 onSubmitVote={handleSubmitVote}
                 onUseJoker={handleUseJoker}
                 onToggleVoice={toggleVoice}
+                headRotations={headRotations}
+                onHeadRotation={(pitch, yaw) => socket?.emit("game:head_rotation", { pitch, yaw })}
             />;
         }
         if (gameState.gameState === "ROUND_END") {
@@ -248,7 +254,12 @@ export default function GamePage() {
         <>
             {renderGameState()}
             {Object.entries(remoteStreams).map(([id, stream]) => (
-                <audio key={id} autoPlay ref={el => { if (el) el.srcObject = stream as any; }} />
+                <audio key={id} ref={el => { 
+                    if (el && el.srcObject !== stream) { 
+                        el.srcObject = stream as any;
+                        el.play().catch(e => console.warn("Autoplay blocked:", e));
+                    } 
+                }} />
             ))}
         </>
     );

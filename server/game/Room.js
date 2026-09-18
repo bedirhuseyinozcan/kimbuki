@@ -462,6 +462,15 @@ class Room {
             this.io.to(user.id).emit("game:state", payload);
         });
     }
+    broadcastHeadRotation(userId, payload) {
+        if (!payload || typeof payload.pitch !== 'number' || typeof payload.yaw !== 'number') return;
+        
+        this.io.to(this.code).emit("game:head_update", {
+            userId,
+            pitch: payload.pitch,
+            yaw: payload.yaw
+        });
+    }
 }
 
 module.exports = Room;
