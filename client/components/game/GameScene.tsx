@@ -5,6 +5,8 @@ import SkipNextIcon from '@mui/icons-material/SkipNext';
 import HelpIcon from '@mui/icons-material/Help';
 import PersonIcon from '@mui/icons-material/Person';
 import QuestionAnswerIcon from '@mui/icons-material/QuestionAnswer';
+import MicIcon from '@mui/icons-material/Mic';
+import MicOffIcon from '@mui/icons-material/MicOff';
 import { User, GameState, AVATARS } from "./types";
 import { playTurnSound, playWinSound } from "@/utils/audio";
 import confetti from "canvas-confetti";
@@ -30,6 +32,7 @@ interface GameSceneProps {
     onAskQuestion: (q: string) => void;
     onSubmitVote: (v: string) => void;
     onUseJoker: (payload: any) => void;
+    onToggleVoice: (enabled: boolean) => void;
 }
 
 export default function GameScene({
@@ -41,7 +44,7 @@ export default function GameScene({
     guessDialogOpen, setGuessDialogOpen,
     onLeaveRoom,
     onAskQuestion, onSubmitVote,
-    onUseJoker
+    onUseJoker, onToggleVoice
 }: GameSceneProps) {
     const isMyTurn = gameState.currentTurnUserId === myId;
     const currentTurnUser = gameState.users.find((u: User) => u.id === gameState.currentTurnUserId);
@@ -144,7 +147,13 @@ export default function GameScene({
                 )}
             </div>
 
-            <div className="absolute top-4 right-4 z-20 pointer-events-auto">
+            <div className="absolute top-4 right-4 z-20 pointer-events-auto flex gap-3 items-center">
+                <button 
+                    onClick={() => onToggleVoice(!me?.isVoiceEnabled)}
+                    className={`flex items-center justify-center p-1.5 rounded-full border backdrop-blur-md transition-colors ${me?.isVoiceEnabled ? 'border-green-500/80 bg-green-500/40 text-white hover:bg-green-500/60' : 'border-red-500/80 bg-red-500/40 text-white hover:bg-red-500/60'}`}
+                >
+                    {me?.isVoiceEnabled ? <MicIcon fontSize="small" /> : <MicOffIcon fontSize="small" />}
+                </button>
                 <Button variant="outlined" color="inherit" size="small" onClick={onLeaveRoom} className="border-slate-700 text-slate-400 bg-slate-800/80 backdrop-blur-md text-xs py-1 hover:bg-red-500/20 hover:text-red-400">
                     Odadan Ayrıl
                 </Button>
@@ -335,21 +344,20 @@ export default function GameScene({
             <Dialog 
                 open={jokerDialogOpen} 
                 onClose={() => setJokerDialogOpen(false)} 
-                slotProps={{ paper: { sx: { bgcolor: '#1e293b', color: 'white', borderRadius: '1rem', minWidth: '300px' } } }}
+                slotProps={{ paper: { className: "!bg-white !text-slate-900 !rounded-2xl min-w-[300px]" } }}
             >
-                <DialogTitle className="text-center font-bold text-fuchsia-400">🃏 Özel Yetenek Jokerin</DialogTitle>
+                <DialogTitle className="text-center font-bold text-fuchsia-600">🃏 Özel Yetenek Jokerin</DialogTitle>
                 <DialogContent>
-                    {me?.joker === 0 && <p className="text-center text-slate-300 mt-2">Şu anki sıranda sürene <strong>1 Dakika</strong> eklersin.</p>}
+                    {me?.joker === 0 && <p className="text-center text-slate-600 mt-2">Şu anki sıranda sürene <strong>1 Dakika</strong> eklersin.</p>}
                     {me?.joker === 1 && (
-                        <div className="flex flex-col gap-4 mt-2">
-                            <p className="text-sm text-center text-slate-300">Bir oyuncunun kelimesini değiştir.</p>
+                        <div className="flex flex-col gap-4 mt-4">
+                            <p className="text-sm text-center text-slate-600">Bir oyuncunun kelimesini değiştir.</p>
                             <TextField 
                                 select 
+                                label="Oyuncu Seç"
                                 value={jokerTarget} 
                                 onChange={e => setJokerTarget(e.target.value)} 
-                                sx={{ '& .MuiOutlinedInput-root': { color: 'white' }, '& .MuiInputLabel-root': { color: '#94a3b8' }, '& .MuiSvgIcon-root': { color: 'white' } }}
                             >
-                                <MenuItem value=""><em>Oyuncu Seç</em></MenuItem>
                                 {gameState.users.filter((u:User) => u.id !== myId).map((u:User) => (
                                     <MenuItem key={u.id} value={u.id}>{u.name}</MenuItem>
                                 ))}
@@ -358,22 +366,20 @@ export default function GameScene({
                                 label="Yeni Kelime" 
                                 value={jokerWord} 
                                 onChange={e => setJokerWord(e.target.value)} 
-                                sx={{ '& .MuiOutlinedInput-root': { color: 'white' }, '& .MuiInputLabel-root': { color: '#94a3b8' } }}
                             />
                         </div>
                     )}
-                    {me?.joker === 2 && <p className="text-center text-slate-300 mt-2">Bunu kullandığında <strong>3 ekstra soru</strong> sorma hakkı kazanırsın.</p>}
-                    {me?.joker === 3 && <p className="text-center text-slate-300 mt-2">Kendi kelimenin içinden rastgele <strong>1 harfi</strong> açarsın.</p>}
+                    {me?.joker === 2 && <p className="text-center text-slate-600 mt-2">Bunu kullandığında <strong>3 ekstra soru</strong> sorma hakkı kazanırsın.</p>}
+                    {me?.joker === 3 && <p className="text-center text-slate-600 mt-2">Kendi kelimenin içinden rastgele <strong>1 harfi</strong> açarsın.</p>}
                     {me?.joker === 4 && (
-                        <div className="flex flex-col gap-4 mt-2">
-                            <p className="text-sm text-center text-slate-300">Bir oyuncuyu 2 tur boyunca sustur.</p>
+                        <div className="flex flex-col gap-4 mt-4">
+                            <p className="text-sm text-center text-slate-600">Bir oyuncuyu 2 tur boyunca sustur.</p>
                             <TextField 
                                 select 
+                                label="Oyuncu Seç"
                                 value={jokerTarget} 
                                 onChange={e => setJokerTarget(e.target.value)} 
-                                sx={{ '& .MuiOutlinedInput-root': { color: 'white' }, '& .MuiInputLabel-root': { color: '#94a3b8' }, '& .MuiSvgIcon-root': { color: 'white' } }}
                             >
-                                <MenuItem value=""><em>Oyuncu Seç</em></MenuItem>
                                 {gameState.users.filter((u:User) => u.id !== myId).map((u:User) => (
                                     <MenuItem key={u.id} value={u.id}>{u.name}</MenuItem>
                                 ))}
@@ -382,7 +388,7 @@ export default function GameScene({
                     )}
                 </DialogContent>
                 <DialogActions className="p-4 pt-0 justify-between">
-                    <Button onClick={() => setJokerDialogOpen(false)} sx={{ color: '#94a3b8' }}>İptal</Button>
+                    <Button onClick={() => setJokerDialogOpen(false)} className="!text-slate-500">İptal</Button>
                     <Button 
                         onClick={handleUseJokerSubmit} 
                         variant="contained" 
