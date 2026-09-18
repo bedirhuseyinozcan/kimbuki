@@ -143,8 +143,8 @@ export default function GamePage() {
         setGuessDialogOpen(false);
     };
 
-    const handleUseHint = () => {
-        socket?.emit("game:use_hint");
+    const handleUseJoker = (payload: any) => {
+        socket?.emit("game:use_joker", payload);
     };
 
     const toggleVoice = (enabled: boolean) => {
@@ -230,9 +230,9 @@ export default function GamePage() {
                 guessInput={guessInput} setGuessInput={setGuessInput} handleGuess={handleGuess}
                 guessDialogOpen={guessDialogOpen} setGuessDialogOpen={setGuessDialogOpen}
                 onLeaveRoom={handleLeaveRoom}
-                onUseHint={handleUseHint}
                 onAskQuestion={handleAskQuestion}
                 onSubmitVote={handleSubmitVote}
+                onUseJoker={handleUseJoker}
             />;
         }
         if (gameState.gameState === "ROUND_END") {

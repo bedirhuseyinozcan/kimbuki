@@ -10,8 +10,11 @@ export type User = {
     status: string;
     targetId: string | null;
     hasSubmittedWord: boolean;
-    hasUsedHint: boolean;
     isVoiceEnabled: boolean;
+    joker?: number | null;
+    hasUsedJoker?: boolean;
+    silencedTurns?: number;
+    extraQuestions?: number;
     assignedWord: string | null;
     lives: number;
     disconnected?: boolean;

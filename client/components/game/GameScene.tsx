@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Avatar, IconButton, Chip } from "@mui/material";
+import { Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Avatar, IconButton, Chip, MenuItem } from "@mui/material";
 import SendIcon from '@mui/icons-material/Send';
 import SkipNextIcon from '@mui/icons-material/SkipNext';
 import HelpIcon from '@mui/icons-material/Help';
@@ -27,9 +27,9 @@ interface GameSceneProps {
     guessDialogOpen: boolean;
     setGuessDialogOpen: (val: boolean) => void;
     onLeaveRoom: () => void;
-    onUseHint: () => void;
     onAskQuestion: (q: string) => void;
     onSubmitVote: (v: string) => void;
+    onUseJoker: (payload: any) => void;
 }
 
 export default function GameScene({
@@ -39,8 +39,9 @@ export default function GameScene({
     handleSkip,
     guessInput, setGuessInput, handleGuess,
     guessDialogOpen, setGuessDialogOpen,
-    onLeaveRoom, onUseHint,
-    onAskQuestion, onSubmitVote
+    onLeaveRoom,
+    onAskQuestion, onSubmitVote,
+    onUseJoker
 }: GameSceneProps) {
     const isMyTurn = gameState.currentTurnUserId === myId;
     const currentTurnUser = gameState.users.find((u: User) => u.id === gameState.currentTurnUserId);
@@ -51,7 +52,17 @@ export default function GameScene({
     const [questionInput, setQuestionInput] = useState("");
     const [activeBubbles, setActiveBubbles] = useState<{[key:string]: string}>({});
 
-    // Client-side timer logic
+    const [jokerDialogOpen, setJokerDialogOpen] = useState(false);
+    const [jokerTarget, setJokerTarget] = useState("");
+    const [jokerWord, setJokerWord] = useState("");
+
+    const handleUseJokerSubmit = () => {
+        onUseJoker({ targetId: jokerTarget, newWord: jokerWord });
+        setJokerDialogOpen(false);
+        setJokerTarget("");
+        setJokerWord("");
+    };
+
     useEffect(() => {
         if (!gameState.turnEndsAt) {
             setTimeLeft(0);
@@ -141,27 +152,16 @@ export default function GameScene({
 
             <div className="w-full h-full flex-1 flex flex-col md:flex-row gap-6 relative z-10 mt-12 md:mt-10 px-2 md:px-6 pointer-events-none">
                 
-                <div className="w-full md:w-1/4 glass p-4 rounded-3xl flex flex-col border border-slate-700/50 h-[300px] md:h-auto pointer-events-auto shadow-2xl bg-slate-900/60 backdrop-blur-lg">
+                <div className="w-full md:w-1/4 glass p-4 rounded-3xl flex flex-col border border-slate-700/50 h-[300px] md:h-[500px] pointer-events-auto shadow-2xl bg-slate-900/60 backdrop-blur-lg">
                     <h3 className="font-bold text-lg mb-2 flex items-center gap-2 text-yellow-400">
                         <span>📝 Not Defterim</span>
                     </h3>
-                    <TextField
-                        multiline
-                        fullWidth
+                    <textarea
                         placeholder="Örn: Gerçek bir insan mı? Yaşıyor mu?..."
                         value={notepad}
                         onChange={e => setNotepad(e.target.value)}
-                        variant="outlined"
-                        className="flex-1 bg-yellow-900/20 rounded-xl"
-                        slotProps={{
-                            input: { className: "text-slate-200 h-full items-start p-3", style: { height: '100%' } }
-                        }}
-                        sx={{
-                            '& .MuiOutlinedInput-root': {
-                                '& fieldset': { borderColor: 'rgba(234, 179, 8, 0.3)' },
-                                '&:hover fieldset': { borderColor: 'rgba(234, 179, 8, 0.5)' },
-                            }
-                        }}
+                        spellCheck="false"
+                        className="flex-1 w-full bg-yellow-900/20 rounded-xl text-slate-200 p-3 border border-yellow-500/30 focus:border-yellow-500/60 outline-none resize-none min-h-0 custom-scrollbar"
                     />
                 </div>
 
@@ -311,22 +311,89 @@ export default function GameScene({
                                 </Button>
                             </motion.div>
 
-                            {!me?.hasUsedHint && (
-                                <Button 
-                                    variant="text" 
-                                    color="info" 
-                                    size="small" 
-                                    fullWidth 
-                                    onClick={onUseHint}
-                                    className="py-2 rounded-xl mt-2 text-cyan-400"
-                                >
-                                    💡 İpucu Al (1 Hakkın Var)
-                                </Button>
+                            {me?.joker !== undefined && me?.joker !== null && !me?.hasUsedJoker && (
+                                <motion.div whileHover={{ scale: isMyTurn ? 1.05 : 1 }} whileTap={{ scale: isMyTurn ? 0.95 : 1 }} className="w-full mt-2">
+                                    <Button 
+                                        variant="contained" 
+                                        color="secondary" 
+                                        size="large" 
+                                        fullWidth 
+                                        onClick={() => setJokerDialogOpen(true)}
+                                        disabled={!isMyTurn}
+                                        className={`py-3 rounded-xl border-2 font-bold ${isMyTurn ? 'bg-fuchsia-600 shadow-[0_0_15px_rgba(192,38,211,0.5)]' : 'opacity-50'}`}
+                                    >
+                                        🃏 Joker Kullan
+                                    </Button>
+                                </motion.div>
                             )}
+
                         </div>
                     )}
                 </div>
             </div>
+
+            <Dialog 
+                open={jokerDialogOpen} 
+                onClose={() => setJokerDialogOpen(false)} 
+                slotProps={{ paper: { sx: { bgcolor: '#1e293b', color: 'white', borderRadius: '1rem', minWidth: '300px' } } }}
+            >
+                <DialogTitle className="text-center font-bold text-fuchsia-400">🃏 Özel Yetenek Jokerin</DialogTitle>
+                <DialogContent>
+                    {me?.joker === 0 && <p className="text-center text-slate-300 mt-2">Şu anki sıranda sürene <strong>1 Dakika</strong> eklersin.</p>}
+                    {me?.joker === 1 && (
+                        <div className="flex flex-col gap-4 mt-2">
+                            <p className="text-sm text-center text-slate-300">Bir oyuncunun kelimesini değiştir.</p>
+                            <TextField 
+                                select 
+                                value={jokerTarget} 
+                                onChange={e => setJokerTarget(e.target.value)} 
+                                sx={{ '& .MuiOutlinedInput-root': { color: 'white' }, '& .MuiInputLabel-root': { color: '#94a3b8' }, '& .MuiSvgIcon-root': { color: 'white' } }}
+                            >
+                                <MenuItem value=""><em>Oyuncu Seç</em></MenuItem>
+                                {gameState.users.filter((u:User) => u.id !== myId).map((u:User) => (
+                                    <MenuItem key={u.id} value={u.id}>{u.name}</MenuItem>
+                                ))}
+                            </TextField>
+                            <TextField 
+                                label="Yeni Kelime" 
+                                value={jokerWord} 
+                                onChange={e => setJokerWord(e.target.value)} 
+                                sx={{ '& .MuiOutlinedInput-root': { color: 'white' }, '& .MuiInputLabel-root': { color: '#94a3b8' } }}
+                            />
+                        </div>
+                    )}
+                    {me?.joker === 2 && <p className="text-center text-slate-300 mt-2">Bunu kullandığında <strong>3 ekstra soru</strong> sorma hakkı kazanırsın.</p>}
+                    {me?.joker === 3 && <p className="text-center text-slate-300 mt-2">Kendi kelimenin içinden rastgele <strong>1 harfi</strong> açarsın.</p>}
+                    {me?.joker === 4 && (
+                        <div className="flex flex-col gap-4 mt-2">
+                            <p className="text-sm text-center text-slate-300">Bir oyuncuyu 2 tur boyunca sustur.</p>
+                            <TextField 
+                                select 
+                                value={jokerTarget} 
+                                onChange={e => setJokerTarget(e.target.value)} 
+                                sx={{ '& .MuiOutlinedInput-root': { color: 'white' }, '& .MuiInputLabel-root': { color: '#94a3b8' }, '& .MuiSvgIcon-root': { color: 'white' } }}
+                            >
+                                <MenuItem value=""><em>Oyuncu Seç</em></MenuItem>
+                                {gameState.users.filter((u:User) => u.id !== myId).map((u:User) => (
+                                    <MenuItem key={u.id} value={u.id}>{u.name}</MenuItem>
+                                ))}
+                            </TextField>
+                        </div>
+                    )}
+                </DialogContent>
+                <DialogActions className="p-4 pt-0 justify-between">
+                    <Button onClick={() => setJokerDialogOpen(false)} sx={{ color: '#94a3b8' }}>İptal</Button>
+                    <Button 
+                        onClick={handleUseJokerSubmit} 
+                        variant="contained" 
+                        color="secondary" 
+                        className="px-6 font-bold" 
+                        disabled={(me?.joker === 1 && (!jokerTarget || !jokerWord)) || (me?.joker === 4 && !jokerTarget) || (me?.joker === 0 && !isMyTurn)}
+                    >
+                        Kullan
+                    </Button>
+                </DialogActions>
+            </Dialog>
 
             <Dialog open={guessDialogOpen} onClose={() => setGuessDialogOpen(false)} slotProps={{ paper: { className: "bg-slate-800 text-white rounded-2xl min-w-[300px]" } }}>
                 <DialogTitle className="text-center font-bold">Kimin Nesin Sen?</DialogTitle>
