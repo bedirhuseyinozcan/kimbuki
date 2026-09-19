@@ -21,8 +21,14 @@ export default function WordSelection({
                 Odadan Ayrıl
             </Button>
 
-            <div className="glass max-w-lg w-full p-8 rounded-3xl text-center shadow-2xl">
-                <h2 className="text-3xl font-bold mb-2 text-cyan-400">Kelime Seçimi</h2>
+            <div className="glass max-w-lg w-full p-8 rounded-3xl text-center shadow-2xl relative overflow-hidden">
+                {gameState.isBettingEnabled && (
+                    <div className="absolute top-0 left-0 right-0 bg-yellow-500/20 border-b border-yellow-500/50 p-2 flex justify-center items-center gap-2">
+                        <span className="text-xl">💰</span>
+                        <span className="text-yellow-400 font-bold text-sm">BAHİS MODU AKTİF (-50 Altın)</span>
+                    </div>
+                )}
+                <h2 className={`text-3xl font-bold mb-2 text-cyan-400 ${gameState.isBettingEnabled ? 'mt-6' : ''}`}>Kelime Seçimi</h2>
                 {gameState.category && (
                     <Chip label={`Kategori: ${gameState.category}`} color="secondary" className="mb-6 font-bold" />
                 )}
@@ -43,9 +49,14 @@ export default function WordSelection({
                             variant="outlined"
                             value={wordInput}
                             onChange={(e) => setWordInput(e.target.value)}
-                            slotProps={{ 
-                                input: { className: "text-white text-lg bg-slate-800" },
-                                inputLabel: { className: "text-slate-400" }
+                            sx={{
+                                input: { color: 'white' },
+                                label: { color: '#94a3b8' },
+                                '& .MuiOutlinedInput-root': {
+                                    '& fieldset': { borderColor: '#475569' },
+                                    '&:hover fieldset': { borderColor: '#94a3b8' },
+                                    '&.Mui-focused fieldset': { borderColor: '#a855f7' }
+                                }
                             }}
                         />
                         <Button variant="contained" color="primary" fullWidth size="large" onClick={onSetWord} className="py-3">

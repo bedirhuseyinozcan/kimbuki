@@ -1,3 +1,5 @@
+const User = require('../models/User');
+
 class Room {
     constructor(code, io) {
         this.code = code;
@@ -129,12 +131,65 @@ class Room {
         }
     }
 
-    startGame(category = "Karışık") {
-        if (this.users.length < 2) return; // At least 2 players needed
+    async startGame(settings = {}) {
+        if (this.users.length < 2) return; 
 
+        this.category = settings.category || "Karışık";
+        this.isBettingEnabled = settings.bettingEnabled || false;
+        this.betAmount = settings.betAmount || 50;
+        this.isJokersEnabled = settings.jokersEnabled !== undefined ? settings.jokersEnabled : true;
+        this.bets = {};
+        this.hasObjectionUsed = false;
+
+        if (this.isBettingEnabled) {
+            const User = require('../models/User');
+            // Check if all players have enough gold
+            for (let u of this.users) {
+                if (u.dbId) {
+                    const userDb = await User.findById(u.dbId);
+                    if (!userDb || userDb.gold < this.betAmount) {
+                        this.io.to(this.code).emit("game:error", { message: `${u.name} isimli oyuncunun yeterli altını (${this.betAmount}) yok!` });
+                        return;
+                    }
+                } else {
+                    this.io.to(this.code).emit("game:error", { message: `${u.name} giriş yapmadığı için bahisli moda katılamaz!` });
+                    return;
+                }
+            }
+            
+            // Deduct gold from all
+            for (let u of this.users) {
+                await User.findByIdAndUpdate(u.dbId, { $inc: { gold: -this.betAmount } });
+            }
+
+            this.gameState = "BETTING";
+            this.chatHistory = [];
+            this.roundLogs = [];
+            this.winners = [];
+            this.bettingEndTime = Date.now() + 10000;
+            
+            for (let i = 0; i < this.users.length; i++) {
+                this.users[i].status = 'playing';
+                this.users[i].assignedWord = null;
+                this.users[i].hasSubmittedWord = false;
+                this.users[i].hasPlacedBet = false;
+            }
+            this.broadcastState();
+
+            this.betTimer = setTimeout(() => {
+                this.startWordSelection();
+            }, 10000);
+            return;
+        }
+
+        this.startWordSelection();
+    }
+
+    startWordSelection() {
+        if (this.betTimer) clearTimeout(this.betTimer);
         this.gameState = "WORD_SELECTION";
-        this.category = category;
         this.chatHistory = [];
+        this.roundLogs = [];
         this.winners = [];
 
         const availableJokers = [0, 1, 2, 3, 4];
@@ -147,7 +202,7 @@ class Room {
             this.users[i].status = 'playing';
             this.users[i].assignedWord = null;
             this.users[i].hasSubmittedWord = false;
-            this.users[i].joker = availableJokers[i % availableJokers.length];
+            this.users[i].joker = this.isJokersEnabled ? availableJokers[i % availableJokers.length] : null;
             this.users[i].hasUsedJoker = false;
             this.users[i].silencedTurns = 0;
             this.users[i].extraQuestions = 0;
@@ -159,6 +214,90 @@ class Room {
         this.broadcastState();
     }
 
+    placeBet(userId, targetId) {
+        if (this.gameState !== "BETTING") return;
+        const user = this.users.find(u => u.id === userId);
+        if (!user || user.hasPlacedBet) return;
+
+        this.bets[userId] = targetId;
+        user.hasPlacedBet = true;
+
+        const allBet = this.users.filter(u => u.status === 'playing').every(u => u.hasPlacedBet);
+        if (allBet) {
+            this.startWordSelection();
+        } else {
+            this.broadcastState();
+        }
+    }
+
+    startObjection(userId) {
+        if (!this.isBettingEnabled || this.objection || this.gameState !== "PLAYING" || this.hasObjectionUsed) return;
+        
+        const initiator = this.users.find(u => u.id === userId);
+        if (!initiator) return;
+
+        this.hasObjectionUsed = true;
+        if (this.timer) clearTimeout(this.timer);
+        
+        this.objection = {
+            initiator: initiator.name,
+            votes: {},
+            endTime: Date.now() + 15000 
+        };
+        
+        this.objection.votes[userId] = true;
+        this.broadcastState();
+        
+        this.objectionTimer = setTimeout(() => {
+            this.resolveObjection();
+        }, 15000);
+    }
+
+    voteObjection(userId, vote) {
+        if (!this.objection) return;
+        this.objection.votes[userId] = vote;
+        
+        const playingUsers = this.users.filter(u => u.status === 'playing');
+        if (Object.keys(this.objection.votes).length === playingUsers.length) {
+            clearTimeout(this.objectionTimer);
+            this.resolveObjection();
+        } else {
+            this.broadcastState();
+        }
+    }
+
+    async resolveObjection() {
+        if (!this.objection) return;
+        
+        const playingUsers = this.users.filter(u => u.status === 'playing');
+        let yesVotes = 0;
+        for (let v of Object.values(this.objection.votes)) {
+            if (v === true) yesVotes++;
+        }
+        
+        const majority = Math.floor(playingUsers.length / 2) + 1;
+        
+        const User = require('../models/User');
+        if (yesVotes >= majority) {
+            for (let u of this.users) {
+                if (u.dbId) {
+                    await User.findByIdAndUpdate(u.dbId, { $inc: { gold: this.betAmount } }).catch(err => console.error(err));
+                }
+            }
+            this.io.to(this.code).emit("game:error", { message: `🚨 Şike itirazı kabul edildi! Oyun iptal edildi, herkese ${this.betAmount} Altın iade edildi.` });
+            
+            this.objection = null;
+            if (this.timer) clearInterval(this.timer);
+            this.gameState = "LOBBY";
+            this.chatHistory = [];
+            this.broadcastState();
+        } else {
+            this.io.to(this.code).emit("game:error", { message: `❌ Şike itirazı reddedildi! Yeterli çoğunluk sağlanamadı.` });
+            this.objection = null;
+            this.startTimer();
+            this.broadcastState();
+        }
+    }
     setWord(userId, word) {
         if (this.gameState !== "WORD_SELECTION") return;
 
@@ -230,16 +369,40 @@ class Room {
             this.winners.push(user.id);
             
             const User = require('../models/User');
+            
+            
+            let winnerReward = this.isBettingEnabled ? (this.betAmount * 2) : 50; 
+            
             if (user.dbId) {
-                User.findByIdAndUpdate(user.dbId, { $inc: { gold: 50 } })
+                User.findByIdAndUpdate(user.dbId, { $inc: { gold: winnerReward } })
                     .catch(err => console.error("Gold update error:", err));
             }
 
-            this.chatHistory.push({
-                system: true,
-                message: `${user.name} doğru tahmin etti ve 50 Altın kazandı! Kelimesi: ${user.assignedWord}`,
-                timestamp: Date.now()
-            });
+            const winMsg = `${user.name} doğru tahmin etti ve oyunu kazanarak ${winnerReward} Altın aldı! Kelimesi: ${user.assignedWord}`;
+            this.chatHistory.push({ system: true, message: winMsg, timestamp: Date.now() });
+            this.roundLogs.push(winMsg);
+
+            if (this.isBettingEnabled) {
+                
+                const bettors = Object.keys(this.bets || {}).filter(uid => this.bets[uid] === user.id);
+                let bettorNames = [];
+                let bettorReward = this.betAmount * 2;
+                
+                for (let uid of bettors) {
+                    const bettorUser = this.users.find(u => u.id === uid);
+                    if (bettorUser && bettorUser.dbId) {
+                        User.findByIdAndUpdate(bettorUser.dbId, { $inc: { gold: bettorReward } })
+                            .catch(err => console.error("Gold update error:", err));
+                        bettorNames.push(bettorUser.name);
+                    }
+                }
+                
+                if (bettorNames.length > 0) {
+                    const betMsg = `🎲 ${user.name} üzerine bahis oynayan ${bettorNames.join(', ')} ekstra ${bettorReward} Altın daha kazandı!`;
+                    this.chatHistory.push({ system: true, message: betMsg, timestamp: Date.now() });
+                    this.roundLogs.push(betMsg);
+                }
+            }
 
             const playingUsers = this.users.filter(u => u.status === 'playing');
             if (playingUsers.length <= 1) { 
@@ -451,12 +614,19 @@ class Room {
             const payload = {
                 gameState: this.gameState,
                 category: this.category,
+                isBettingEnabled: this.isBettingEnabled,
+                betAmount: this.betAmount,
+                isJokersEnabled: this.isJokersEnabled,
                 activeQuestion: this.activeQuestion,
                 users: usersPayload,
                 currentTurnUserId: this.gameState === "PLAYING" ? this.users[this.currentTurnIndex]?.id : null,
                 turnEndsAt: this.gameState === "PLAYING" ? this.turnStartTime + (this.turnTime * 1000) : null,
                 chatHistory: this.chatHistory,
-                winners: this.winners
+                winners: this.winners,
+                objection: this.objection,
+                hasObjectionUsed: this.hasObjectionUsed,
+                bettingEndTime: this.bettingEndTime,
+                roundLogs: this.gameState === "ROUND_END" ? this.roundLogs : []
             };
 
             this.io.to(user.id).emit("game:state", payload);

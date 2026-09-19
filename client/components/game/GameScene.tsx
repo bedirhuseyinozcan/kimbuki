@@ -33,6 +33,8 @@ interface GameSceneProps {
     onSubmitVote: (v: string) => void;
     onUseJoker: (payload: any) => void;
     onToggleVoice: (enabled: boolean) => void;
+    onStartObjection: () => void;
+    onVoteObjection: (vote: boolean) => void;
     headRotations: { [key: string]: { pitch: number, yaw: number } };
     onHeadRotation: (pitch: number, yaw: number) => void;
 }
@@ -47,6 +49,7 @@ export default function GameScene({
     onLeaveRoom,
     onAskQuestion, onSubmitVote,
     onUseJoker, onToggleVoice,
+    onStartObjection, onVoteObjection,
     headRotations, onHeadRotation
 }: GameSceneProps) {
     const isMyTurn = gameState.currentTurnUserId === myId;
@@ -158,10 +161,16 @@ export default function GameScene({
                 </div>
             </div>
 
-            <div className="absolute top-4 left-4 z-20 flex gap-2 pointer-events-auto">
-                {gameState.category && (
-                    <Chip label={`Kategori: ${gameState.category}`} color="secondary" className="font-bold border border-slate-700 bg-slate-800/80 backdrop-blur-md" />
-                )}
+            <div className="absolute top-4 left-4 z-20 flex flex-col gap-2 pointer-events-auto">
+                <div className="flex gap-2">
+                    {gameState.category && (
+                        <Chip label={`Kategori: ${gameState.category}`} color="secondary" className="font-bold border border-slate-700 bg-slate-800/80 backdrop-blur-md" />
+                    )}
+                    {gameState.isBettingEnabled && (
+                        <Chip label={`💰 BAHİSLİ OYUN: Kazanana ${(gameState.betAmount || 50) * 2} Altın`} className="font-bold border border-yellow-500/50 bg-yellow-900/80 text-yellow-400 backdrop-blur-md" />
+                    )}
+                </div>
+
             </div>
 
             <div className="absolute top-4 right-4 z-20 pointer-events-auto flex gap-3 items-center">
@@ -292,7 +301,14 @@ export default function GameScene({
                                 placeholder={me?.status === 'playing' ? "Soru sor veya cevapla..." : "İzleyici sohbeti..."}
                                 value={chatInput}
                                 onChange={e => setChatInput(e.target.value)}
-                                slotProps={{ input: { className: "text-white bg-slate-800/80" } }}
+                                sx={{
+                                    input: { color: 'white' },
+                                    '& .MuiOutlinedInput-root': {
+                                        '& fieldset': { borderColor: '#475569' },
+                                        '&:hover fieldset': { borderColor: '#94a3b8' },
+                                        '&.Mui-focused fieldset': { borderColor: '#06b6d4' }
+                                    }
+                                }}
                             />
                             <IconButton type="submit" color="primary" className="bg-violet-600 hover:bg-violet-500 text-white rounded-lg px-4">
                                 <SendIcon />
@@ -368,6 +384,22 @@ export default function GameScene({
                                 </motion.div>
                             )}
 
+                            {gameState.isBettingEnabled && (
+                                <motion.div whileHover={{ scale: !gameState.hasObjectionUsed ? 1.05 : 1 }} whileTap={{ scale: !gameState.hasObjectionUsed ? 0.95 : 1 }} className="w-full mt-4">
+                                    <Button 
+                                        variant="outlined" 
+                                        color="error" 
+                                        size="medium" 
+                                        fullWidth 
+                                        onClick={onStartObjection}
+                                        disabled={gameState.hasObjectionUsed}
+                                        className={`py-2 rounded-xl border-2 font-bold ${!gameState.hasObjectionUsed ? 'border-red-500/80 text-red-400 shadow-[0_0_15px_rgba(239,68,68,0.2)] hover:bg-red-500/20' : 'opacity-50'}`}
+                                    >
+                                        🚨 ŞİKEYE İTİRAZ ET {gameState.hasObjectionUsed && '(Kullanıldı)'}
+                                    </Button>
+                                </motion.div>
+                            )}
+
                         </div>
                     )}
                 </div>
@@ -433,10 +465,10 @@ export default function GameScene({
                 </DialogActions>
             </Dialog>
 
-            <Dialog open={guessDialogOpen} onClose={() => setGuessDialogOpen(false)} slotProps={{ paper: { className: "bg-slate-800 text-white rounded-2xl min-w-[300px]" } }}>
+            <Dialog open={guessDialogOpen} onClose={() => setGuessDialogOpen(false)} slotProps={{ paper: { className: "!bg-white !text-slate-900 !rounded-2xl min-w-[300px]" } }}>
                 <DialogTitle className="text-center font-bold">Kimin Nesin Sen?</DialogTitle>
                 <DialogContent>
-                    <p className="text-slate-400 mb-4 text-sm text-center">Yanlış bilirsen 1 canın (❤️) gider. 3 yanlışta elenirsin!</p>
+                    <p className="text-slate-600 mb-4 text-sm text-center">Yanlış bilirsen 1 canın (❤️) gider. 3 yanlışta elenirsin!</p>
                     <TextField 
                         autoFocus
                         fullWidth
@@ -444,22 +476,19 @@ export default function GameScene({
                         variant="outlined"
                         value={guessInput}
                         onChange={e => setGuessInput(e.target.value)}
-                        slotProps={{ 
-                            input: { className: "text-white" },
-                            inputLabel: { className: "text-slate-400" }
-                        }}
+                        onKeyDown={e => { if(e.key === 'Enter') handleGuess(); }}
                     />
                 </DialogContent>
                 <DialogActions className="p-4 pt-0">
-                    <Button onClick={() => setGuessDialogOpen(false)} color="inherit">İptal</Button>
+                    <Button onClick={() => setGuessDialogOpen(false)} className="!text-slate-500">İptal</Button>
                     <Button onClick={handleGuess} variant="contained" color="success" className="px-6 font-bold">Dene</Button>
                 </DialogActions>
             </Dialog>
 
-            <Dialog open={questionDialogOpen} onClose={() => setQuestionDialogOpen(false)} slotProps={{ paper: { className: "bg-slate-800 text-white rounded-2xl min-w-[300px]" } }}>
+            <Dialog open={questionDialogOpen} onClose={() => setQuestionDialogOpen(false)} slotProps={{ paper: { className: "!bg-white !text-slate-900 !rounded-2xl min-w-[300px]" } }}>
                 <DialogTitle className="text-center font-bold">Herkes İçin Soru Sor</DialogTitle>
                 <DialogContent>
-                    <p className="text-slate-400 mb-4 text-sm text-center">Diğer oyuncular bu soruya Evet, Hayır veya Bazen oyu verecek.</p>
+                    <p className="text-slate-600 mb-4 text-sm text-center">Diğer oyuncular bu soruya Evet, Hayır veya Bazen oyu verecek.</p>
                     <TextField 
                         autoFocus
                         fullWidth
@@ -468,17 +497,41 @@ export default function GameScene({
                         variant="outlined"
                         value={questionInput}
                         onChange={e => setQuestionInput(e.target.value)}
-                        slotProps={{ 
-                            input: { className: "text-white" },
-                            inputLabel: { className: "text-slate-400" }
-                        }}
+                        onKeyDown={e => { if(e.key === 'Enter') { onAskQuestion(questionInput); setQuestionDialogOpen(false); setQuestionInput(""); } }}
                     />
                 </DialogContent>
                 <DialogActions className="p-4 pt-0">
-                    <Button onClick={() => setQuestionDialogOpen(false)} color="inherit">İptal</Button>
-                    <Button onClick={handleAsk} variant="contained" color="info" className="px-6 font-bold">Soru Sor</Button>
+                    <Button onClick={() => setQuestionDialogOpen(false)} className="!text-slate-500">İptal</Button>
+                    <Button onClick={() => { onAskQuestion(questionInput); setQuestionDialogOpen(false); setQuestionInput(""); }} variant="contained" color="primary" className="px-6 font-bold">Sor</Button>
                 </DialogActions>
             </Dialog>
+            {gameState.objection && (
+                <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm pointer-events-auto">
+                    <div className="bg-slate-900 border-2 border-red-500 rounded-3xl p-8 max-w-md w-full text-center shadow-[0_0_50px_rgba(239,68,68,0.3)]">
+                        <h2 className="text-3xl font-black text-red-500 mb-2">🚨 ŞİKE İTİRAZI!</h2>
+                        <p className="text-xl text-white mb-6">
+                            <strong className="text-yellow-400">{gameState.objection.initiator}</strong> oyunda şike yapıldığını düşünüyor! Sence şike var mı?
+                        </p>
+                        
+                        {gameState.objection.votes[myId] !== undefined ? (
+                            <p className="text-green-400 font-bold text-xl animate-pulse">Oy verdin, diğerleri bekleniyor...</p>
+                        ) : (
+                            <div className="flex gap-4 justify-center">
+                                <Button variant="contained" color="error" size="large" onClick={() => onVoteObjection(true)} className="flex-1 py-3 font-bold text-lg">
+                                    EVET, ŞİKE VAR!
+                                </Button>
+                                <Button variant="outlined" color="inherit" size="large" onClick={() => onVoteObjection(false)} className="flex-1 py-3 font-bold text-lg border-slate-600 text-slate-300">
+                                    HAYIR, TEMİZ
+                                </Button>
+                            </div>
+                        )}
+                        
+                        <div className="mt-6 text-slate-400">
+                            İtiraz oylaması devam ediyor... ({Object.keys(gameState.objection.votes).length} oy verildi)
+                        </div>
+                    </div>
+                </div>
+            )}
         </main>
     );
 }
