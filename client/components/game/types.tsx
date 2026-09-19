@@ -10,6 +10,7 @@ export type User = {
     status: string;
     targetId: string | null;
     hasSubmittedWord: boolean;
+    hasPlacedBet?: boolean;
     isVoiceEnabled: boolean;
     joker?: number | null;
     hasUsedJoker?: boolean;
@@ -21,8 +22,18 @@ export type User = {
 };
 
 export type GameState = {
-    gameState: "LOBBY" | "WORD_SELECTION" | "PLAYING" | "ROUND_END";
+    gameState: "LOBBY" | "BETTING" | "WORD_SELECTION" | "PLAYING" | "ROUND_END";
+    bettingEndTime?: number;
+    objection?: {
+        initiator: string;
+        votes: { [userId: string]: boolean };
+        endTime: number;
+    } | null;
+    roundLogs?: string[];
     category?: string;
+    isBettingEnabled?: boolean;
+    betAmount?: number;
+    isJokersEnabled?: boolean;
     activeQuestion?: {
         askerId: string;
         question: string;
@@ -33,6 +44,7 @@ export type GameState = {
     turnEndsAt: number | null;
     chatHistory: any[];
     winners: string[];
+    hasObjectionUsed?: boolean;
 };
 
 export const AVATARS = [

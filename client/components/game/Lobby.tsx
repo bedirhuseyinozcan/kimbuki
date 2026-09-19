@@ -10,7 +10,7 @@ interface LobbyProps {
     code: string;
     inviteUrl: string;
     myId: string;
-    onStart: (category: string) => void;
+    onStart: (settings: { category: string, bettingEnabled: boolean, jokersEnabled: boolean, betAmount: number }) => void;
     onCloseRoom: () => void;
     onLeaveRoom: () => void;
     onCopyLink: () => void;
@@ -23,6 +23,9 @@ export default function Lobby({
     gameState, me, code, inviteUrl, myId, onStart, onCloseRoom, onLeaveRoom, onCopyLink, onSelectAvatar, onToggleVoice
 }: LobbyProps & { onSelectAvatar: (id: number) => void, onToggleVoice: (enabled: boolean) => void }) {
     const [category, setCategory] = useState("Karışık");
+    const [bettingEnabled, setBettingEnabled] = useState(false);
+    const [betAmount, setBetAmount] = useState(50);
+    const [jokersEnabled, setJokersEnabled] = useState(true);
 
     return (
         <main className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center p-4 relative">
@@ -104,7 +107,7 @@ export default function Lobby({
                                     onChange={(e) => setCategory(e.target.value)}
                                     size="small"
                                     fullWidth
-                                    className="bg-slate-700 text-white"
+                                    className="bg-slate-700 text-white mb-4"
                                     sx={{ color: 'white', '.MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.2)' } }}
                                 >
                                     <MenuItem value="Karışık">🎲 Karışık</MenuItem>
@@ -113,8 +116,36 @@ export default function Lobby({
                                     <MenuItem value="Tarihi Kişiler">📜 Tarihi Kişiler</MenuItem>
                                     <MenuItem value="Filmler / Diziler">🎬 Filmler / Diziler</MenuItem>
                                 </Select>
+
+                                <div className="flex flex-col gap-2 border-t border-slate-700 pt-3">
+                                    <div className="flex items-center justify-between">
+                                        <FormControlLabel 
+                                            control={<Switch checked={bettingEnabled} onChange={(e) => setBettingEnabled(e.target.checked)} color="secondary" />} 
+                                            label="💰 Bahis Modu" 
+                                            className="text-slate-200"
+                                        />
+                                        {bettingEnabled && (
+                                            <Select
+                                                value={betAmount}
+                                                onChange={(e) => setBetAmount(e.target.value as number)}
+                                                size="small"
+                                                className="bg-slate-800 text-yellow-400 font-bold min-w-[120px]"
+                                            >
+                                                <MenuItem value={50}>50 Altın</MenuItem>
+                                                <MenuItem value={100}>100 Altın</MenuItem>
+                                                <MenuItem value={250}>250 Altın</MenuItem>
+                                                <MenuItem value={500}>500 Altın (VIP)</MenuItem>
+                                            </Select>
+                                        )}
+                                    </div>
+                                    <FormControlLabel 
+                                        control={<Switch checked={jokersEnabled} onChange={(e) => setJokersEnabled(e.target.checked)} color="secondary" />} 
+                                        label="🃏 Joker Modu" 
+                                        className="text-slate-200"
+                                    />
+                                </div>
                             </div>
-                            <Button variant="contained" color="secondary" size="large" fullWidth onClick={() => onStart(category)} className="py-3 text-lg font-bold rounded-xl bg-gradient-to-r from-violet-600 to-cyan-600">
+                            <Button variant="contained" color="secondary" size="large" fullWidth onClick={() => onStart({ category, bettingEnabled, jokersEnabled, betAmount })} className="py-3 text-lg font-bold rounded-xl bg-gradient-to-r from-violet-600 to-cyan-600">
                                 OYUNU BAŞLAT
                             </Button>
                         </div>

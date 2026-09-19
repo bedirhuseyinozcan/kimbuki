@@ -23,15 +23,26 @@ export default function GameOver({
                                 <span className="font-bold">{i + 1}. {u.name}</span>
                                 {gameState.winners.includes(u.id) ? (
                                     <div className="flex flex-col items-end">
-                                        <span className="text-green-400 font-bold">Bildin: {u.assignedWord}</span>
-                                        <span className="text-yellow-400 text-sm font-black">+50 Altın 💰</span>
+                                        <span className="text-green-400 font-bold">Bildi: {u.assignedWord}</span>
                                     </div>
                                 ) : (
-                                    <span className="text-red-400">Bilemedin: {u.assignedWord}</span>
+                                    <span className="text-red-400">Bilemedi: {u.assignedWord}</span>
                                 )}
                             </div>
                         ))}
                     </div>
+
+                    {gameState.roundLogs && gameState.roundLogs.length > 0 && (
+                        <div className="bg-slate-800/80 rounded-xl p-4 mb-8 text-left border border-slate-600">
+                            <h3 className="text-yellow-400 font-bold mb-2">💸 Bahis & Ödül Özeti</h3>
+                            <ul className="space-y-2 text-sm text-slate-300">
+                                {gameState.roundLogs.map((log, idx) => (
+                                    <li key={idx}>• {log}</li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
+
                     {me?.isHost && (
                         <Button variant="contained" color="primary" fullWidth size="large" onClick={onStart} className="py-3 rounded-xl">
                             Yeniden Başlat

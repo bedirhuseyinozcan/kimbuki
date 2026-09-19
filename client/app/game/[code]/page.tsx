@@ -11,6 +11,7 @@ import Lobby from "@/components/game/Lobby";
 import WordSelection from "@/components/game/WordSelection";
 import GameScene from "@/components/game/GameScene";
 import GameOver from "@/components/game/GameOver";
+import BettingPhase from "@/components/game/BettingPhase";
 import { useWebRTC } from "@/components/game/useWebRTC";
 
 export default function GamePage() {
@@ -88,6 +89,9 @@ export default function GamePage() {
         s.on("game:head_update", ({ userId, pitch, yaw }: any) => {
             setHeadRotations(prev => ({ ...prev, [userId]: { pitch, yaw } }));
         });
+        s.on("game:error", ({ message }: { message: string }) => {
+            toast.error(message);
+        });
         s.on("game:closed", () => {
             toast.error("Oda host tarafından kapatıldı!");
             if (s) s.disconnect();
@@ -114,7 +118,7 @@ export default function GamePage() {
 
     if (!gameState) return <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white text-2xl animate-pulse">Odaya bağlanıyor...</div>;
 
-    const handleStart = (category?: string) => socket?.emit("game:start", { category });
+    const handleStart = (settings: { category?: string, bettingEnabled?: boolean, jokersEnabled?: boolean, betAmount?: number }) => socket?.emit("game:start", settings);
     
     const handleSetWord = () => {
         if (!wordInput.trim()) return;
@@ -219,6 +223,12 @@ export default function GamePage() {
                 onSelectAvatar={handleSelectAvatar} onToggleVoice={toggleVoice}
             />;
         }
+        if (gameState.gameState === "BETTING") {
+            return <BettingPhase
+                gameState={gameState} me={me!}
+                onPlaceBet={(targetId) => socket?.emit("game:place_bet", { targetId })}
+            />;
+        }
         if (gameState.gameState === "WORD_SELECTION") {
             return <WordSelection 
                 gameState={gameState} me={me!} wordInput={wordInput} setWordInput={setWordInput} 
@@ -238,13 +248,15 @@ export default function GamePage() {
                 onSubmitVote={handleSubmitVote}
                 onUseJoker={handleUseJoker}
                 onToggleVoice={toggleVoice}
+                onStartObjection={() => socket?.emit("game:start_objection")}
+                onVoteObjection={(vote) => socket?.emit("game:vote_objection", { vote })}
                 headRotations={headRotations}
                 onHeadRotation={(pitch, yaw) => socket?.emit("game:head_rotation", { pitch, yaw })}
             />;
         }
         if (gameState.gameState === "ROUND_END") {
             return <GameOver 
-                gameState={gameState} me={me!} onStart={handleStart} onLeaveRoom={handleLeaveRoom} 
+                gameState={gameState} me={me!} onStart={() => handleStart({ category: gameState.category || "Karışık", bettingEnabled: gameState.isBettingEnabled, jokersEnabled: gameState.isJokersEnabled, betAmount: gameState.betAmount })} onLeaveRoom={handleLeaveRoom} 
             />;
         }
         return null;
