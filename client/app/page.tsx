@@ -24,9 +24,10 @@ export default function Home() {
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
   const [forgotPasswordDialogOpen, setForgotPasswordDialogOpen] = useState(false);
   
-  const [user, setUser] = useState<{ id: string, username: string, avatar: string, gold: number, unlockedAvatars: string[] } | null>(null);
+  const [user, setUser] = useState<{ id: string, username: string, avatar: string, gold: number, unlockedAvatars: string[], level?: number, xp?: number, xpCurrent?: number, xpNext?: number, canClaimDaily?: boolean, loginStreak?: number } | null>(null);
   
   const [shopDialogOpen, setShopDialogOpen] = useState(false);
+  const [dailyRewardDialogOpen, setDailyRewardDialogOpen] = useState(false);
   const [shopItems, setShopItems] = useState<any[]>([]);
 
   const [leaderboardDialogOpen, setLeaderboardDialogOpen] = useState(false);
@@ -63,7 +64,19 @@ export default function Home() {
         .then(res => res.json())
         .then(data => {
           if (data.id) {
-            setUser({ id: data.id, username: data.username, avatar: data.avatar, gold: data.gold, unlockedAvatars: data.unlockedAvatars });
+            setUser({ 
+                id: data.id, 
+                username: data.username, 
+                avatar: data.avatar, 
+                gold: data.gold, 
+                unlockedAvatars: data.unlockedAvatars,
+                level: data.level,
+                xp: data.xp,
+                xpCurrent: data.xpCurrent,
+                xpNext: data.xpNext,
+                canClaimDaily: data.canClaimDaily,
+                loginStreak: data.loginStreak
+            });
           } else {
             localStorage.removeItem("gameToken");
           }
@@ -226,6 +239,28 @@ export default function Home() {
       setForgotPasswordDialogOpen(true);
   };
 
+  const handleClaimDaily = async () => {
+    const token = localStorage.getItem("gameToken");
+    if (!token) return;
+    try {
+        const res = await fetch("http://localhost:4000/api/auth/daily-reward", {
+            method: "POST",
+            headers: { "Authorization": `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (res.ok) {
+            toast.success(`🎁 📅 ${data.streak}. Gün Giriş Ödülü: ${data.amount} Altın kazandınız!`, {
+                autoClose: 5000
+            });
+            setUser(prev => prev ? { ...prev, gold: data.gold, canClaimDaily: false, loginStreak: data.streak } : prev);
+        } else {
+            toast.error(data.error || "Ödül alınamadı.");
+        }
+    } catch (e) {
+        toast.error("Bağlantı hatası!");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-900 text-white selection:bg-violet-500/30">
       
@@ -244,6 +279,13 @@ export default function Home() {
               
               {user && (
                 <>
+                    <Button 
+                        color={user.canClaimDaily ? "success" : "inherit"} 
+                        className={`font-bold border rounded-full px-4 ${user.canClaimDaily ? 'border-green-500/50 bg-green-500/10 text-green-400 animate-pulse' : 'border-slate-500/50 bg-slate-500/10 text-slate-400'}`} 
+                        onClick={() => setDailyRewardDialogOpen(true)}
+                    >
+                        🎁 GÜNLÜK ÖDÜL
+                    </Button>
                     <Button color="warning" className="font-bold border border-yellow-500/50 bg-yellow-500/10 rounded-full px-4" startIcon={<AttachMoneyIcon />}>
                         {user.gold || 0}
                     </Button>
@@ -253,8 +295,23 @@ export default function Home() {
                     <Button color="inherit" className="text-amber-400 hover:text-amber-300 font-bold" onClick={handleOpenLeaderboard}>
                         🏆 Liderlik
                     </Button>
-                    <Button color="inherit" className="text-cyan-400 hover:text-cyan-300 font-bold" onClick={openProfile} startIcon={<AccountCircleIcon />}>
-                        {user.username}
+                    <Button color="inherit" style={{ minWidth: '160px', maxWidth: '180px' }} className="flex flex-col items-stretch justify-center normal-case px-4 py-2 bg-slate-800/80 hover:bg-slate-700/80 rounded-2xl border border-slate-700/50 shadow-lg shadow-black/20" onClick={openProfile}>
+                        <div className="flex items-center justify-center gap-1.5 text-cyan-400 font-bold text-sm mb-1.5 w-full">
+                            <AccountCircleIcon fontSize="small" />
+                            <span className="truncate max-w-[110px]">{user.username}</span>
+                        </div>
+                        <div className="w-full flex flex-col items-stretch">
+                            <div className="flex justify-between w-full text-[10px] font-bold text-amber-400 mb-1 px-0.5">
+                                <span className="tracking-widest whitespace-nowrap">LVL {user.level || 1}</span>
+                                <span className="text-slate-400 font-medium tracking-wide whitespace-nowrap">{user.xpCurrent || 0} / {user.xpNext || 200}</span>
+                            </div>
+                            <div className="w-full h-1.5 bg-slate-900 rounded-full overflow-hidden shadow-inner border border-slate-700/50">
+                                <div 
+                                    className="h-full bg-gradient-to-r from-amber-500 to-yellow-300 rounded-full" 
+                                    style={{ width: `${Math.min(100, ((user.xpCurrent || 0) / (user.xpNext || 200)) * 100)}%` }}
+                                />
+                            </div>
+                        </div>
                     </Button>
                 </>
               )}
@@ -584,6 +641,23 @@ export default function Home() {
       >
         <DialogTitle className="text-center font-black text-2xl pt-6 pb-2">Profilim</DialogTitle>
         <DialogContent className="p-6 space-y-5">
+            <div className="bg-slate-800/80 border border-slate-700 p-4 rounded-2xl flex flex-col items-center">
+                <span className="text-slate-400 text-sm font-bold mb-1">Mevcut Seviye</span>
+                <span className="text-3xl font-black text-amber-400 mb-2">LVL {user?.level || 1}</span>
+                <div className="w-full flex flex-col items-center">
+                    <div className="flex justify-between w-full text-[10px] font-black tracking-widest text-slate-400 mb-1 px-1">
+                        <span>İlerleme</span>
+                        <span>{user?.xpCurrent || 0} / {user?.xpNext || 200} XP</span>
+                    </div>
+                    <div className="w-full h-2.5 bg-slate-900 rounded-full overflow-hidden shadow-inner">
+                        <div 
+                            className="h-full bg-gradient-to-r from-amber-500 to-yellow-300" 
+                            style={{ width: `${Math.min(100, ((user?.xpCurrent || 0) / (user?.xpNext || 200)) * 100)}%` }}
+                        />
+                    </div>
+                </div>
+            </div>
+
             <TextField
                 label="Kullanıcı Adı"
                 value={loginName}
@@ -598,7 +672,7 @@ export default function Home() {
             <div>
                 <p className="text-slate-400 text-sm mb-3">Karakterini Seç (Envanter):</p>
                 <div className="flex flex-wrap gap-3 max-h-[150px] overflow-y-auto custom-scrollbar p-1">
-                    {user?.unlockedAvatars?.map(avId => {
+                    {user?.unlockedAvatars?.filter(id => !id.startsWith('default-')).map(avId => {
                         const av = AVATARS.find(a => a.id === avId);
                         if (!av) return null;
                         return (
@@ -638,7 +712,72 @@ export default function Home() {
             </Button>
         </DialogContent>
       </Dialog>
+      <Dialog 
+        open={dailyRewardDialogOpen} 
+        onClose={() => setDailyRewardDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        slotProps={{ 
+            paper: { 
+              style: { backgroundColor: '#0f172a', color: 'white', borderRadius: '1.5rem', border: '1px solid #334155' },
+              className: "shadow-2xl shadow-green-500/20" 
+            }
+        }}
+      >
+        <DialogTitle className="text-center font-black text-2xl pt-6 pb-2 text-green-400">
+            🎁 Günlük Giriş Ödülleri
+        </DialogTitle>
+        <DialogContent className="p-6">
+            <p className="text-center text-slate-400 mb-6 font-medium">Her gün oyuna gir, serini bozma ve büyük ödüle ulaş!</p>
+            <div className="grid grid-cols-4 md:grid-cols-7 gap-2">
+                {[1, 2, 3, 4, 5, 6, 7].map((day) => {
+                    const amounts = [50, 100, 150, 200, 250, 300, 500];
+                    const amount = amounts[day - 1];
+                    const streak = user?.loginStreak || 0;
+                    
+                    let status = 'locked';
+                    
+                    if (user?.canClaimDaily) {
+                        if (day <= streak) status = 'claimed';
+                        else if (day === streak + 1) status = 'current';
+                    } else {
+                        if (day <= streak) status = 'claimed';
+                    }
 
+                    let bgColor = 'bg-slate-800 border-slate-700 opacity-50';
+                    if (status === 'claimed') bgColor = 'bg-green-500/20 border-green-500/50 text-green-400';
+                    if (status === 'current') bgColor = 'bg-yellow-500/20 border-yellow-500 text-yellow-400 shadow-lg shadow-yellow-500/20 animate-pulse';
+
+                    return (
+                        <div key={day} className={`flex flex-col items-center justify-center p-3 rounded-xl border ${bgColor} transition-all`}>
+                            <span className="text-xs font-bold opacity-75 mb-1">{day}. Gün</span>
+                            {status === 'claimed' ? (
+                                <span className="text-xl">✅</span>
+                            ) : status === 'locked' ? (
+                                <span className="text-xl opacity-50">🔒</span>
+                            ) : (
+                                <span className="text-2xl">🎁</span>
+                            )}
+                            <span className="text-sm font-black mt-1">{amount}</span>
+                        </div>
+                    );
+                })}
+            </div>
+            
+            <Button
+                variant="contained"
+                fullWidth
+                disabled={!user?.canClaimDaily}
+                onClick={() => {
+                    handleClaimDaily();
+                    setDailyRewardDialogOpen(false);
+                }}
+                className={`py-4 mt-8 rounded-xl font-black text-lg ${user?.canClaimDaily ? 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 shadow-lg shadow-green-500/30 text-white' : 'bg-slate-800 text-slate-500'}`}
+            >
+                {user?.canClaimDaily ? 'ÖDÜLÜ AL' : 'BUGÜNÜN ÖDÜLÜNÜ ALDIN!'}
+            </Button>
+        </DialogContent>
+      </Dialog>
       <Dialog 
         open={shopDialogOpen} 
         onClose={() => setShopDialogOpen(false)}
