@@ -19,6 +19,24 @@ const authMiddleware = (req, res, next) => {
     }
 };
 
+function calculateLevelAndXP(totalXp) {
+    let level = 1;
+    let xpNeededForNext = 200;
+    let xpForCurrentLevel = 0;
+    
+    while (totalXp >= xpForCurrentLevel + xpNeededForNext) {
+        xpForCurrentLevel += xpNeededForNext;
+        level++;
+        xpNeededForNext += 100;
+    }
+    
+    return {
+        level,
+        xpInCurrentLevel: totalXp - xpForCurrentLevel,
+        xpNeededForNext
+    };
+}
+
 router.post("/register", async (req, res) => {
     try {
         const { username, email, password } = req.body;
@@ -76,7 +94,11 @@ router.post("/register", async (req, res) => {
                 email: user.email, 
                 avatar: user.avatar,
                 gold: user.gold,
-                unlockedAvatars: user.unlockedAvatars
+                unlockedAvatars: user.unlockedAvatars,
+level: calculateLevelAndXP(user.xp || 0).level,
+xp: user.xp || 0,
+xpCurrent: calculateLevelAndXP(user.xp || 0).xpInCurrentLevel,
+xpNext: calculateLevelAndXP(user.xp || 0).xpNeededForNext
             }
         });
     } catch (error) {
@@ -112,7 +134,11 @@ router.post("/login", async (req, res) => {
                 email: user.email, 
                 avatar: user.avatar,
                 gold: user.gold,
-                unlockedAvatars: user.unlockedAvatars
+                unlockedAvatars: user.unlockedAvatars,
+level: calculateLevelAndXP(user.xp || 0).level,
+xp: user.xp || 0,
+xpCurrent: calculateLevelAndXP(user.xp || 0).xpInCurrentLevel,
+xpNext: calculateLevelAndXP(user.xp || 0).xpNeededForNext
             }
         });
     } catch (error) {
@@ -127,14 +153,74 @@ router.get("/me", authMiddleware, async (req, res) => {
         if (!user) {
             return res.status(404).json({ error: "Kullanıcı bulunamadı." });
         }
+
+        let canClaimDaily = false;
+        let streak = user.loginStreak || 0;
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+        if (!user.lastLoginDate || user.lastLoginDate < today) {
+            canClaimDaily = true;
+            const yesterday = new Date(today);
+            yesterday.setDate(yesterday.getDate() - 1);
+            
+            if (!user.lastLoginDate || user.lastLoginDate < yesterday) {
+                // If they missed yesterday, their NEXT claim will be streak 1
+                streak = 0; 
+            }
+        }
+
         res.json({
             id: user._id,
             username: user.username,
             email: user.email,
             avatar: user.avatar,
             gold: user.gold,
-            unlockedAvatars: user.unlockedAvatars
+            unlockedAvatars: user.unlockedAvatars,
+level: calculateLevelAndXP(user.xp || 0).level,
+xp: user.xp || 0,
+xpCurrent: calculateLevelAndXP(user.xp || 0).xpInCurrentLevel,
+xpNext: calculateLevelAndXP(user.xp || 0).xpNeededForNext,
+            canClaimDaily,
+            loginStreak: streak
         });
+    } catch (error) {
+        res.status(500).json({ error: "Sunucu hatası" });
+    }
+});
+
+router.post("/daily-reward", authMiddleware, async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id);
+        if (!user) return res.status(404).json({ error: "Kullanıcı bulunamadı." });
+
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+        if (user.lastLoginDate && user.lastLoginDate >= today) {
+            return res.status(400).json({ error: "Bugünün ödülünü zaten aldın!" });
+        }
+
+        let streak = user.loginStreak || 0;
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+
+        if (user.lastLoginDate && user.lastLoginDate >= yesterday) {
+            streak++;
+        } else {
+            streak = 1;
+        }
+        if (streak > 7) streak = 7;
+
+        const rewardAmounts = { 1: 50, 2: 100, 3: 150, 4: 200, 5: 250, 6: 300, 7: 500 };
+        const amount = rewardAmounts[streak] || 50;
+
+        user.gold += amount;
+        user.lastLoginDate = today;
+        user.loginStreak = streak;
+        await user.save();
+
+        res.json({ success: true, amount, streak, gold: user.gold });
     } catch (error) {
         res.status(500).json({ error: "Sunucu hatası" });
     }
@@ -166,7 +252,11 @@ router.put("/profile", authMiddleware, async (req, res) => {
             username: user.username, 
             avatar: user.avatar,
             gold: user.gold,
-            unlockedAvatars: user.unlockedAvatars
+            unlockedAvatars: user.unlockedAvatars,
+level: calculateLevelAndXP(user.xp || 0).level,
+xp: user.xp || 0,
+xpCurrent: calculateLevelAndXP(user.xp || 0).xpInCurrentLevel,
+xpNext: calculateLevelAndXP(user.xp || 0).xpNeededForNext
         });
     } catch (error) {
         res.status(500).json({ error: "Sunucu hatası" });

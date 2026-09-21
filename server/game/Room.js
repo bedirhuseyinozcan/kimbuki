@@ -135,6 +135,7 @@ class Room {
         if (this.users.length < 2) return; 
 
         this.category = settings.category || "Karışık";
+        this.initialPlayerCount = this.users.length;
         this.isBettingEnabled = settings.bettingEnabled || false;
         this.betAmount = settings.betAmount || 50;
         this.isJokersEnabled = settings.jokersEnabled !== undefined ? settings.jokersEnabled : true;
@@ -275,7 +276,7 @@ class Room {
             if (v === true) yesVotes++;
         }
         
-        const majority = Math.floor(playingUsers.length / 2) + 1;
+        const majority = Math.ceil(playingUsers.length / 2);
         
         const User = require('../models/User');
         if (yesVotes >= majority) {
@@ -367,31 +368,52 @@ class Room {
         if (isCorrect) {
             user.status = 'spectator';
             this.winners.push(user.id);
-            
             const User = require('../models/User');
             
+            let winnerReward = 50; 
+            let bettorReward = 0;
+            const rank = this.winners.length; 
             
-            let winnerReward = this.isBettingEnabled ? (this.betAmount * 2) : 50; 
+            if (this.isBettingEnabled) {
+                const playersCount = this.initialPlayerCount || this.users.length;
+                const totalPot = playersCount * this.betAmount;
+                let pct = 0;
+                
+                if (playersCount <= 2) {
+                    pct = rank === 1 ? 1.0 : 0;
+                } else if (playersCount === 3) {
+                    pct = rank === 1 ? 0.60 : (rank === 2 ? 0.40 : 0);
+                } else if (playersCount === 4) {
+                    pct = rank === 1 ? 0.50 : (rank === 2 ? 0.30 : (rank === 3 ? 0.20 : 0));
+                } else {
+                    if (rank === 1) pct = 0.40;
+                    else if (rank === 2) pct = 0.30;
+                    else if (rank === 3) pct = 0.20;
+                    else if (rank === 4) pct = 0.10;
+                    else pct = 0;
+                }
+                
+                winnerReward = Math.floor(totalPot * pct);
+                bettorReward = winnerReward; 
+            }
             
-            if (user.dbId) {
-                User.findByIdAndUpdate(user.dbId, { $inc: { gold: winnerReward } })
+            if (user.dbId && winnerReward > 0) {
+                User.findByIdAndUpdate(user.dbId, { $inc: { gold: winnerReward, xp: 100 } })
                     .catch(err => console.error("Gold update error:", err));
             }
 
-            const winMsg = `${user.name} doğru tahmin etti ve oyunu kazanarak ${winnerReward} Altın aldı! Kelimesi: ${user.assignedWord}`;
+            const winMsg = `${user.name} doğru tahmin etti! (${rank}. oldu) ve ${winnerReward} Altın kazandı! Kelimesi: ${user.assignedWord}`;
             this.chatHistory.push({ system: true, message: winMsg, timestamp: Date.now() });
             this.roundLogs.push(winMsg);
 
-            if (this.isBettingEnabled) {
-                
+            if (this.isBettingEnabled && bettorReward > 0) {
                 const bettors = Object.keys(this.bets || {}).filter(uid => this.bets[uid] === user.id);
                 let bettorNames = [];
-                let bettorReward = this.betAmount * 2;
                 
                 for (let uid of bettors) {
                     const bettorUser = this.users.find(u => u.id === uid);
                     if (bettorUser && bettorUser.dbId) {
-                        User.findByIdAndUpdate(bettorUser.dbId, { $inc: { gold: bettorReward } })
+                        User.findByIdAndUpdate(bettorUser.dbId, { $inc: { gold: bettorReward, xp: 50 } })
                             .catch(err => console.error("Gold update error:", err));
                         bettorNames.push(bettorUser.name);
                     }
@@ -590,6 +612,15 @@ class Room {
     endGame() {
         this.gameState = "ROUND_END";
         if (this.timer) clearTimeout(this.timer);
+        
+        const User = require('../models/User');
+        for (let u of this.users) {
+            if (u.dbId && !this.winners.includes(u.id)) {
+                User.findByIdAndUpdate(u.dbId, { $inc: { xp: 20 } })
+                    .catch(err => console.error("XP update error:", err));
+            }
+        }
+        
         this.broadcastState();
     }
 

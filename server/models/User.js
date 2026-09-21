@@ -20,7 +20,7 @@ const userSchema = new mongoose.Schema({
     },
     avatar: {
         type: String,
-        default: 'default-violet'
+        default: 'Warrior'
     },
     gold: {
         type: Number,
@@ -28,7 +28,23 @@ const userSchema = new mongoose.Schema({
     },
     unlockedAvatars: {
         type: [String],
-        default: ['default-violet', 'default-red', 'default-blue', 'default-green', 'default-yellow', 'default-pink']
+        default: ['Warrior']
+    },
+    lastLoginDate: {
+        type: Date,
+        default: null
+    },
+    loginStreak: {
+        type: Number,
+        default: 0
+    },
+    level: {
+        type: Number,
+        default: 1
+    },
+    xp: {
+        type: Number,
+        default: 0
     },
     createdAt: {
         type: Date,
