@@ -134,7 +134,7 @@ export default function Home() {
         : { email: loginEmail, username: loginName, password: loginPassword };
     
     try {
-      const res = await fetch(\`${process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:4000"}/api/auth/${endpoint}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:4000"}/api/auth/${endpoint}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
