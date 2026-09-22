@@ -1,0 +1,4587 @@
+PROJE DOSYA VE KLASÖR AĞACI:
+==================================================
+📁 ./
+    📄 .gitignore
+    📄 LICENSE
+    📄 README.md
+    📁 client/
+        📄 .gitignore
+        📄 README.md
+        📄 eslint.config.mjs
+        📄 global.d.ts
+        📄 next-env.d.ts
+        📄 next.config.ts
+        📄 package-lock.json
+        📄 package.json
+        📄 postcss.config.mjs
+        📄 tsconfig.json
+        📄 tsconfig.tsbuildinfo
+        📁 app/
+            📄 favicon.ico
+            📄 globals.css
+            📄 layout.tsx
+            📄 page.tsx
+            📁 game/
+                📁 [code]/
+                    📄 page.tsx
+        📁 components/
+            📄 Logo.tsx
+            📁 game/
+                📄 BettingPhase.tsx
+                📄 GameOver.tsx
+                📄 GameScene.tsx
+                📄 Lobby.tsx
+                📄 Scene3D.tsx
+                📄 WordSelection.tsx
+                📄 types.tsx
+                📄 useWebRTC.ts
+        📁 public/
+            📄 file.svg
+            📄 globe.svg
+            📄 next.svg
+            📄 vercel.svg
+            📄 window.svg
+            📁 avatars/
+                📄 Cleric.gltf
+                📄 Monk.gltf
+                📄 Ranger.gltf
+                📄 Rogue.gltf
+                📄 Warrior.gltf
+                📄 Wizard.gltf
+            📁 maps/
+                📄 floating_island__low_poly_vr.glb
+        📁 utils/
+            📄 audio.ts
+    📁 docs/
+    📁 server/
+        📄 index.js
+        📄 package-lock.json
+        📄 package.json
+        📁 config/
+            📄 db.js
+        📁 game/
+            📄 GameManager.js
+            📄 Room.js
+        📁 models/
+            📄 User.js
+        📁 routes/
+            📄 auth.js
+            📄 shop.js
+            📄 stats.js
+==================================================
+
+DOSYA KOD İÇERİKLERİ:
+==================================================
+
+=========================
+DOSYA: .gitignore
+=========================
+
+# deps
+node_modules/
+
+# env
+.env
+.env.* 
+!.env.example
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# build
+dist/
+build/
+.next/
+out/
+coverage/
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+
+=========================
+DOSYA: LICENSE
+=========================
+
+MIT License
+
+Copyright (c) 2026 Bedir Özcan
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+
+=========================
+DOSYA: README.md
+=========================
+
+# Kimbuki — Multiplayer Eğlenceli Tahmin Oyunu
+
+Arkadaşlarınızla oynayabileceğiniz, herkesin kafasında bir kelime/isim yazdığı ve kim olduğunu bulmaya çalıştığı klasik "Ben Kimim?" (Post-it) oyununun modern, dijital ve çok oyunculu (multiplayer) versiyonudur.
+
+## Oyun Mantığı
+
+1. **Oda Kur & Katıl:** Bir kişi oda kurar ve davet bağlantısını arkadaşlarına atar.
+2. **Kelime Belirleme:** Oyun başlayınca sistem herkesi birbiriyle eşleştirir. Her oyuncu, eşleştiği kişinin alnında yazacak olan kelimeyi (örn. bir futbolcu, ünlü, obje) yazar.
+3. **Oyun Sahnesi:** Herkes diğerlerinin alnındaki kelimeyi görebilir, ancak kendi kelimesini göremez.
+4. **Sırayla Soru Sorma:** Sırası gelen kişi 30 saniye içinde genel sorular sorar (örn: "Ben yaşıyor muyum?", "Futbolcu muyum?").
+5. **Tahmin Etme:** Kelimesini bulduğunu düşünen kişi **Tahmin Et** butonunu kullanır. Doğru bilirse oyunu kazanır ve izleyici moduna geçer, oyun diğerleri için devam eder.
+
+## Teknolojiler (Hibrit Yapı)
+
+- **Frontend (client/):** Next.js (App Router), React, Tailwind CSS (Düzen ve genel stil), Material UI (MUI - Komponentler ve Dialoglar), Socket.io-client.
+- **Backend (server/):** Node.js, Express, Socket.io.
+
+## Kurulum ve Çalıştırma
+
+### Sunucu (Server)
+
+```bash
+cd server
+npm install
+npm run dev
+```
+
+Sunucu `http://localhost:4000` adresinde çalışacaktır.
+
+### İstemci (Client)
+
+```bash
+cd client
+npm install
+npm run dev
+```
+
+Uygulama `http://localhost:3000` adresinde açılacaktır.
+
+## Lisans
+
+MIT
+
+
+=========================
+DOSYA: client\.gitignore
+=========================
+
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files (can opt-in for committing if needed)
+.env*
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+
+=========================
+DOSYA: client\README.md
+=========================
+
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+
+## Getting Started
+
+First, run the development server:
+
+```bash
+npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+
+You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+
+## Learn More
+
+To learn more about Next.js, take a look at the following resources:
+
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+
+## Deploy on Vercel
+
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+
+=========================
+DOSYA: client\eslint.config.mjs
+=========================
+
+import { defineConfig, globalIgnores } from "eslint/config";
+import nextVitals from "eslint-config-next/core-web-vitals";
+import nextTs from "eslint-config-next/typescript";
+
+const eslintConfig = defineConfig([
+  ...nextVitals,
+  ...nextTs,
+  // Override default ignores of eslint-config-next.
+  globalIgnores([
+    // Default ignores of eslint-config-next:
+    ".next/**",
+    "out/**",
+    "build/**",
+    "next-env.d.ts",
+  ]),
+]);
+
+export default eslintConfig;
+
+
+=========================
+DOSYA: client\global.d.ts
+=========================
+
+declare module '*.css' {
+  const content: { [className: string]: string };
+  export default content;
+}
+
+
+=========================
+DOSYA: client\next-env.d.ts
+=========================
+
+/// <reference types="next" />
+/// <reference types="next/image-types/global" />
+import "./.next/dev/types/routes.d.ts";
+
+// NOTE: This file should not be edited
+// see https://nextjs.org/docs/app/api-reference/config/typescript for more information.
+
+
+=========================
+DOSYA: client\next.config.ts
+=========================
+
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  /* config options here */
+};
+
+export default nextConfig;
+
+
+=========================
+DOSYA: client\package.json
+=========================
+
+{
+  "name": "client",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@mui/icons-material": "^9.3.1",
+    "@mui/material": "^9.3.1",
+    "@react-three/drei": "^10.7.8",
+    "@react-three/fiber": "^9.7.0",
+    "canvas-confetti": "^1.9.4",
+    "framer-motion": "^13.2.0",
+    "next": "16.1.6",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-icons": "^5.7.0",
+    "react-toastify": "^11.1.0",
+    "socket.io-client": "^4.8.3",
+    "three": "^0.186.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/canvas-confetti": "^1.9.0",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@types/three": "^0.186.0",
+    "eslint": "^9",
+    "eslint-config-next": "16.1.6",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}
+
+
+=========================
+DOSYA: client\postcss.config.mjs
+=========================
+
+const config = {
+  plugins: {
+    "@tailwindcss/postcss": {},
+  },
+};
+
+export default config;
+
+
+=========================
+DOSYA: client\tsconfig.json
+=========================
+
+{
+  "compilerOptions": {
+    "target": "ES2017",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": ["./*"]
+    }
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts",
+    "**/*.mts"
+  ],
+  "exclude": ["node_modules"]
+}
+
+
+=========================
+DOSYA: client\app\globals.css
+=========================
+
+@import "tailwindcss";
+
+:root {
+  --background: #0f172a;
+  
+  --foreground: #f8fafc;
+  
+  --primary: #8b5cf6;
+  
+  --secondary: #06b6d4;
+  
+  --accent: #f43f5e;
+  
+  --card: rgba(30, 41, 59, 0.7);
+  
+  --border: rgba(148, 163, 184, 0.2);
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  background-image:
+    radial-gradient(at 0% 0%, hsla(253, 16%, 7%, 1) 0, transparent 50%),
+    radial-gradient(at 50% 0%, hsla(225, 39%, 30%, 1) 0, transparent 50%),
+    radial-gradient(at 100% 0%, hsla(339, 49%, 30%, 1) 0, transparent 50%);
+  background-attachment: fixed;
+  font-family: 'Inter', system-ui, sans-serif;
+  min-height: 100vh;
+}
+
+
+.glass {
+  background: var(--card);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+}
+
+
+.btn {
+  @apply px-6 py-3 rounded-xl font-bold transition-all duration-200 active:scale-95 shadow-lg;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  color: white;
+  box-shadow: 0 4px 14px 0 rgba(139, 92, 246, 0.4);
+}
+
+.btn-primary:hover {
+  box-shadow: 0 6px 20px rgba(139, 92, 246, 0.23);
+  transform: translateY(-2px);
+}
+
+.btn-secondary {
+  @apply bg-slate-700 text-white hover:bg-slate-600;
+}
+
+
+.input-field {
+  @apply w-full px-4 py-3 rounded-xl bg-slate-800/50 border border-slate-700 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/50 outline-none transition-all;
+}
+
+=========================
+DOSYA: client\app\layout.tsx
+=========================
+
+import type { Metadata } from "next";
+import { Geist, Geist_Mono } from "next/font/google";
+import "@/app/globals.css";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+export const metadata: Metadata = {
+  title: "Kimbuki",
+  description: "Arkadaşlarınla oynayabileceğin eğlenceli bir tahmin oyunu.",
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="en">
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+      >
+        {children}
+        <ToastContainer 
+          position="top-right" 
+          autoClose={3000} 
+          hideProgressBar={false}
+          newestOnTop
+          closeOnClick
+          rtl={false}
+          pauseOnFocusLoss
+          draggable
+          pauseOnHover
+          theme="dark"
+        />
+      </body>
+    </html>
+  );
+}
+
+
+=========================
+DOSYA: client\app\page.tsx
+=========================
+
+"use client";
+
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { TextField, Button, Dialog, DialogTitle, DialogContent, AppBar, Toolbar, Typography, Container, Card, CardContent, Tabs, Tab, Link as MuiLink } from "@mui/material";
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import GroupIcon from '@mui/icons-material/Group';
+import LightbulbIcon from '@mui/icons-material/Lightbulb';
+import QuestionMarkIcon from '@mui/icons-material/QuestionMark';
+import AccountCircleIcon from '@mui/icons-material/AccountCircle';
+import PersonOutlineIcon from '@mui/icons-material/PersonOutlined';
+import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
+import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
+import StorefrontIcon from '@mui/icons-material/Storefront';
+import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
+import { InputAdornment, Avatar } from "@mui/material";
+import { toast } from 'react-toastify';
+import Logo from "@/components/Logo";
+import { AVATARS } from "@/components/game/types";
+
+export default function Home() {
+  const [roomCode, setRoomCode] = useState("");
+  const [playDialogOpen, setPlayDialogOpen] = useState(false);
+  const [profileDialogOpen, setProfileDialogOpen] = useState(false);
+  const [forgotPasswordDialogOpen, setForgotPasswordDialogOpen] = useState(false);
+  
+  const [user, setUser] = useState<{ id: string, username: string, avatar: string, gold: number, unlockedAvatars: string[], level?: number, xp?: number, xpCurrent?: number, xpNext?: number, canClaimDaily?: boolean, loginStreak?: number } | null>(null);
+  
+  const [shopDialogOpen, setShopDialogOpen] = useState(false);
+  const [dailyRewardDialogOpen, setDailyRewardDialogOpen] = useState(false);
+  const [shopItems, setShopItems] = useState<any[]>([]);
+
+  const [leaderboardDialogOpen, setLeaderboardDialogOpen] = useState(false);
+  const [leaderboard, setLeaderboard] = useState<any[]>([]);
+  const [liveStats, setLiveStats] = useState({ activeRooms: 0, activePlayers: 0 });
+
+  const [authTab, setAuthTab] = useState(0);
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginName, setLoginName] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [selectedAvatar, setSelectedAvatar] = useState("");
+  const [loginLoading, setLoginLoading] = useState(false);
+  
+  const router = useRouter();
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const inviteCode = params.get("invite");
+    if (inviteCode) {
+        setRoomCode(inviteCode);
+        setPlayDialogOpen(true);
+    }
+
+    fetch("http://localhost:4000/api/stats/live")
+      .then(res => res.json())
+      .then(data => setLiveStats(data))
+      .catch(() => {});
+
+    const token = localStorage.getItem("gameToken");
+    if (token) {
+      fetch("http://localhost:4000/api/auth/me", {
+        headers: { "Authorization": `Bearer ${token}` }
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.id) {
+            setUser({ 
+                id: data.id, 
+                username: data.username, 
+                avatar: data.avatar, 
+                gold: data.gold, 
+                unlockedAvatars: data.unlockedAvatars,
+                level: data.level,
+                xp: data.xp,
+                xpCurrent: data.xpCurrent,
+                xpNext: data.xpNext,
+                canClaimDaily: data.canClaimDaily,
+                loginStreak: data.loginStreak
+            });
+          } else {
+            localStorage.removeItem("gameToken");
+          }
+        })
+        .catch(() => localStorage.removeItem("gameToken"));
+    }
+
+    fetch("http://localhost:4000/api/shop/items")
+      .then(res => res.json())
+      .then(data => setShopItems(data))
+      .catch(() => {});
+  }, []);
+
+  const handleOpenLeaderboard = () => {
+      fetch("http://localhost:4000/api/stats/leaderboard")
+        .then(res => res.json())
+        .then(data => {
+            setLeaderboard(data);
+            setLeaderboardDialogOpen(true);
+        })
+        .catch(() => toast.error("Liderlik tablosu yüklenemedi."));
+  };
+
+  const handleAuth = async () => {
+    if (authTab === 0 && (!loginEmail.trim() || !loginPassword.trim())) return toast.error("Lütfen e-posta ve şifre girin!");
+    if (authTab === 1 && (!loginEmail.trim() || !loginName.trim() || !loginPassword.trim())) return toast.error("Lütfen tüm alanları doldurun!");
+    
+    if (authTab === 1) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(loginEmail)) {
+            return toast.error("Lütfen geçerli bir e-posta adresi girin.");
+        }
+        if (loginName.length < 3) {
+            return toast.error("Kullanıcı adı en az 3 karakter olmalıdır.");
+        }
+        if (loginPassword.length < 8) {
+            return toast.error("Şifre en az 8 karakter olmalıdır.");
+        }
+        if (!/(?=.*[a-z])/.test(loginPassword)) {
+            return toast.error("Şifre en az bir küçük harf içermelidir.");
+        }
+        if (!/(?=.*[A-Z])/.test(loginPassword)) {
+            return toast.error("Şifre en az bir büyük harf içermelidir.");
+        }
+        if (!/(?=.*\d)/.test(loginPassword)) {
+            return toast.error("Şifre en az bir rakam (sayı) içermelidir.");
+        }
+    }
+
+    setLoginLoading(true);
+    
+    const endpoint = authTab === 0 ? "login" : "register";
+    const payload = authTab === 0 
+        ? { email: loginEmail, password: loginPassword }
+        : { email: loginEmail, username: loginName, password: loginPassword };
+    
+    try {
+      const res = await fetch(`http://localhost:4000/api/auth/${endpoint}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      
+      if (data.token) {
+        setUser(data.user);
+        localStorage.setItem("gameToken", data.token);
+        setLoginName("");
+        setLoginEmail("");
+        setLoginPassword("");
+        toast.success(`Hoş geldin ${data.user.username}!`);
+      } else {
+        toast.error(data.error || "İşlem başarısız.");
+      }
+    } catch (err) {
+      toast.error("Sunucuya bağlanılamadı.");
+    }
+    setLoginLoading(false);
+  };
+
+  const handleUpdateProfile = async () => {
+      const token = localStorage.getItem("gameToken");
+      if (!token) return;
+      try {
+          const res = await fetch("http://localhost:4000/api/auth/profile", {
+              method: "PUT",
+              headers: { 
+                  "Content-Type": "application/json",
+                  "Authorization": `Bearer ${token}`
+              },
+              body: JSON.stringify({ username: loginName, avatar: selectedAvatar })
+          });
+          const data = await res.json();
+          if (data.id) {
+              setUser(data);
+              setProfileDialogOpen(false);
+              toast.success("Profil güncellendi!");
+          } else {
+              toast.error(data.error || "Hata oluştu");
+          }
+      } catch (err) {
+          toast.error("Sunucuya bağlanılamadı.");
+      }
+  };
+
+  const handleLogout = () => {
+      localStorage.removeItem("gameToken");
+      setUser(null);
+      setProfileDialogOpen(false);
+  };
+
+  const handleBuyAvatar = async (avatarId: string) => {
+    const token = localStorage.getItem("gameToken");
+    if (!token) return toast.error("Giriş yapmanız gerekiyor.");
+    
+    try {
+      const res = await fetch("http://localhost:4000/api/shop/buy", {
+          method: "POST",
+          headers: { 
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${token}`
+          },
+          body: JSON.stringify({ avatarId })
+      });
+      const data = await res.json();
+      if (res.ok) {
+          toast.success(data.message);
+          if (user) {
+              setUser({ ...user, gold: data.gold, unlockedAvatars: data.unlockedAvatars });
+          }
+      } else {
+          toast.error(data.error);
+      }
+    } catch (err) {
+      toast.error("Sunucuya bağlanılamadı.");
+    }
+  };
+
+  const openProfile = () => {
+      setLoginName(user?.username || "");
+      setSelectedAvatar(user?.avatar || "default-violet");
+      setProfileDialogOpen(true);
+  };
+
+  const handleCreate = () => {
+    const code = Math.random().toString(36).slice(2, 8).toUpperCase();
+    router.push(`/game/${code}`);
+  };
+
+  const handleJoin = () => {
+    if (!roomCode.trim()) return toast.warning("Lütfen oda kodunu gir!");
+    router.push(`/game/${roomCode.toUpperCase()}`);
+  };
+
+  const scrollToSection = (id: string) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const handleForgotPassword = () => {
+      setForgotPasswordDialogOpen(true);
+  };
+
+  const handleClaimDaily = async () => {
+    const token = localStorage.getItem("gameToken");
+    if (!token) return;
+    try {
+        const res = await fetch("http://localhost:4000/api/auth/daily-reward", {
+            method: "POST",
+            headers: { "Authorization": `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (res.ok) {
+            toast.success(`🎁 📅 ${data.streak}. Gün Giriş Ödülü: ${data.amount} Altın kazandınız!`, {
+                autoClose: 5000
+            });
+            setUser(prev => prev ? { ...prev, gold: data.gold, canClaimDaily: false, loginStreak: data.streak } : prev);
+        } else {
+            toast.error(data.error || "Ödül alınamadı.");
+        }
+    } catch (e) {
+        toast.error("Bağlantı hatası!");
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-900 text-white selection:bg-violet-500/30">
+      
+      <AppBar position="sticky" elevation={0} color="transparent" className="bg-slate-900/60 backdrop-blur-xl border-b border-white/10 shadow-lg shadow-black/20">
+        <Container maxWidth="lg">
+          <Toolbar disableGutters className="flex justify-between py-3">
+            <div className="flex items-center gap-3 cursor-pointer" onClick={() => window.scrollTo(0, 0)}>
+                <Logo size="sm" />
+                <Typography variant="h6" className="font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-amber-500 hidden sm:block tracking-wider">
+                  KİMBUKİ
+                </Typography>
+            </div>
+            <div className="hidden md:flex gap-6 items-center">
+              <Button color="inherit" className="text-slate-300 hover:text-white" onClick={() => scrollToSection('nasil-oynanir')}>Nasıl Oynanır?</Button>
+              <Button color="inherit" className="text-slate-300 hover:text-white" onClick={() => scrollToSection('biz-kimiz')}>Biz Kimiz?</Button>
+              
+              {user && (
+                <>
+                    <Button 
+                        color={user.canClaimDaily ? "success" : "inherit"} 
+                        className={`font-bold border rounded-full px-4 ${user.canClaimDaily ? 'border-green-500/50 bg-green-500/10 text-green-400 animate-pulse' : 'border-slate-500/50 bg-slate-500/10 text-slate-400'}`} 
+                        onClick={() => setDailyRewardDialogOpen(true)}
+                    >
+                        🎁 GÜNLÜK ÖDÜL
+                    </Button>
+                    <Button color="warning" className="font-bold border border-yellow-500/50 bg-yellow-500/10 rounded-full px-4" startIcon={<AttachMoneyIcon />}>
+                        {user.gold || 0}
+                    </Button>
+                    <Button color="inherit" className="text-cyan-400 hover:text-cyan-300 font-bold" onClick={() => setShopDialogOpen(true)} startIcon={<StorefrontIcon />}>
+                        Mağaza
+                    </Button>
+                    <Button color="inherit" className="text-amber-400 hover:text-amber-300 font-bold" onClick={handleOpenLeaderboard}>
+                        🏆 Liderlik
+                    </Button>
+                    <Button color="inherit" style={{ minWidth: '160px', maxWidth: '180px' }} className="flex flex-col items-stretch justify-center normal-case px-4 py-2 bg-slate-800/80 hover:bg-slate-700/80 rounded-2xl border border-slate-700/50 shadow-lg shadow-black/20" onClick={openProfile}>
+                        <div className="flex items-center justify-center gap-1.5 text-cyan-400 font-bold text-sm mb-1.5 w-full">
+                            <AccountCircleIcon fontSize="small" />
+                            <span className="truncate max-w-[110px]">{user.username}</span>
+                        </div>
+                        <div className="w-full flex flex-col items-stretch">
+                            <div className="flex justify-between w-full text-[10px] font-bold text-amber-400 mb-1 px-0.5">
+                                <span className="tracking-widest whitespace-nowrap">LVL {user.level || 1}</span>
+                                <span className="text-slate-400 font-medium tracking-wide whitespace-nowrap">{user.xpCurrent || 0} / {user.xpNext || 200}</span>
+                            </div>
+                            <div className="w-full h-1.5 bg-slate-900 rounded-full overflow-hidden shadow-inner border border-slate-700/50">
+                                <div 
+                                    className="h-full bg-gradient-to-r from-amber-500 to-yellow-300 rounded-full" 
+                                    style={{ width: `${Math.min(100, ((user.xpCurrent || 0) / (user.xpNext || 200)) * 100)}%` }}
+                                />
+                            </div>
+                        </div>
+                    </Button>
+                </>
+              )}
+
+              <Button variant="contained" className="bg-gradient-to-r from-violet-600 to-cyan-600 hover:from-violet-500 hover:to-cyan-500 shadow-lg shadow-violet-500/25 font-bold rounded-full px-8 py-2" onClick={() => setPlayDialogOpen(true)}>
+                Oyna
+              </Button>
+            </div>
+          </Toolbar>
+        </Container>
+      </AppBar>
+
+      <section className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden">
+        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-5 pointer-events-none"></div>
+        <Container maxWidth="md" className="relative z-10 text-center">
+          <div className="flex justify-center mb-10 animate-bounce">
+            <Logo size="xl" />
+          </div>
+          <h1 className="text-5xl md:text-7xl font-black mb-6 tracking-tight">
+            Arkadaşlarınla Eğlenceli <br/> 
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-amber-500">Tahmin Oyunu</span>
+          </h1>
+          <p className="text-xl text-slate-400 mb-6 max-w-2xl mx-auto leading-relaxed">
+            Klasik "Alnımdaki kağıtta ne yazıyor?" oyununun modern ve dijital hali. 
+            Hemen kayıt ol, bir oda kur, arkadaşlarını davet et ve kim olduğunu bulmaya çalış!
+          </p>
+          
+          <div className="flex justify-center items-center gap-6 mb-10 text-slate-300 bg-slate-800/50 w-max mx-auto px-6 py-2 rounded-full border border-slate-700 shadow-xl">
+              <div className="flex items-center gap-2">
+                  <span className="relative flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                  </span>
+                  <span className="font-bold">{liveStats.activePlayers} Oyuncu</span>
+              </div>
+              <div className="w-px h-4 bg-slate-600"></div>
+              <div className="font-bold text-cyan-400">{liveStats.activeRooms} Aktif Oda</div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row justify-center gap-4">
+            <Button 
+              variant="contained" 
+              size="large" 
+              startIcon={<PlayArrowIcon />}
+              onClick={() => setPlayDialogOpen(true)}
+              className="bg-gradient-to-r from-violet-600 to-cyan-600 hover:from-violet-500 hover:to-cyan-500 text-lg py-3 px-8 rounded-full font-bold shadow-lg shadow-violet-500/25"
+            >
+              Hemen Başla
+            </Button>
+            <Button 
+              variant="outlined" 
+              size="large" 
+              onClick={() => scrollToSection('nasil-oynanir')}
+              className="border-slate-600 text-slate-300 hover:bg-slate-800 hover:border-slate-500 text-lg py-3 px-8 rounded-full"
+            >
+              Nasıl Oynanır?
+            </Button>
+          </div>
+        </Container>
+      </section>
+
+      <section id="nasil-oynanir" className="py-20 bg-slate-800/30 border-y border-slate-800">
+        <Container maxWidth="lg">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-5xl font-black mb-4">Nasıl Oynanır?</h2>
+            <p className="text-slate-400 text-lg">Sadece 3 basit adımda oynamaya başla.</p>
+          </div>
+          <div className="grid md:grid-cols-3 gap-8">
+            <Card className="bg-slate-800 border border-slate-700 text-white shadow-xl hover:-translate-y-2 transition-transform duration-300">
+              <CardContent className="p-8 text-center flex flex-col items-center">
+                <div className="w-16 h-16 bg-blue-500/20 rounded-2xl flex items-center justify-center mb-6 text-blue-400">
+                  <GroupIcon fontSize="large" />
+                </div>
+                <h3 className="text-2xl font-bold mb-3">1. Odada Toplanın</h3>
+                <p className="text-slate-400">Giriş yapıp bir oda kur ve davet linkini arkadaşlarınla paylaş.</p>
+              </CardContent>
+            </Card>
+            <Card className="bg-slate-800 border border-slate-700 text-white shadow-xl hover:-translate-y-2 transition-transform duration-300">
+              <CardContent className="p-8 text-center flex flex-col items-center">
+                <div className="w-16 h-16 bg-violet-500/20 rounded-2xl flex items-center justify-center mb-6 text-violet-400">
+                  <LightbulbIcon fontSize="large" />
+                </div>
+                <h3 className="text-2xl font-bold mb-3">2. Kelimeleri Seçin</h3>
+                <p className="text-slate-400">Oyun başladığında, eşleştiğin arkadaşının alnında yazacak kelimeyi sen belirle.</p>
+              </CardContent>
+            </Card>
+            <Card className="bg-slate-800 border border-slate-700 text-white shadow-xl hover:-translate-y-2 transition-transform duration-300">
+              <CardContent className="p-8 text-center flex flex-col items-center">
+                <div className="w-16 h-16 bg-green-500/20 rounded-2xl flex items-center justify-center mb-6 text-green-400">
+                  <QuestionMarkIcon fontSize="large" />
+                </div>
+                <h3 className="text-2xl font-bold mb-3">3. Sorular Sor</h3>
+                <p className="text-slate-400">Sıran geldiğinde diğerlerine sorular sorarak kim olduğunu tahmin et!</p>
+              </CardContent>
+            </Card>
+          </div>
+        </Container>
+      </section>
+
+      <section id="biz-kimiz" className="py-20">
+        <Container maxWidth="md" className="text-center">
+          <h2 className="text-3xl md:text-5xl font-black mb-6">Biz Kimiz?</h2>
+          <p className="text-slate-400 text-lg leading-relaxed mb-8">
+            Amacımız, klasik masa oyunlarının verdiği samimi ve eğlenceli hissi dijital dünyaya taşımak. 
+            Arkadaşlarınızla yan yana veya uzaklarda olsanız bile, sesli sohbet altyapımız ve hızlı oyun motorumuz 
+            sayesinde sanki aynı masadaymışsınız gibi kahkaha dolu anlar yaşamanızı sağlamak istiyoruz.
+          </p>
+          <p className="text-slate-500">
+            Geliştirici: Bedir Hüseyin Özcan
+          </p>
+        </Container>
+      </section>
+
+      <footer className="py-8 border-t border-slate-800 text-center text-slate-500">
+        <p>© 2026 Kimbuki. Tüm hakları saklıdır.</p>
+      </footer>
+
+      <Dialog 
+        open={playDialogOpen} 
+        onClose={() => setPlayDialogOpen(false)}
+        slotProps={{ 
+            paper: { 
+              style: { backgroundColor: '#0f172a', color: 'white', borderRadius: '1.5rem', border: '1px solid #334155' },
+              className: "shadow-2xl shadow-violet-500/10 min-w-[320px] sm:min-w-[400px]" 
+            }
+        }}
+      >
+        <DialogTitle className="text-center font-black text-2xl pt-8 pb-2">
+          {user ? "Odaya Katıl veya Kur" : "Platforma Giriş Yap"}
+        </DialogTitle>
+        <DialogContent className="p-8">
+          
+          {!user ? (
+            <div className="space-y-5">
+              <Tabs 
+                value={authTab} 
+                onChange={(_, v) => setAuthTab(v)} 
+                centered 
+                textColor="inherit"
+                slotProps={{ indicator: { style: { backgroundColor: '#8b5cf6', height: '3px', borderRadius: '3px' } } }}
+                className="mb-4"
+              >
+                <Tab label="Giriş Yap" className="font-bold text-base" />
+                <Tab label="Kayıt Ol" className="font-bold text-base" />
+              </Tabs>
+              
+              <TextField
+                placeholder="E-posta"
+                type="email"
+                value={loginEmail}
+                onChange={(e) => setLoginEmail(e.target.value)}
+                slotProps={{ 
+                  input: {
+                    style: { color: 'white', backgroundColor: '#1e293b', borderRadius: '0.75rem', fontWeight: 'bold' },
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <EmailOutlinedIcon sx={{ color: '#94a3b8' }} />
+                      </InputAdornment>
+                    )
+                  }
+                }}
+                fullWidth
+              />
+
+              {authTab === 1 && (
+                <TextField
+                  placeholder="Kullanıcı Adı (Nick)"
+                  value={loginName}
+                  onChange={(e) => setLoginName(e.target.value)}
+                  slotProps={{ 
+                    input: {
+                      style: { color: 'white', backgroundColor: '#1e293b', borderRadius: '0.75rem', fontWeight: 'bold' },
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <PersonOutlineIcon sx={{ color: '#94a3b8' }} />
+                        </InputAdornment>
+                      )
+                    }
+                  }}
+                  fullWidth
+                />
+              )}
+
+              <div>
+                <TextField
+                  placeholder="Şifre"
+                  type="password"
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
+                  slotProps={{ 
+                    input: {
+                      style: { color: 'white', backgroundColor: '#1e293b', borderRadius: '0.75rem', fontWeight: 'bold' },
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <LockOutlinedIcon sx={{ color: '#94a3b8' }} />
+                        </InputAdornment>
+                      )
+                    }
+                  }}
+                  fullWidth
+                />
+                {authTab === 0 && (
+                    <div className="text-right mt-2">
+                        <MuiLink 
+                            component="button" 
+                            variant="body2" 
+                            onClick={handleForgotPassword}
+                            className="text-slate-400 hover:text-violet-400 font-medium"
+                            underline="hover"
+                        >
+                            Şifremi Unuttum?
+                        </MuiLink>
+                    </div>
+                )}
+              </div>
+
+              <Button
+                variant="contained"
+                fullWidth
+                size="large"
+                disabled={loginLoading}
+                onClick={handleAuth}
+                className="py-4 mt-2 rounded-xl bg-gradient-to-r from-violet-600 to-cyan-600 font-bold text-lg shadow-lg shadow-violet-500/30 hover:shadow-violet-500/50 transition-shadow"
+              >
+                {loginLoading ? "İşleniyor..." : (authTab === 0 ? "GİRİŞ YAP" : "KAYIT OL")}
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700 text-center mb-6 relative">
+                <p className="text-sm text-slate-400">Hoş geldin,</p>
+                <p className="text-xl font-bold text-cyan-400">{user.username}</p>
+                <Button size="small" className="absolute top-2 right-2 text-slate-500 text-xs" onClick={openProfile}>Düzenle</Button>
+              </div>
+
+              <Button
+                variant="contained"
+                fullWidth
+                size="large"
+                onClick={handleCreate}
+                className="py-4 rounded-2xl bg-gradient-to-r from-violet-600 to-cyan-600 font-bold text-lg shadow-lg shadow-violet-500/20 hover:scale-[1.02] transition-transform"
+              >
+                Yeni Oda Kur
+              </Button>
+              
+              <div className="relative flex items-center py-2">
+                <div className="flex-grow border-t border-slate-700"></div>
+                <span className="flex-shrink-0 mx-4 text-slate-500 text-sm font-bold uppercase">veya Kod ile Katıl</span>
+                <div className="flex-grow border-t border-slate-700"></div>
+              </div>
+
+              <div className="flex flex-col gap-3">
+                <TextField
+                  placeholder="ODA KODU"
+                  value={roomCode}
+                  onChange={(e) => setRoomCode(e.target.value)}
+                  slotProps={{ 
+                      input: {
+                        style: { color: 'white', backgroundColor: '#1e293b', borderRadius: '1rem', textAlign: 'center', fontFamily: 'monospace', letterSpacing: '0.1em' }
+                      }
+                  }}
+                  fullWidth
+                />
+                <Button
+                  variant="outlined"
+                  fullWidth
+                  size="large"
+                  onClick={handleJoin}
+                  className="py-3 rounded-2xl border-slate-600 text-slate-300 font-bold hover:bg-slate-800 hover:text-white transition-colors"
+                >
+                  Odaya Katıl 🚀
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+      <Dialog 
+        open={forgotPasswordDialogOpen} 
+        onClose={() => setForgotPasswordDialogOpen(false)}
+        slotProps={{ 
+            paper: { 
+              style: { backgroundColor: '#0f172a', color: 'white', borderRadius: '1.5rem', border: '1px solid #334155' },
+              className: "shadow-2xl shadow-violet-500/10 min-w-[320px]" 
+            }
+        }}
+      >
+        <DialogTitle className="text-center font-black text-xl pt-6 pb-2">Şifremi Unuttum</DialogTitle>
+        <DialogContent className="p-6 space-y-5 text-center">
+            <p className="text-slate-400 text-sm mb-4">
+                Kayıt olduğunuz e-posta adresinizi girin. Size bir şifre sıfırlama bağlantısı göndereceğiz.
+            </p>
+            <TextField
+                placeholder="E-posta adresiniz"
+                type="email"
+                slotProps={{ 
+                  input: {
+                    style: { color: 'white', backgroundColor: '#1e293b', borderRadius: '0.75rem', fontWeight: 'bold' },
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <EmailOutlinedIcon sx={{ color: '#94a3b8' }} />
+                      </InputAdornment>
+                    )
+                  }
+                }}
+                fullWidth
+            />
+            <Button
+                variant="contained"
+                fullWidth
+                onClick={() => { toast.success("Şifre sıfırlama maili gönderildi (Simülasyon)."); setForgotPasswordDialogOpen(false); }}
+                className="py-3 mt-4 rounded-xl bg-violet-600 hover:bg-violet-500 font-bold shadow-lg shadow-violet-500/20"
+            >
+                Bağlantı Gönder
+            </Button>
+        </DialogContent>
+      </Dialog>
+      <Dialog 
+        open={profileDialogOpen} 
+        onClose={() => setProfileDialogOpen(false)}
+        slotProps={{ 
+            paper: { 
+              style: { backgroundColor: '#0f172a', color: 'white', borderRadius: '1.5rem', border: '1px solid #334155' },
+              className: "shadow-2xl shadow-cyan-500/10 min-w-[320px] sm:min-w-[400px]" 
+            }
+        }}
+      >
+        <DialogTitle className="text-center font-black text-2xl pt-6 pb-2">Profilim</DialogTitle>
+        <DialogContent className="p-6 space-y-5">
+            <div className="bg-slate-800/80 border border-slate-700 p-4 rounded-2xl flex flex-col items-center">
+                <span className="text-slate-400 text-sm font-bold mb-1">Mevcut Seviye</span>
+                <span className="text-3xl font-black text-amber-400 mb-2">LVL {user?.level || 1}</span>
+                <div className="w-full flex flex-col items-center">
+                    <div className="flex justify-between w-full text-[10px] font-black tracking-widest text-slate-400 mb-1 px-1">
+                        <span>İlerleme</span>
+                        <span>{user?.xpCurrent || 0} / {user?.xpNext || 200} XP</span>
+                    </div>
+                    <div className="w-full h-2.5 bg-slate-900 rounded-full overflow-hidden shadow-inner">
+                        <div 
+                            className="h-full bg-gradient-to-r from-amber-500 to-yellow-300" 
+                            style={{ width: `${Math.min(100, ((user?.xpCurrent || 0) / (user?.xpNext || 200)) * 100)}%` }}
+                        />
+                    </div>
+                </div>
+            </div>
+
+            <TextField
+                label="Kullanıcı Adı"
+                value={loginName}
+                onChange={(e) => setLoginName(e.target.value)}
+                slotProps={{ 
+                  input: { style: { color: 'white', backgroundColor: '#1e293b', borderRadius: '0.75rem', fontWeight: 'bold' } },
+                  inputLabel: { style: { color: '#94a3b8' } }
+                }}
+                fullWidth
+            />
+
+            <div>
+                <p className="text-slate-400 text-sm mb-3">Karakterini Seç (Envanter):</p>
+                <div className="flex flex-wrap gap-3 max-h-[150px] overflow-y-auto custom-scrollbar p-1">
+                    {user?.unlockedAvatars?.filter(id => !id.startsWith('default-')).map(avId => {
+                        const av = AVATARS.find(a => a.id === avId);
+                        if (!av) return null;
+                        return (
+                            <div 
+                                key={av.id} 
+                                onClick={() => setSelectedAvatar(av.id)}
+                                className={`w-12 h-12 rounded-full cursor-pointer flex justify-center items-center transition-all ${av.color} 
+                                    ${selectedAvatar === av.id ? 'ring-4 ring-white scale-110 shadow-lg' : 'opacity-60 hover:opacity-100'}`}
+                            >
+                                {av.icon ? (
+                                    <span className="text-2xl flex items-center justify-center w-full h-full">{av.icon}</span>
+                                ) : (
+                                    <span className="text-xl font-bold">{user.username.charAt(0).toUpperCase()}</span>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+
+            <Button
+                variant="contained"
+                fullWidth
+                onClick={handleUpdateProfile}
+                className="py-3 mt-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 font-bold shadow-lg shadow-cyan-500/20"
+            >
+                Güncelle
+            </Button>
+            <Button
+                variant="text"
+                color="error"
+                fullWidth
+                onClick={handleLogout}
+                className="mt-2 font-bold hover:bg-red-500/10"
+            >
+                Çıkış Yap
+            </Button>
+        </DialogContent>
+      </Dialog>
+      <Dialog 
+        open={dailyRewardDialogOpen} 
+        onClose={() => setDailyRewardDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        slotProps={{ 
+            paper: { 
+              style: { backgroundColor: '#0f172a', color: 'white', borderRadius: '1.5rem', border: '1px solid #334155' },
+              className: "shadow-2xl shadow-green-500/20" 
+            }
+        }}
+      >
+        <DialogTitle className="text-center font-black text-2xl pt-6 pb-2 text-green-400">
+            🎁 Günlük Giriş Ödülleri
+        </DialogTitle>
+        <DialogContent className="p-6">
+            <p className="text-center text-slate-400 mb-6 font-medium">Her gün oyuna gir, serini bozma ve büyük ödüle ulaş!</p>
+            <div className="grid grid-cols-4 md:grid-cols-7 gap-2">
+                {[1, 2, 3, 4, 5, 6, 7].map((day) => {
+                    const amounts = [50, 100, 150, 200, 250, 300, 500];
+                    const amount = amounts[day - 1];
+                    const streak = user?.loginStreak || 0;
+                    
+                    let status = 'locked';
+                    
+                    if (user?.canClaimDaily) {
+                        if (day <= streak) status = 'claimed';
+                        else if (day === streak + 1) status = 'current';
+                    } else {
+                        if (day <= streak) status = 'claimed';
+                    }
+
+                    let bgColor = 'bg-slate-800 border-slate-700 opacity-50';
+                    if (status === 'claimed') bgColor = 'bg-green-500/20 border-green-500/50 text-green-400';
+                    if (status === 'current') bgColor = 'bg-yellow-500/20 border-yellow-500 text-yellow-400 shadow-lg shadow-yellow-500/20 animate-pulse';
+
+                    return (
+                        <div key={day} className={`flex flex-col items-center justify-center p-3 rounded-xl border ${bgColor} transition-all`}>
+                            <span className="text-xs font-bold opacity-75 mb-1">{day}. Gün</span>
+                            {status === 'claimed' ? (
+                                <span className="text-xl">✅</span>
+                            ) : status === 'locked' ? (
+                                <span className="text-xl opacity-50">🔒</span>
+                            ) : (
+                                <span className="text-2xl">🎁</span>
+                            )}
+                            <span className="text-sm font-black mt-1">{amount}</span>
+                        </div>
+                    );
+                })}
+            </div>
+            
+            <Button
+                variant="contained"
+                fullWidth
+                disabled={!user?.canClaimDaily}
+                onClick={() => {
+                    handleClaimDaily();
+                    setDailyRewardDialogOpen(false);
+                }}
+                className={`py-4 mt-8 rounded-xl font-black text-lg ${user?.canClaimDaily ? 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 shadow-lg shadow-green-500/30 text-white' : 'bg-slate-800 text-slate-500'}`}
+            >
+                {user?.canClaimDaily ? 'ÖDÜLÜ AL' : 'BUGÜNÜN ÖDÜLÜNÜ ALDIN!'}
+            </Button>
+        </DialogContent>
+      </Dialog>
+      <Dialog 
+        open={shopDialogOpen} 
+        onClose={() => setShopDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        slotProps={{ 
+            paper: { 
+              style: { backgroundColor: '#0f172a', color: 'white', borderRadius: '1.5rem', border: '1px solid #334155' },
+              className: "shadow-2xl shadow-yellow-500/10" 
+            }
+        }}
+      >
+        <DialogTitle className="text-center font-black text-2xl pt-6 pb-2">
+            Mağaza 🛒
+            <p className="text-sm text-yellow-500 mt-1 font-bold">Mevcut Altının: {user?.gold || 0}</p>
+        </DialogTitle>
+        <DialogContent className="p-6">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {shopItems.map((item) => {
+                    const isUnlocked = user?.unlockedAvatars?.includes(item.id);
+                    const avMeta = AVATARS.find(a => a.id === item.id);
+                    return (
+                        <div key={item.id} className="bg-slate-800/80 p-4 rounded-2xl border border-slate-700 flex flex-col items-center text-center">
+                            {avMeta?.icon ? (
+                                <span className="text-5xl mb-2 flex justify-center items-center h-[60px] w-[60px]">{avMeta.icon}</span>
+                            ) : (
+                                <span className="text-5xl mb-2 flex justify-center items-center h-[60px] w-[60px]">{item.icon}</span>
+                            )}
+                            <span className="font-bold text-slate-200">{item.label}</span>
+                            <div className="mt-3 w-full">
+                                {isUnlocked ? (
+                                    <Button disabled fullWidth size="small" variant="contained" className="bg-slate-700 text-slate-400 !cursor-not-allowed rounded-lg">
+                                        Alındı
+                                    </Button>
+                                ) : (
+                                    <Button 
+                                        fullWidth size="small" variant="contained" color="warning"
+                                        onClick={() => handleBuyAvatar(item.id)}
+                                        className="font-bold rounded-lg shadow-lg"
+                                        startIcon={<AttachMoneyIcon fontSize="small" />}
+                                    >
+                                        {item.price}
+                                    </Button>
+                                )}
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog 
+        open={leaderboardDialogOpen} 
+        onClose={() => setLeaderboardDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        slotProps={{ 
+            paper: { 
+              style: { backgroundColor: '#0f172a', color: 'white', borderRadius: '1.5rem', border: '1px solid #334155' },
+              className: "shadow-2xl shadow-amber-500/10" 
+            }
+        }}
+      >
+        <DialogTitle className="text-center font-black text-3xl pt-8 pb-4 text-amber-400">
+            🏆 Liderler Tablosu
+        </DialogTitle>
+        <DialogContent className="p-6">
+            <div className="space-y-3">
+                {leaderboard.length === 0 ? (
+                    <p className="text-center text-slate-500">Henüz kimse listeye giremedi.</p>
+                ) : (
+                    leaderboard.map((u, index) => {
+                        const avMeta = AVATARS.find(a => a.id === u.avatar);
+                        return (
+                            <div key={u._id} className={`flex justify-between items-center p-4 rounded-xl border ${index < 3 ? 'bg-amber-500/10 border-amber-500/30' : 'bg-slate-800 border-slate-700'}`}>
+                                <div className="flex items-center gap-4">
+                                    <span className={`font-black text-2xl w-8 text-center ${index === 0 ? 'text-yellow-400' : index === 1 ? 'text-slate-300' : index === 2 ? 'text-amber-600' : 'text-slate-500'}`}>
+                                        #{index + 1}
+                                    </span>
+                                    <Avatar className={avMeta?.color || 'bg-violet-600'}>
+                                        {avMeta?.icon ? <span className="text-xl flex items-center justify-center h-full w-full">{avMeta.icon}</span> : u.username.charAt(0).toUpperCase()}
+                                    </Avatar>
+                                    <span className="font-bold text-lg">{u.username}</span>
+                                </div>
+                                <div className="flex items-center gap-1 text-yellow-400 font-bold bg-yellow-400/10 px-3 py-1 rounded-full">
+                                    <AttachMoneyIcon fontSize="small" />
+                                    <span>{u.gold || 0}</span>
+                                </div>
+                            </div>
+                        );
+                    })
+                )}
+            </div>
+            <Button
+                variant="outlined"
+                fullWidth
+                onClick={() => setLeaderboardDialogOpen(false)}
+                className="mt-6 py-3 rounded-xl border-slate-600 text-slate-300 font-bold hover:bg-slate-800"
+            >
+                Kapat
+            </Button>
+        </DialogContent>
+      </Dialog>
+
+    </div>
+  );
+}
+
+
+=========================
+DOSYA: client\app\game\[code]\page.tsx
+=========================
+
+"use client";
+
+import { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { io, Socket } from "socket.io-client";
+import { Button, TextField } from "@mui/material";
+import { toast } from "react-toastify";
+
+import { User, GameState } from "@/components/game/types";
+import Lobby from "@/components/game/Lobby";
+import WordSelection from "@/components/game/WordSelection";
+import GameScene from "@/components/game/GameScene";
+import GameOver from "@/components/game/GameOver";
+import BettingPhase from "@/components/game/BettingPhase";
+import { useWebRTC } from "@/components/game/useWebRTC";
+
+export default function GamePage() {
+    const { code } = useParams();
+    const router = useRouter();
+    const [socket, setSocket] = useState<Socket | null>(null);
+    const [gameState, setGameState] = useState<GameState | null>(null);
+    const [inviteUrl, setInviteUrl] = useState<string>("");
+
+    const [nameInput, setNameInput] = useState("");
+    const [isJoined, setIsJoined] = useState(false);
+
+    const [wordInput, setWordInput] = useState("");
+
+    const [chatInput, setChatInput] = useState("");
+    const [notepad, setNotepad] = useState("");
+    const [guessDialogOpen, setGuessDialogOpen] = useState(false);
+    const [guessInput, setGuessInput] = useState("");
+    const [headRotations, setHeadRotations] = useState<{ [key: string]: { pitch: number, yaw: number } }>({});
+
+    const myId = socket?.id || "";
+    const me = gameState?.users.find((u: User) => u.id === myId);
+    const { remoteStreams } = useWebRTC(socket, myId, me?.isVoiceEnabled || false, gameState?.users || []);
+
+    const [checkingAuth, setCheckingAuth] = useState(true);
+
+    useEffect(() => {
+        if (code && typeof window !== 'undefined') {
+            setInviteUrl(`${window.location.origin}/game/${code}`);
+        }
+    }, [code]);
+
+    useEffect(() => {
+        const token = localStorage.getItem("gameToken");
+        if (!token) {
+            router.push(`/?invite=${code}`);
+            return;
+        }
+
+        fetch("http://localhost:4000/api/auth/me", {
+            headers: { "Authorization": `Bearer ${token}` }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.username) {
+                connectToRoom(data);
+            } else {
+                localStorage.removeItem("gameToken");
+                router.push(`/?invite=${code}`);
+            }
+        })
+        .catch(() => {
+            router.push(`/?invite=${code}`);
+        });
+    }, [code]);
+
+    const connectToRoom = (user: any) => {
+        const s = io("http://localhost:4000");
+        setSocket(s);
+
+        s.emit("room:join", { roomCode: code, name: user.username, userId: user.id, avatar: user.avatar }, (res: any) => {
+            if (!res.ok) {
+                toast.error("Hata: " + res.error);
+                router.push("/");
+            } else {
+                setIsJoined(true);
+                setCheckingAuth(false);
+            }
+        });
+
+        s.on("game:state", (state: GameState) => setGameState(state));
+        s.on("game:hint_result", ({ hint }: { hint: string }) => {
+            toast.info(`💡 İPUCU: ${hint}`);
+        });
+        s.on("game:head_update", ({ userId, pitch, yaw }: any) => {
+            setHeadRotations(prev => ({ ...prev, [userId]: { pitch, yaw } }));
+        });
+        s.on("game:error", ({ message }: { message: string }) => {
+            toast.error(message);
+        });
+        s.on("game:closed", () => {
+            toast.error("Oda host tarafından kapatıldı!");
+            if (s) s.disconnect();
+            router.push("/");
+        });
+    };
+
+    useEffect(() => {
+        return () => {
+            if (socket) socket.disconnect();
+        };
+    }, [socket]);
+
+    if (checkingAuth || !isJoined) {
+        return (
+            <main className="flex min-h-screen flex-col items-center justify-center p-6 text-center bg-slate-900 text-white">
+                <div className="glass w-full max-w-sm p-8 rounded-3xl shadow-2xl animate-pulse border border-slate-700">
+                    <h2 className="text-2xl font-bold text-cyan-400">Odaya Bağlanılıyor...</h2>
+                    <p className="text-slate-400 mt-2">Lütfen bekleyin.</p>
+                </div>
+            </main>
+        );
+    }
+
+    if (!gameState) return <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white text-2xl animate-pulse">Odaya bağlanıyor...</div>;
+
+    const handleStart = (settings: { category?: string, bettingEnabled?: boolean, jokersEnabled?: boolean, betAmount?: number }) => socket?.emit("game:start", settings);
+    
+    const handleSetWord = () => {
+        if (!wordInput.trim()) return;
+        socket?.emit("game:set_word", { word: wordInput });
+    };
+
+    const handleChat = (e?: React.FormEvent) => {
+        e?.preventDefault();
+        if (!chatInput.trim()) return;
+        socket?.emit("game:chat", { message: chatInput });
+        setChatInput("");
+    };
+
+    const handleSkip = () => {
+        socket?.emit("game:skip_turn");
+    };
+
+    const handleAskQuestion = (question: string) => {
+        socket?.emit("game:ask_question", { question });
+    };
+
+    const handleSubmitVote = (vote: string) => {
+        socket?.emit("game:submit_vote", { vote });
+    };
+
+    const handleGuess = () => {
+        if (!guessInput.trim()) return;
+        socket?.emit("game:guess", { guess: guessInput });
+        setGuessInput("");
+        setGuessDialogOpen(false);
+    };
+
+    const handleUseJoker = (payload: any) => {
+        socket?.emit("game:use_joker", payload);
+    };
+
+    const toggleVoice = (enabled: boolean) => {
+        socket?.emit("game:toggle_voice", { enabled });
+    };
+
+    const copyLink = () => {
+        navigator.clipboard.writeText(inviteUrl);
+        toast.success("Davet linki kopyalandı!");
+    };
+
+    const handleLeaveRoom = () => {
+        if (socket) socket.disconnect();
+        sessionStorage.removeItem("username");
+        router.push("/");
+    };
+
+    const handleSelectAvatar = (id: number) => {
+        socket?.emit("game:set_avatar", { avatarId: id });
+    };
+
+    const handleCloseRoom = () => {
+        toast(
+            ({ closeToast }) => (
+                <div className="flex flex-col gap-3">
+                    <p className="font-bold">Odayı kapatmak istediğine emin misin?</p>
+                    <p className="text-sm">Odada bulunan herkes atılacak.</p>
+                    <div className="flex gap-2 justify-end mt-2">
+                        <Button 
+                            size="small" 
+                            variant="outlined" 
+                            color="inherit" 
+                            onClick={closeToast}
+                        >
+                            İptal
+                        </Button>
+                        <Button 
+                            size="small" 
+                            variant="contained" 
+                            color="error" 
+                            onClick={() => {
+                                socket?.emit("room:close");
+                                if (socket) socket.disconnect();
+                                sessionStorage.removeItem("username");
+                                router.push("/");
+                                if (closeToast) closeToast();
+                            }}
+                        >
+                            Kapat
+                        </Button>
+                    </div>
+                </div>
+            ),
+            { 
+                autoClose: false, 
+                closeOnClick: false, 
+                draggable: false, 
+                position: "top-center" 
+            }
+        );
+    };
+
+    const renderGameState = () => {
+        if (gameState.gameState === "LOBBY") {
+            return <Lobby 
+                gameState={gameState} me={me!} code={code as string} inviteUrl={inviteUrl} myId={myId!} 
+                onStart={handleStart} onCloseRoom={handleCloseRoom} onLeaveRoom={handleLeaveRoom} onCopyLink={copyLink} 
+                onSelectAvatar={handleSelectAvatar} onToggleVoice={toggleVoice}
+            />;
+        }
+        if (gameState.gameState === "BETTING") {
+            return <BettingPhase
+                gameState={gameState} me={me!}
+                onPlaceBet={(targetId) => socket?.emit("game:place_bet", { targetId })}
+            />;
+        }
+        if (gameState.gameState === "WORD_SELECTION") {
+            return <WordSelection 
+                gameState={gameState} me={me!} wordInput={wordInput} setWordInput={setWordInput} 
+                onSetWord={handleSetWord} onLeaveRoom={handleLeaveRoom} 
+            />;
+        }
+        if (gameState.gameState === "PLAYING") {
+            return <GameScene 
+                gameState={gameState} me={me!} myId={myId!} 
+                chatInput={chatInput} setChatInput={setChatInput} handleChat={handleChat}
+                notepad={notepad} setNotepad={setNotepad}
+                handleSkip={handleSkip}
+                guessInput={guessInput} setGuessInput={setGuessInput} handleGuess={handleGuess}
+                guessDialogOpen={guessDialogOpen} setGuessDialogOpen={setGuessDialogOpen}
+                onLeaveRoom={handleLeaveRoom}
+                onAskQuestion={handleAskQuestion}
+                onSubmitVote={handleSubmitVote}
+                onUseJoker={handleUseJoker}
+                onToggleVoice={toggleVoice}
+                onStartObjection={() => socket?.emit("game:start_objection")}
+                onVoteObjection={(vote) => socket?.emit("game:vote_objection", { vote })}
+                headRotations={headRotations}
+                onHeadRotation={(pitch, yaw) => socket?.emit("game:head_rotation", { pitch, yaw })}
+            />;
+        }
+        if (gameState.gameState === "ROUND_END") {
+            return <GameOver 
+                gameState={gameState} me={me!} onStart={() => handleStart({ category: gameState.category || "Karışık", bettingEnabled: gameState.isBettingEnabled, jokersEnabled: gameState.isJokersEnabled, betAmount: gameState.betAmount })} onLeaveRoom={handleLeaveRoom} 
+            />;
+        }
+        return null;
+    };
+
+    return (
+        <>
+            {renderGameState()}
+            {Object.entries(remoteStreams).map(([id, stream]) => (
+                <audio key={id} ref={el => { 
+                    if (el && el.srcObject !== stream) { 
+                        el.srcObject = stream as any;
+                        el.play().catch(e => console.warn("Autoplay blocked:", e));
+                    } 
+                }} />
+            ))}
+        </>
+    );
+}
+
+
+=========================
+DOSYA: client\components\Logo.tsx
+=========================
+
+export default function Logo({ size = "md", className = "" }: { size?: "sm" | "md" | "lg" | "xl", className?: string }) {
+    const sizeClasses = {
+        sm: "w-8 h-8 text-xl border-[2px]",
+        md: "w-12 h-12 text-2xl border-[3px]",
+        lg: "w-20 h-20 text-4xl border-[4px]",
+        xl: "w-32 h-32 text-6xl border-[6px]"
+    };
+
+    return (
+        <div className={`relative flex items-center justify-center ${className}`}>
+            <div className={`absolute inset-0 bg-amber-600/50 rounded-sm transform translate-y-1 translate-x-1 ${sizeClasses[size]}`}></div>
+            <div className={`
+                relative bg-gradient-to-br from-yellow-300 to-amber-400 
+                rounded-sm shadow-xl flex items-center justify-center 
+                transform -rotate-6 hover:rotate-0 transition-all duration-300
+                border-amber-500
+                ${sizeClasses[size]}
+            `}>
+                <span className="font-black text-slate-800 drop-shadow-sm font-mono">
+                    ?
+                </span>
+                <div className="absolute bottom-0 right-0 w-1/3 h-1/3 bg-gradient-to-tl from-amber-500/40 to-transparent rounded-tl-full mix-blend-multiply"></div>
+            </div>
+        </div>
+    );
+}
+
+
+=========================
+DOSYA: client\components\game\BettingPhase.tsx
+=========================
+
+import { Avatar } from "@mui/material";
+import { User, GameState } from "./types";
+import { AVATARS } from "./types";
+import { useState, useEffect } from "react";
+
+interface BettingPhaseProps {
+    gameState: GameState;
+    me: User;
+    onPlaceBet: (targetId: string) => void;
+}
+
+export default function BettingPhase({
+    gameState, me, onPlaceBet
+}: BettingPhaseProps) {
+    const [timeLeft, setTimeLeft] = useState(10);
+    const [selectedId, setSelectedId] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (!gameState.bettingEndTime) return;
+        const interval = setInterval(() => {
+            const left = Math.max(0, Math.floor(((gameState.bettingEndTime || 0) - Date.now()) / 1000));
+            setTimeLeft(left);
+            if (left <= 0) clearInterval(interval);
+        }, 1000);
+        return () => clearInterval(interval);
+    }, [gameState.bettingEndTime]);
+
+    const handleBet = (id: string) => {
+        if (selectedId) return;
+        setSelectedId(id);
+        onPlaceBet(id);
+    };
+
+    return (
+        <main className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center p-4 relative">
+            <div className="absolute top-4 left-4 z-20 flex gap-2 pointer-events-auto">
+                <div className="bg-yellow-500/20 border border-yellow-500/50 text-yellow-400 font-bold px-4 py-2 rounded-full backdrop-blur-md">
+                    💰 -50 ALTIN GİRİŞ ÜCRETİ KESİLDİ
+                </div>
+            </div>
+
+            <div className="glass max-w-3xl w-full p-8 rounded-3xl text-center shadow-2xl relative overflow-hidden">
+                <h2 className="text-4xl font-bold mb-4 text-cyan-400">BAHİS ZAMANI!</h2>
+                <p className="text-xl text-slate-300 mb-8">Sence bu eli KİM KAZANACAK? (Kendi üzerine de oynayabilirsin)</p>
+
+                <div className="flex flex-wrap justify-center gap-6 mb-8">
+                    {gameState.users.map((u: User) => {
+                        const avatarIndex = typeof u.avatar === 'string' ? parseInt(u.avatar) : (u.avatar as number);
+                        const userAvatar = AVATARS[avatarIndex] || AVATARS[0];
+                        return (
+                        <div 
+                            key={u.id} 
+                            onClick={() => handleBet(u.id)}
+                            className={`flex flex-col items-center gap-2 p-4 rounded-xl cursor-pointer transition-all ${
+                                selectedId === u.id ? 'bg-yellow-500/30 border-2 border-yellow-500 scale-110 shadow-[0_0_20px_rgba(234,179,8,0.5)]' : 
+                                selectedId ? 'bg-slate-800/50 opacity-50 border-2 border-transparent' : 
+                                'bg-slate-800 hover:bg-slate-700 border-2 border-slate-600 hover:border-slate-500 hover:scale-105'
+                            }`}
+                        >
+                            <Avatar className={`w-24 h-24 shadow-lg border-2 border-slate-700 text-4xl ${userAvatar.color}`}>
+                                {userAvatar.icon ? <div className="text-[3rem]">{userAvatar.icon}</div> : u.name.charAt(0).toUpperCase()}
+                            </Avatar>
+                            <span className="font-bold text-lg text-white">{u.name} {u.id === me.id && '(Sen)'}</span>
+                            {selectedId === u.id && <span className="text-yellow-400 font-black">💰 {(gameState.betAmount || 50) * 2} Altın</span>}
+                        </div>
+                    )})}
+                </div>
+
+                <div className="text-4xl font-black text-white/50 mb-4 animate-pulse">
+                    {timeLeft} sn
+                </div>
+                {selectedId && (
+                    <p className="text-green-400 font-bold text-xl animate-fade-in-up">Bahsiniz onaylandı! Diğer oyuncular bekleniyor...</p>
+                )}
+            </div>
+        </main>
+    );
+}
+
+
+=========================
+DOSYA: client\components\game\GameOver.tsx
+=========================
+
+import { Button } from "@mui/material";
+import { User, GameState } from "./types";
+
+interface GameOverProps {
+    gameState: GameState;
+    me: User;
+    onStart: () => void;
+    onLeaveRoom: () => void;
+}
+
+export default function GameOver({
+    gameState, me, onStart, onLeaveRoom
+}: GameOverProps) {
+    return (
+        <main className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center p-4 relative">
+            <div className="absolute inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+                <div className="glass max-w-md w-full p-8 rounded-3xl text-center border-2 border-slate-600 animate-fade-in-up">
+                    <h1 className="text-5xl font-black mb-4 text-cyan-400">OYUN BİTTİ!</h1>
+                    <div className="space-y-4 mb-8">
+                        <p className="text-xl text-slate-300 border-b border-slate-700 pb-2">Sonuçlar</p>
+                        {gameState.users.map((u: User, i: number) => (
+                            <div key={u.id} className="flex justify-between items-center text-lg">
+                                <span className="font-bold">{i + 1}. {u.name}</span>
+                                {gameState.winners.includes(u.id) ? (
+                                    <div className="flex flex-col items-end">
+                                        <span className="text-green-400 font-bold">Bildi: {u.assignedWord}</span>
+                                    </div>
+                                ) : (
+                                    <span className="text-red-400">Bilemedi: {u.assignedWord}</span>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+
+                    {gameState.roundLogs && gameState.roundLogs.length > 0 && (
+                        <div className="bg-slate-800/80 rounded-xl p-4 mb-8 text-left border border-slate-600">
+                            <h3 className="text-yellow-400 font-bold mb-2">💸 Bahis & Ödül Özeti</h3>
+                            <ul className="space-y-2 text-sm text-slate-300">
+                                {gameState.roundLogs.map((log, idx) => (
+                                    <li key={idx}>• {log}</li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
+
+                    {me?.isHost && (
+                        <Button variant="contained" color="primary" fullWidth size="large" onClick={onStart} className="py-3 rounded-xl">
+                            Yeniden Başlat
+                        </Button>
+                    )}
+                    <Button variant="outlined" color="inherit" fullWidth onClick={onLeaveRoom} className="mt-4 border-slate-600 text-slate-300">
+                        Lobiden Ayrıl
+                    </Button>
+                </div>
+            </div>
+        </main>
+    );
+}
+
+
+=========================
+DOSYA: client\components\game\GameScene.tsx
+=========================
+
+import React, { useEffect, useState, useRef } from "react";
+import { Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Avatar, IconButton, Chip, MenuItem } from "@mui/material";
+import SendIcon from '@mui/icons-material/Send';
+import SkipNextIcon from '@mui/icons-material/SkipNext';
+import HelpIcon from '@mui/icons-material/Help';
+import PersonIcon from '@mui/icons-material/Person';
+import QuestionAnswerIcon from '@mui/icons-material/QuestionAnswer';
+import MicIcon from '@mui/icons-material/Mic';
+import MicOffIcon from '@mui/icons-material/MicOff';
+import { User, GameState, AVATARS } from "./types";
+import { playTurnSound, playWinSound } from "@/utils/audio";
+import confetti from "canvas-confetti";
+import { motion, AnimatePresence } from "framer-motion";
+import Scene3D from "./Scene3D";
+
+interface GameSceneProps {
+    gameState: GameState;
+    me: User;
+    myId: string;
+    chatInput: string;
+    setChatInput: (val: string) => void;
+    handleChat: (e?: React.FormEvent) => void;
+    notepad: string;
+    setNotepad: (val: string) => void;
+    handleSkip: () => void;
+    guessInput: string;
+    setGuessInput: (val: string) => void;
+    handleGuess: () => void;
+    guessDialogOpen: boolean;
+    setGuessDialogOpen: (val: boolean) => void;
+    onLeaveRoom: () => void;
+    onAskQuestion: (q: string) => void;
+    onSubmitVote: (v: string) => void;
+    onUseJoker: (payload: any) => void;
+    onToggleVoice: (enabled: boolean) => void;
+    onStartObjection: () => void;
+    onVoteObjection: (vote: boolean) => void;
+    headRotations: { [key: string]: { pitch: number, yaw: number } };
+    onHeadRotation: (pitch: number, yaw: number) => void;
+}
+
+export default function GameScene({
+    gameState, me, myId,
+    chatInput, setChatInput, handleChat,
+    notepad, setNotepad,
+    handleSkip,
+    guessInput, setGuessInput, handleGuess,
+    guessDialogOpen, setGuessDialogOpen,
+    onLeaveRoom,
+    onAskQuestion, onSubmitVote,
+    onUseJoker, onToggleVoice,
+    onStartObjection, onVoteObjection,
+    headRotations, onHeadRotation
+}: GameSceneProps) {
+    const isMyTurn = gameState.currentTurnUserId === myId;
+    const currentTurnUser = gameState.users.find((u: User) => u.id === gameState.currentTurnUserId);
+    const chatEndRef = useRef<HTMLDivElement>(null);
+
+    const [timeLeft, setTimeLeft] = useState(0);
+    const [questionDialogOpen, setQuestionDialogOpen] = useState(false);
+    const [questionInput, setQuestionInput] = useState("");
+    const [activeBubbles, setActiveBubbles] = useState<{[key:string]: string}>({});
+
+    const [jokerDialogOpen, setJokerDialogOpen] = useState(false);
+    const [jokerTarget, setJokerTarget] = useState("");
+    const [jokerWord, setJokerWord] = useState("");
+
+    const handleUseJokerSubmit = () => {
+        onUseJoker({ targetId: jokerTarget, newWord: jokerWord });
+        setJokerDialogOpen(false);
+        setJokerTarget("");
+        setJokerWord("");
+    };
+
+    useEffect(() => {
+        if (!gameState.turnEndsAt) {
+            setTimeLeft(0);
+            return;
+        }
+        
+        const updateTimer = () => {
+            const remaining = Math.max(0, Math.floor((gameState.turnEndsAt! - Date.now()) / 1000));
+            setTimeLeft(remaining);
+        };
+
+        updateTimer();
+        const interval = setInterval(updateTimer, 500);
+        return () => clearInterval(interval);
+    }, [gameState.turnEndsAt]);
+
+    const previousTurnRef = useRef<string | null>(null);
+    const previousWinnersRef = useRef<number>(0);
+
+    useEffect(() => {
+        if (gameState.currentTurnUserId && gameState.currentTurnUserId !== previousTurnRef.current) {
+            if (gameState.currentTurnUserId === myId) {
+                playTurnSound();
+            }
+            previousTurnRef.current = gameState.currentTurnUserId;
+        }
+
+        if (gameState.winners.length > previousWinnersRef.current) {
+            playWinSound();
+            confetti({
+                particleCount: 100,
+                spread: 70,
+                origin: { y: 0.6 },
+                colors: ['#22c55e', '#3b82f6', '#a855f7']
+            });
+            previousWinnersRef.current = gameState.winners.length;
+        }
+    }, [gameState.currentTurnUserId, gameState.winners, myId]);
+
+    useEffect(() => {
+        if (gameState?.chatHistory) {
+            chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+            
+            if (gameState.chatHistory.length > 0) {
+                const lastMsg = gameState.chatHistory[gameState.chatHistory.length - 1];
+                if (!lastMsg.system && lastMsg.userId) {
+                    setActiveBubbles(prev => ({ ...prev, [lastMsg.userId]: lastMsg.message }));
+                    setTimeout(() => {
+                        setActiveBubbles(prev => {
+                            const next = { ...prev };
+                            if (next[lastMsg.userId] === lastMsg.message) {
+                                delete next[lastMsg.userId];
+                            }
+                            return next;
+                        });
+                    }, 4000);
+                }
+            }
+        }
+    }, [gameState?.chatHistory]);
+
+    const handleAsk = () => {
+        if (!questionInput.trim()) return;
+        onAskQuestion(questionInput);
+        setQuestionInput("");
+        setQuestionDialogOpen(false);
+    };
+
+    return (
+        <main className="min-h-screen text-white p-4 flex flex-col overflow-hidden relative">
+            
+            <div className="fixed inset-0 z-0 pointer-events-auto bg-slate-900">
+                <Scene3D 
+                    gameState={gameState} 
+                    myId={myId} 
+                    activeBubbles={activeBubbles} 
+                    headRotations={headRotations}
+                    onHeadRotation={onHeadRotation}
+                />
+            </div>
+            
+            <div className="absolute bottom-6 right-6 z-20 pointer-events-none flex flex-col items-end">
+                <div className="flex gap-1 bg-black/60 px-4 py-2 rounded-full border border-slate-700/50">
+                    {[...Array(3)].map((_, i) => (
+                        <span key={i} className='drop-shadow-md text-lg'>{i < (me?.lives ?? 3) ? '❤️' : '🖤'}</span>
+                    ))}
+                </div>
+            </div>
+
+            <div className="absolute top-4 left-4 z-20 flex flex-col gap-2 pointer-events-auto">
+                <div className="flex gap-2">
+                    {gameState.category && (
+                        <Chip label={`Kategori: ${gameState.category}`} color="secondary" className="font-bold border border-slate-700 bg-slate-800/80 backdrop-blur-md" />
+                    )}
+                    {gameState.isBettingEnabled && (
+                        <Chip label={`💰 BAHİSLİ OYUN: Kazanana ${(gameState.betAmount || 50) * 2} Altın`} className="font-bold border border-yellow-500/50 bg-yellow-900/80 text-yellow-400 backdrop-blur-md" />
+                    )}
+                </div>
+
+            </div>
+
+            <div className="absolute top-4 right-4 z-20 pointer-events-auto flex gap-3 items-center">
+                <button 
+                    onClick={() => onToggleVoice(!me?.isVoiceEnabled)}
+                    className={`flex items-center justify-center p-1.5 rounded-full border backdrop-blur-md transition-colors ${me?.isVoiceEnabled ? 'border-green-500/80 bg-green-500/40 text-white hover:bg-green-500/60' : 'border-red-500/80 bg-red-500/40 text-white hover:bg-red-500/60'}`}
+                >
+                    {me?.isVoiceEnabled ? <MicIcon fontSize="small" /> : <MicOffIcon fontSize="small" />}
+                </button>
+                <Button variant="outlined" color="inherit" size="small" onClick={onLeaveRoom} className="border-slate-700 text-slate-400 bg-slate-800/80 backdrop-blur-md text-xs py-1 hover:bg-red-500/20 hover:text-red-400">
+                    Odadan Ayrıl
+                </Button>
+            </div>
+
+            <div className="w-full h-full flex-1 flex flex-col md:flex-row gap-6 relative z-10 mt-12 md:mt-10 px-2 md:px-6 pointer-events-none">
+                
+                <div className="w-full md:w-1/4 glass p-4 rounded-3xl flex flex-col border border-slate-700/50 h-[300px] md:h-[500px] pointer-events-auto shadow-2xl bg-slate-900/60 backdrop-blur-lg">
+                    <h3 className="font-bold text-lg mb-2 flex items-center gap-2 text-yellow-400">
+                        <span>📝 Not Defterim</span>
+                    </h3>
+                    <textarea
+                        placeholder="Örn: Gerçek bir insan mı? Yaşıyor mu?..."
+                        value={notepad}
+                        onChange={e => setNotepad(e.target.value)}
+                        spellCheck="false"
+                        className="flex-1 w-full bg-yellow-900/20 rounded-xl text-slate-200 p-3 border border-yellow-500/30 focus:border-yellow-500/60 outline-none resize-none min-h-0 custom-scrollbar"
+                    />
+                    
+                    {me?.joker !== undefined && me?.joker !== null && (
+                        <div className={`mt-4 p-3 rounded-xl border ${me.hasUsedJoker ? 'bg-slate-800/50 border-slate-700/50 opacity-60' : 'bg-fuchsia-900/30 border-fuchsia-500/30'}`}>
+                            <h4 className={`font-bold text-sm flex items-center gap-1 mb-1 ${me.hasUsedJoker ? 'text-slate-400' : 'text-fuchsia-400'}`}>
+                                🃏 Senin Jokerin {me.hasUsedJoker && <span className="text-red-400 text-xs ml-auto">(Kullanıldı)</span>}
+                            </h4>
+                            <p className="text-xs text-slate-300">
+                                {me.joker === 0 && "Sıra sendeyken sürene +1 Dakika ekler."}
+                                {me.joker === 1 && "Seçtiğin bir oyuncunun kelimesini değiştirir."}
+                                {me.joker === 2 && "Sana ekstra 3 soru sorma hakkı verir."}
+                                {me.joker === 3 && "Kendi kelimenden rastgele 1 harfi açar."}
+                                {me.joker === 4 && "Seçtiğin bir oyuncuyu 2 tur susturur."}
+                            </p>
+                        </div>
+                    )}
+                </div>
+
+                <div className="flex-1 flex flex-col relative justify-between">
+                    
+                    <AnimatePresence>
+                        {gameState.activeQuestion && (
+                            <motion.div 
+                                initial={{ opacity: 0, scale: 0.8, y: "-50%", x: "-50%" }}
+                                animate={{ opacity: 1, scale: 1, y: "-50%", x: "-50%" }}
+                                exit={{ opacity: 0, scale: 0.8, y: "-50%", x: "-50%" }}
+                                className="absolute top-1/2 left-1/2 z-50 glass p-6 rounded-3xl border border-slate-600 shadow-[0_0_50px_rgba(0,0,0,0.8)] text-center w-[95%] max-w-lg backdrop-blur-2xl bg-slate-900/90 pointer-events-auto"
+                            >
+                                <h4 className="text-lg font-bold mb-2 text-cyan-400">
+                                    {gameState.users.find((u:User) => u.id === gameState.activeQuestion!.askerId)?.name} soruyor:
+                                </h4>
+                                <p className="text-3xl font-black mb-8 leading-tight">"{gameState.activeQuestion.question}"</p>
+                                
+                                {gameState.activeQuestion.askerId !== myId && me?.status === 'playing' ? (
+                                    <div className="flex justify-center gap-4">
+                                        <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                                            <Button variant="contained" color="success" size="large" onClick={() => onSubmitVote("yes")} className="text-xl py-3 px-6 rounded-xl font-black">Evet 👍</Button>
+                                        </motion.div>
+                                        <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                                            <Button variant="contained" color="error" size="large" onClick={() => onSubmitVote("no")} className="text-xl py-3 px-6 rounded-xl font-black">Hayır 👎</Button>
+                                        </motion.div>
+                                        <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                                            <Button variant="contained" color="warning" size="large" onClick={() => onSubmitVote("sometimes")} className="text-xl py-3 px-6 rounded-xl font-black">Bazen 🤔</Button>
+                                        </motion.div>
+                                    </div>
+                                ) : (
+                                    <p className="text-slate-400 animate-pulse text-lg mb-4">Diğer oyuncuların oylaması bekleniyor...</p>
+                                )}
+                                
+                                <div className="mt-6 pt-4 border-t border-slate-700 flex flex-wrap justify-center gap-3">
+                                    <AnimatePresence>
+                                        {Object.entries(gameState.activeQuestion.votes).map(([voterId, vote]) => (
+                                            <motion.div
+                                                key={voterId}
+                                                initial={{ opacity: 0, y: 20, scale: 0 }}
+                                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                            >
+                                                <Chip 
+                                                    label={`${gameState.users.find((u:User) => u.id === voterId)?.name}: ${vote === 'yes' ? '👍' : vote === 'no' ? '👎' : '🤔'}`} 
+                                                    color={vote === 'yes' ? "success" : vote === 'no' ? "error" : "warning"}
+                                                    variant="outlined"
+                                                    className="font-bold bg-slate-900"
+                                                />
+                                            </motion.div>
+                                        ))}
+                                    </AnimatePresence>
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+
+                    <div className="flex justify-between items-center bg-slate-900/70 backdrop-blur-md border border-slate-700/50 p-4 rounded-2xl relative z-10 pointer-events-auto shadow-2xl">
+                        <div>
+                            <p className="text-xs text-slate-400 uppercase tracking-widest">Sıra Kimde</p>
+                            <p className={`text-xl font-bold ${isMyTurn ? 'text-green-400 animate-pulse' : 'text-white'}`}>
+                                {isMyTurn ? "SENİN SIRAN!" : `${currentTurnUser?.name} soruyor...`}
+                            </p>
+                        </div>
+                        <div className={`text-3xl font-black rounded-xl px-4 py-2 border-2 ${isMyTurn ? 'border-green-500 text-green-400 bg-green-500/10' : 'border-slate-600 text-slate-300'}`}>
+                            {timeLeft}s
+                        </div>
+                    </div>
+
+                   
+                    <div className="flex-1" />
+
+                 
+                    <div className="bg-slate-900/80 backdrop-blur-md border border-slate-700/50 rounded-2xl h-40 flex flex-col z-10 relative pointer-events-auto shadow-2xl">
+                        <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar pointer-events-auto">
+                            {gameState.chatHistory.map((msg: any, i: number) => (
+                                <div key={i} className={`text-sm ${msg.system ? 'text-cyan-400 text-center italic my-2' : ''}`}>
+                                    {!msg.system && <strong className="text-violet-400">{msg.name}: </strong>}
+                                    <span className={msg.system ? 'font-bold' : 'text-slate-200'}>{msg.message}</span>
+                                </div>
+                            ))}
+                            <div ref={chatEndRef} />
+                        </div>
+                        <form onSubmit={handleChat} className="p-2 border-t border-slate-700 flex gap-2 pointer-events-auto">
+                            <TextField 
+                                fullWidth 
+                                size="small"
+                                placeholder={me?.status === 'playing' ? "Soru sor veya cevapla..." : "İzleyici sohbeti..."}
+                                value={chatInput}
+                                onChange={e => setChatInput(e.target.value)}
+                                sx={{
+                                    input: { color: 'white' },
+                                    '& .MuiOutlinedInput-root': {
+                                        '& fieldset': { borderColor: '#475569' },
+                                        '&:hover fieldset': { borderColor: '#94a3b8' },
+                                        '&.Mui-focused fieldset': { borderColor: '#06b6d4' }
+                                    }
+                                }}
+                            />
+                            <IconButton type="submit" color="primary" className="bg-violet-600 hover:bg-violet-500 text-white rounded-lg px-4">
+                                <SendIcon />
+                            </IconButton>
+                        </form>
+                    </div>
+
+                </div>
+
+                <div className="w-full md:w-1/4 flex flex-col gap-4">
+                    {me?.status === 'playing' && gameState.gameState === "PLAYING" && (
+                        <div className="glass p-6 rounded-3xl flex flex-col justify-center items-center gap-4 border border-slate-700/50 pointer-events-auto shadow-2xl bg-slate-900/60 backdrop-blur-lg">
+                            
+                            <motion.div whileHover={{ scale: isMyTurn ? 1.05 : 1 }} whileTap={{ scale: isMyTurn ? 0.95 : 1 }} className="w-full">
+                                <Button 
+                                    variant="contained" 
+                                    color="info" 
+                                    size="large" 
+                                    fullWidth 
+                                    startIcon={<QuestionAnswerIcon />}
+                                    onClick={() => setQuestionDialogOpen(true)}
+                                    disabled={!isMyTurn}
+                                    className={`py-4 rounded-xl border-2 font-bold ${isMyTurn ? 'bg-cyan-600 shadow-lg shadow-cyan-500/30' : 'opacity-50'}`}
+                                >
+                                    Soru Sor & Oylat
+                                </Button>
+                            </motion.div>
+
+                            <div className="w-full h-px bg-slate-700 my-2"></div>
+
+                            <motion.div whileHover={{ scale: isMyTurn ? 1.05 : 1 }} whileTap={{ scale: isMyTurn ? 0.95 : 1 }} className="w-full">
+                                <Button 
+                                    variant="contained" 
+                                    color="success" 
+                                    size="large" 
+                                    fullWidth 
+                                    onClick={() => setGuessDialogOpen(true)}
+                                    disabled={!isMyTurn}
+                                    className={`py-4 rounded-xl text-lg font-bold shadow-lg shadow-green-500/20 ${!isMyTurn ? 'opacity-50' : ''}`}
+                                >
+                                    TAHMİN ET
+                                </Button>
+                            </motion.div>
+
+                            <motion.div whileHover={{ scale: isMyTurn ? 1.05 : 1 }} whileTap={{ scale: isMyTurn ? 0.95 : 1 }} className="w-full">
+                                <Button 
+                                    variant="outlined" 
+                                    color="warning" 
+                                    size="large" 
+                                    fullWidth 
+                                    startIcon={<SkipNextIcon />}
+                                    onClick={handleSkip}
+                                    disabled={!isMyTurn}
+                                    className={`py-3 rounded-xl border-2 ${isMyTurn ? 'hover:bg-warning-main/10' : 'opacity-50'}`}
+                                >
+                                    Turu Geç
+                                </Button>
+                            </motion.div>
+
+                            {me?.joker !== undefined && me?.joker !== null && !me?.hasUsedJoker && (
+                                <motion.div whileHover={{ scale: isMyTurn ? 1.05 : 1 }} whileTap={{ scale: isMyTurn ? 0.95 : 1 }} className="w-full mt-2">
+                                    <Button 
+                                        variant="contained" 
+                                        color="secondary" 
+                                        size="large" 
+                                        fullWidth 
+                                        onClick={() => setJokerDialogOpen(true)}
+                                        disabled={!isMyTurn}
+                                        className={`py-3 rounded-xl border-2 font-bold ${isMyTurn ? 'bg-fuchsia-600 shadow-[0_0_15px_rgba(192,38,211,0.5)]' : 'opacity-50'}`}
+                                    >
+                                        🃏 Joker Kullan
+                                    </Button>
+                                </motion.div>
+                            )}
+
+                            {gameState.isBettingEnabled && (
+                                <motion.div whileHover={{ scale: !gameState.hasObjectionUsed ? 1.05 : 1 }} whileTap={{ scale: !gameState.hasObjectionUsed ? 0.95 : 1 }} className="w-full mt-4">
+                                    <Button 
+                                        variant="outlined" 
+                                        color="error" 
+                                        size="medium" 
+                                        fullWidth 
+                                        onClick={onStartObjection}
+                                        disabled={gameState.hasObjectionUsed}
+                                        className={`py-2 rounded-xl border-2 font-bold ${!gameState.hasObjectionUsed ? 'border-red-500/80 text-red-400 shadow-[0_0_15px_rgba(239,68,68,0.2)] hover:bg-red-500/20' : 'opacity-50'}`}
+                                    >
+                                        🚨 ŞİKEYE İTİRAZ ET {gameState.hasObjectionUsed && '(Kullanıldı)'}
+                                    </Button>
+                                </motion.div>
+                            )}
+
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            <Dialog 
+                open={jokerDialogOpen} 
+                onClose={() => setJokerDialogOpen(false)} 
+                slotProps={{ paper: { className: "!bg-white !text-slate-900 !rounded-2xl min-w-[300px]" } }}
+            >
+                <DialogTitle className="text-center font-bold text-fuchsia-600">🃏 Özel Yetenek Jokerin</DialogTitle>
+                <DialogContent>
+                    {me?.joker === 0 && <p className="text-center text-slate-600 mt-2">Şu anki sıranda sürene <strong>1 Dakika</strong> eklersin.</p>}
+                    {me?.joker === 1 && (
+                        <div className="flex flex-col gap-4 mt-4">
+                            <p className="text-sm text-center text-slate-600">Bir oyuncunun kelimesini değiştir.</p>
+                            <TextField 
+                                select 
+                                label="Oyuncu Seç"
+                                value={jokerTarget} 
+                                onChange={e => setJokerTarget(e.target.value)} 
+                            >
+                                {gameState.users.filter((u:User) => u.id !== myId).map((u:User) => (
+                                    <MenuItem key={u.id} value={u.id}>{u.name}</MenuItem>
+                                ))}
+                            </TextField>
+                            <TextField 
+                                label="Yeni Kelime" 
+                                value={jokerWord} 
+                                onChange={e => setJokerWord(e.target.value)} 
+                            />
+                        </div>
+                    )}
+                    {me?.joker === 2 && <p className="text-center text-slate-600 mt-2">Bunu kullandığında <strong>3 ekstra soru</strong> sorma hakkı kazanırsın.</p>}
+                    {me?.joker === 3 && <p className="text-center text-slate-600 mt-2">Kendi kelimenin içinden rastgele <strong>1 harfi</strong> açarsın.</p>}
+                    {me?.joker === 4 && (
+                        <div className="flex flex-col gap-4 mt-4">
+                            <p className="text-sm text-center text-slate-600">Bir oyuncuyu 2 tur boyunca sustur.</p>
+                            <TextField 
+                                select 
+                                label="Oyuncu Seç"
+                                value={jokerTarget} 
+                                onChange={e => setJokerTarget(e.target.value)} 
+                            >
+                                {gameState.users.filter((u:User) => u.id !== myId).map((u:User) => (
+                                    <MenuItem key={u.id} value={u.id}>{u.name}</MenuItem>
+                                ))}
+                            </TextField>
+                        </div>
+                    )}
+                </DialogContent>
+                <DialogActions className="p-4 pt-0 justify-between">
+                    <Button onClick={() => setJokerDialogOpen(false)} className="!text-slate-500">İptal</Button>
+                    <Button 
+                        onClick={handleUseJokerSubmit} 
+                        variant="contained" 
+                        color="secondary" 
+                        className="px-6 font-bold" 
+                        disabled={(me?.joker === 1 && (!jokerTarget || !jokerWord)) || (me?.joker === 4 && !jokerTarget) || (me?.joker === 0 && !isMyTurn)}
+                    >
+                        Kullan
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            <Dialog open={guessDialogOpen} onClose={() => setGuessDialogOpen(false)} slotProps={{ paper: { className: "!bg-white !text-slate-900 !rounded-2xl min-w-[300px]" } }}>
+                <DialogTitle className="text-center font-bold">Kimin Nesin Sen?</DialogTitle>
+                <DialogContent>
+                    <p className="text-slate-600 mb-4 text-sm text-center">Yanlış bilirsen 1 canın (❤️) gider. 3 yanlışta elenirsin!</p>
+                    <TextField 
+                        autoFocus
+                        fullWidth
+                        label="Tahminin"
+                        variant="outlined"
+                        value={guessInput}
+                        onChange={e => setGuessInput(e.target.value)}
+                        onKeyDown={e => { if(e.key === 'Enter') handleGuess(); }}
+                    />
+                </DialogContent>
+                <DialogActions className="p-4 pt-0">
+                    <Button onClick={() => setGuessDialogOpen(false)} className="!text-slate-500">İptal</Button>
+                    <Button onClick={handleGuess} variant="contained" color="success" className="px-6 font-bold">Dene</Button>
+                </DialogActions>
+            </Dialog>
+
+            <Dialog open={questionDialogOpen} onClose={() => setQuestionDialogOpen(false)} slotProps={{ paper: { className: "!bg-white !text-slate-900 !rounded-2xl min-w-[300px]" } }}>
+                <DialogTitle className="text-center font-bold">Herkes İçin Soru Sor</DialogTitle>
+                <DialogContent>
+                    <p className="text-slate-600 mb-4 text-sm text-center">Diğer oyuncular bu soruya Evet, Hayır veya Bazen oyu verecek.</p>
+                    <TextField 
+                        autoFocus
+                        fullWidth
+                        label="Sorunuz"
+                        placeholder="Örn: Gerçek bir insan mıyım?"
+                        variant="outlined"
+                        value={questionInput}
+                        onChange={e => setQuestionInput(e.target.value)}
+                        onKeyDown={e => { if(e.key === 'Enter') { onAskQuestion(questionInput); setQuestionDialogOpen(false); setQuestionInput(""); } }}
+                    />
+                </DialogContent>
+                <DialogActions className="p-4 pt-0">
+                    <Button onClick={() => setQuestionDialogOpen(false)} className="!text-slate-500">İptal</Button>
+                    <Button onClick={() => { onAskQuestion(questionInput); setQuestionDialogOpen(false); setQuestionInput(""); }} variant="contained" color="primary" className="px-6 font-bold">Sor</Button>
+                </DialogActions>
+            </Dialog>
+            {gameState.objection && (
+                <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm pointer-events-auto">
+                    <div className="bg-slate-900 border-2 border-red-500 rounded-3xl p-8 max-w-md w-full text-center shadow-[0_0_50px_rgba(239,68,68,0.3)]">
+                        <h2 className="text-3xl font-black text-red-500 mb-2">🚨 ŞİKE İTİRAZI!</h2>
+                        <p className="text-xl text-white mb-6">
+                            <strong className="text-yellow-400">{gameState.objection.initiator}</strong> oyunda şike yapıldığını düşünüyor! Sence şike var mı?
+                        </p>
+                        
+                        {gameState.objection.votes[myId] !== undefined ? (
+                            <p className="text-green-400 font-bold text-xl animate-pulse">Oy verdin, diğerleri bekleniyor...</p>
+                        ) : (
+                            <div className="flex gap-4 justify-center">
+                                <Button variant="contained" color="error" size="large" onClick={() => onVoteObjection(true)} className="flex-1 py-3 font-bold text-lg">
+                                    EVET, ŞİKE VAR!
+                                </Button>
+                                <Button variant="outlined" color="inherit" size="large" onClick={() => onVoteObjection(false)} className="flex-1 py-3 font-bold text-lg border-slate-600 text-slate-300">
+                                    HAYIR, TEMİZ
+                                </Button>
+                            </div>
+                        )}
+                        
+                        <div className="mt-6 text-slate-400">
+                            İtiraz oylaması devam ediyor... ({Object.keys(gameState.objection.votes).length} oy verildi)
+                        </div>
+                    </div>
+                </div>
+            )}
+        </main>
+    );
+}
+
+
+=========================
+DOSYA: client\components\game\Lobby.tsx
+=========================
+
+import { Button, TextField, IconButton, Avatar, Chip, FormControlLabel, Switch } from "@mui/material";
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import CancelIcon from '@mui/icons-material/Cancel';
+import LogoutIcon from '@mui/icons-material/Logout';
+import { User, GameState, AVATARS } from "./types";
+
+interface LobbyProps {
+    gameState: GameState;
+    me: User;
+    code: string;
+    inviteUrl: string;
+    myId: string;
+    onStart: (settings: { category: string, bettingEnabled: boolean, jokersEnabled: boolean, betAmount: number }) => void;
+    onCloseRoom: () => void;
+    onLeaveRoom: () => void;
+    onCopyLink: () => void;
+}
+
+import { useState } from "react";
+import { Select, MenuItem } from "@mui/material";
+
+export default function Lobby({
+    gameState, me, code, inviteUrl, myId, onStart, onCloseRoom, onLeaveRoom, onCopyLink, onSelectAvatar, onToggleVoice
+}: LobbyProps & { onSelectAvatar: (id: number) => void, onToggleVoice: (enabled: boolean) => void }) {
+    const [category, setCategory] = useState("Karışık");
+    const [bettingEnabled, setBettingEnabled] = useState(false);
+    const [betAmount, setBetAmount] = useState(50);
+    const [jokersEnabled, setJokersEnabled] = useState(true);
+
+    return (
+        <main className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center p-4 relative">
+            <div className="absolute top-4 right-4 flex gap-2">
+                {me?.isHost && (
+                    <Button variant="outlined" color="error" size="small" onClick={onCloseRoom} startIcon={<CancelIcon />}>
+                        Odayı Kapat
+                    </Button>
+                )}
+                <Button variant="contained" color="error" size="small" onClick={onLeaveRoom} startIcon={<LogoutIcon />} className="bg-red-500/20 text-red-400 border-red-500/50">
+                    Çıkış Yap
+                </Button>
+            </div>
+
+            <div className="glass max-w-xl w-full p-8 rounded-3xl text-center shadow-2xl">
+                <h1 className="text-4xl font-black mb-2 bg-clip-text text-transparent bg-gradient-to-r from-violet-400 to-cyan-400">
+                    Lobi
+                </h1>
+                <div className="text-5xl font-mono font-black text-slate-800 bg-slate-200 rounded-xl p-4 mb-6 tracking-[0.2em] select-all">
+                    {code}
+                </div>
+
+                <div className="mb-8 flex items-center justify-center gap-2">
+                    <TextField 
+                        value={inviteUrl} 
+                        slotProps={{ input: { readOnly: true, className: "text-slate-300 text-sm" } }}
+                        size="small" 
+                        className="bg-slate-800 rounded-lg"
+                        fullWidth
+                    />
+                    <IconButton onClick={onCopyLink} color="primary" className="bg-slate-800 hover:bg-slate-700">
+                        <ContentCopyIcon />
+                    </IconButton>
+                </div>
+                <div className="mb-6 bg-slate-800/50 p-4 rounded-xl border border-slate-700 flex flex-col items-center">
+                    <FormControlLabel 
+                        control={<Switch checked={me?.isVoiceEnabled || false} onChange={(e) => onToggleVoice(e.target.checked)} color="success" />} 
+                        label="🎙️ Oyun İçi Sesli Sohbet (Mikrofon İzni Gerekir)" 
+                        className="text-slate-200"
+                    />
+                    {me?.isVoiceEnabled && <p className="text-xs text-green-400 mt-1">Sesli sohbet açık! Kulaklık takmanız tavsiye edilir.</p>}
+                </div>
+
+                <div className="text-left space-y-3 mb-8">
+                    <p className="text-slate-400 font-bold uppercase tracking-widest text-sm border-b border-slate-700 pb-2">Oyuncular ({gameState.users.length})</p>
+                    <div className="space-y-2 max-h-[300px] overflow-y-auto custom-scrollbar pr-2">
+                        {gameState.users.map((u: User) => {
+                            const userAvatar = AVATARS.find(a => a.id === u.avatar) || AVATARS[0];
+                            return (
+                                <div key={u.id} className="flex justify-between items-center bg-slate-800/80 p-3 rounded-xl">
+                                    <div className="flex items-center gap-3">
+                                        <Avatar className={userAvatar.color}>
+                                            {userAvatar.icon ? (
+                                                <span className="text-2xl flex items-center justify-center">{userAvatar.icon}</span>
+                                            ) : (
+                                                u.name.charAt(0).toUpperCase()
+                                            )}
+                                        </Avatar>
+                                        <span className="font-bold text-lg">{u.name} {u.id === myId ? '(Sen)' : ''}</span>
+                                        {u.disconnected && <Chip label="Koptu" size="small" color="error" />}
+                                        {u.isVoiceEnabled && <span title="Sesli Sohbet Açık" className="text-xl animate-pulse">🎤</span>}
+                                    </div>
+                                    {u.isHost && <Chip label="HOST" size="small" color="warning" variant="outlined" />}
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                {gameState.users.length < 2 ? (
+                    <p className="text-red-400 animate-pulse font-medium">Oynamak için en az 2 kişi gerekli!</p>
+                ) : (
+                    me?.isHost ? (
+                        <div className="space-y-4">
+                            <div className="bg-slate-800/80 p-4 rounded-xl text-left border border-slate-700">
+                                <p className="text-slate-400 text-sm mb-2 font-bold">Kategori Seçin:</p>
+                                <Select
+                                    value={category}
+                                    onChange={(e) => setCategory(e.target.value)}
+                                    size="small"
+                                    fullWidth
+                                    className="bg-slate-700 text-white mb-4"
+                                    sx={{ color: 'white', '.MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.2)' } }}
+                                >
+                                    <MenuItem value="Karışık">🎲 Karışık</MenuItem>
+                                    <MenuItem value="Ünlüler">⭐ Ünlüler</MenuItem>
+                                    <MenuItem value="Hayvanlar">🐾 Hayvanlar</MenuItem>
+                                    <MenuItem value="Tarihi Kişiler">📜 Tarihi Kişiler</MenuItem>
+                                    <MenuItem value="Filmler / Diziler">🎬 Filmler / Diziler</MenuItem>
+                                </Select>
+
+                                <div className="flex flex-col gap-2 border-t border-slate-700 pt-3">
+                                    <div className="flex items-center justify-between">
+                                        <FormControlLabel 
+                                            control={<Switch checked={bettingEnabled} onChange={(e) => setBettingEnabled(e.target.checked)} color="secondary" />} 
+                                            label="💰 Bahis Modu" 
+                                            className="text-slate-200"
+                                        />
+                                        {bettingEnabled && (
+                                            <Select
+                                                value={betAmount}
+                                                onChange={(e) => setBetAmount(e.target.value as number)}
+                                                size="small"
+                                                className="bg-slate-800 text-yellow-400 font-bold min-w-[120px]"
+                                            >
+                                                <MenuItem value={50}>50 Altın</MenuItem>
+                                                <MenuItem value={100}>100 Altın</MenuItem>
+                                                <MenuItem value={250}>250 Altın</MenuItem>
+                                                <MenuItem value={500}>500 Altın (VIP)</MenuItem>
+                                            </Select>
+                                        )}
+                                    </div>
+                                    <FormControlLabel 
+                                        control={<Switch checked={jokersEnabled} onChange={(e) => setJokersEnabled(e.target.checked)} color="secondary" />} 
+                                        label="🃏 Joker Modu" 
+                                        className="text-slate-200"
+                                    />
+                                </div>
+                            </div>
+                            <Button variant="contained" color="secondary" size="large" fullWidth onClick={() => onStart({ category, bettingEnabled, jokersEnabled, betAmount })} className="py-3 text-lg font-bold rounded-xl bg-gradient-to-r from-violet-600 to-cyan-600">
+                                OYUNU BAŞLAT
+                            </Button>
+                        </div>
+                    ) : (
+                        <p className="text-slate-500 italic">Host'un başlatması bekleniyor...</p>
+                    )
+                )}
+            </div>
+        </main>
+    );
+}
+
+
+=========================
+DOSYA: client\components\game\Scene3D.tsx
+=========================
+
+import React, { useRef, Suspense } from 'react';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { OrbitControls, Html, ContactShadows, useGLTF, Clone } from '@react-three/drei';
+import { User, GameState, AVATARS } from './types';
+import * as THREE from 'three';
+import { Avatar as MuiAvatar } from '@mui/material';
+import HelpIcon from '@mui/icons-material/Help';
+
+const PLAYER_CENTER = [2, 0, -1]; 
+const MAP_POSITION = [0, -1.70, 0]; 
+const MAP_SCALE = 0.5;
+
+const PLAYER_CIRCLE_RADIUS_SMALL = 3.5;
+const PLAYER_CIRCLE_RADIUS_LARGE = 4.5;
+// -----------------------------------
+
+function FirstPersonCamera({ myId, users, radius, onHeadRotation }: any) {
+    const { camera } = useThree();
+    const lastEmitTime = useRef(0);
+    const lastEmittedRot = useRef({ pitch: 0, yaw: 0 });
+
+    useFrame((state, delta) => {
+        const myIndex = users.findIndex((u: any) => u.id === myId);
+        if (myIndex === -1) {
+            
+            camera.position.lerp(new THREE.Vector3(PLAYER_CENTER[0], 5, PLAYER_CENTER[2] + 8), 2 * delta);
+            camera.lookAt(PLAYER_CENTER[0], 0, PLAYER_CENTER[2]);
+            return;
+        }
+
+        const angle = (myIndex / users.length) * (2 * Math.PI) - (Math.PI / 2);
+        
+        const headX = PLAYER_CENTER[0] + Math.cos(angle) * radius;
+        const headZ = PLAYER_CENTER[2] + Math.sin(angle) * radius;
+        const headY = PLAYER_CENTER[1] + 1.2; 
+
+        camera.position.lerp(new THREE.Vector3(headX, headY, headZ), 5 * delta);
+
+        const targetX = PLAYER_CENTER[0];
+        const targetY = PLAYER_CENTER[1] + 0.8;
+        const targetZ = PLAYER_CENTER[2];
+
+        camera.lookAt(targetX, targetY, targetZ);
+        
+        const mouseX = state.pointer.x; 
+        const mouseY = state.pointer.y; 
+        
+        const maxYaw = Math.PI / 3; 
+        const maxPitch = Math.PI / 4; 
+        
+        const yaw = -mouseX * maxYaw;
+        const pitch = mouseY * maxPitch;
+
+        camera.rotateY(yaw);
+        camera.rotateX(pitch);
+
+        const now = Date.now();
+        if (now - lastEmitTime.current > 100) {
+            const pitchDeg = Math.round(pitch * 180 / Math.PI);
+            const yawDeg = Math.round(yaw * 180 / Math.PI);
+            if (lastEmittedRot.current.pitch !== pitchDeg || lastEmittedRot.current.yaw !== yawDeg) {
+                lastEmittedRot.current = { pitch: pitchDeg, yaw: yawDeg };
+                lastEmitTime.current = now;
+                if (onHeadRotation) onHeadRotation(pitch, yaw);
+            }
+        }
+    });
+
+    return null;
+}
+
+function AvatarModel({ url, isWinner, targetRot }: { url: string, isWinner: boolean, targetRot?: { pitch: number, yaw: number } }) {
+    const { scene } = useGLTF(`/avatars/${url}`);
+    const groupRef = useRef<THREE.Group>(null);
+    const headBone = useRef<THREE.Object3D | null>(null);
+
+    React.useEffect(() => {
+        if (!groupRef.current) return;
+        headBone.current = null;
+        groupRef.current.traverse((child) => {
+            if ((child as any).isBone) {
+                const name = child.name.toLowerCase();
+                if (name.includes('head') || name.includes('neck')) {
+                    if (!headBone.current) headBone.current = child; 
+                }
+            }
+        });
+    }, [scene]);
+
+    useFrame((state, delta) => {
+        if (targetRot) {
+            if (headBone.current) {
+                const bone = headBone.current as any;
+                if (!bone.userData.initialRotation) {
+                    bone.userData.initialRotation = bone.rotation.clone();
+                }
+                const initRot = bone.userData.initialRotation;
+                bone.rotation.y = THREE.MathUtils.lerp(bone.rotation.y, initRot.y + targetRot.yaw, 5 * delta);
+                bone.rotation.x = THREE.MathUtils.lerp(bone.rotation.x, initRot.x + targetRot.pitch, 5 * delta);
+            } else if (groupRef.current) {
+                groupRef.current.rotation.y = THREE.MathUtils.lerp(groupRef.current.rotation.y, targetRot.yaw, 5 * delta);
+            }
+        }
+    });
+
+    return (
+        <group ref={groupRef} position={[0, 0.5, 0]} scale={0.6}>
+            <Clone object={scene} castShadow receiveShadow />
+        </group>
+    );
+}
+
+function PlayerNode({ u, index, totalUsers, isCurrentTurn, isMe, isWinner, activeBubble, gameState, headRotations }: any) {
+    const radius = totalUsers > 4 ? PLAYER_CIRCLE_RADIUS_LARGE : PLAYER_CIRCLE_RADIUS_SMALL;
+    const angle = (index / totalUsers) * (2 * Math.PI) - (Math.PI / 2);
+    const x = Math.cos(angle) * radius;
+    const z = Math.sin(angle) * radius;
+
+    const userAvatar = AVATARS.find(a => a.id === u.avatar) || AVATARS[0];
+    const groupRef = useRef<THREE.Group>(null);
+    const bodyRef = useRef<THREE.Group>(null);
+
+    const targetRot = headRotations?.[u.id];
+    
+    return (
+        <group ref={groupRef} position={[x, 0, z]} rotation={[0, -angle - Math.PI / 2, 0]}>
+            
+            <mesh position={[0, 0.25, 0]} castShadow receiveShadow>
+                <cylinderGeometry args={[0.7, 0.75, 0.5, 8]} />
+                <meshStandardMaterial color="#475569" roughness={0.9} metalness={0.1} />
+            </mesh>
+
+            {!isMe && (
+                <group ref={bodyRef}>
+                    {userAvatar.model || u.avatar.includes('default') ? (
+                        <Suspense fallback={
+                            <mesh position={[0, 1, 0]}><boxGeometry args={[0.5, 1, 0.5]}/><meshStandardMaterial color="gray"/></mesh>
+                        }>
+                            <AvatarModel url={userAvatar.model || "Warrior.gltf"} isWinner={isWinner} targetRot={targetRot} />
+                        </Suspense>
+                    ) : (
+                        <mesh position={[0, 1, 0]} castShadow receiveShadow>
+                            <cylinderGeometry args={[0.5, 0.5, 1, 32]} />
+                            <meshStandardMaterial color="gray" />
+                        </mesh>
+                    )}
+                </group>
+            )}
+
+            {!isMe && (
+                <Html position={[0, 2.5, 0]} center zIndexRange={[100, 0]} style={{ pointerEvents: 'none' }}>
+                    <div className='flex flex-col items-center select-none'>
+                        {activeBubble && (
+                            <div className='absolute -top-14 bg-white text-black px-3 py-1.5 rounded-2xl rounded-bl-none text-xs font-bold shadow-xl z-50 text-center whitespace-normal break-words' style={{ minWidth: 'max-content', maxWidth: '140px' }}>
+                                {activeBubble}
+                            </div>
+                        )}
+                        {!isWinner && (
+                            <div className={`mb-1 px-3 py-1 rounded-lg border shadow-lg font-bold text-center text-xs max-w-[100px] break-words z-20 bg-yellow-100 border-yellow-400 text-black transform -rotate-2`}>
+                                {u.assignedWord}
+                            </div>
+                        )}
+                        <span className={`mt-2 font-bold text-[11px] bg-black/80 px-2 py-0.5 rounded-full whitespace-nowrap ${u.status === 'spectator' ? 'line-through text-slate-500' : ''} ${u.disconnected ? 'text-red-400' : ''}`}>
+                            {u.name} {u.disconnected && '(Koptu)'}
+                        </span>
+                        {u.status !== 'spectator' && !isWinner && (
+                            <div className='flex gap-1 mt-1 bg-black/40 px-1.5 py-0.5 rounded-full'>
+                                {[...Array(3)].map((_, i) => (
+                                    <span key={i} className='drop-shadow-md text-[8px]'>{i < (u.lives ?? 3) ? '❤️' : '🖤'}</span>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </Html>
+            )}
+        </group>
+    );
+}
+
+function MapModel({ url }: { url: string }) {
+    const { scene } = useGLTF(`/maps/${url}`);
+    return (
+        <group position={MAP_POSITION as [number, number, number]} scale={MAP_SCALE}>
+            <primitive object={scene} castShadow receiveShadow />
+        </group>
+    );
+}
+
+export default function Scene3D({ gameState, myId, activeBubbles, headRotations, onHeadRotation }: any) {
+    return (
+        <div className='absolute inset-0 w-full h-full z-0 pointer-events-auto'>
+            <Canvas shadows camera={{ position: [0, 4.5, 8], fov: 45 }}>
+                <color attach='background' args={['#0f172a']} />
+                <fog attach='fog' args={['#0f172a', 8, 30]} />
+                <ambientLight intensity={0.5} />
+                <directionalLight castShadow position={[5, 10, 5]} intensity={1.5} shadow-mapSize={[2048, 2048]} />
+                <pointLight position={[0, 4, 0]} intensity={1.2} color='#eab308' distance={10} />
+                
+                <Suspense fallback={
+                    <mesh position={[0, -0.1, 0]} receiveShadow>
+                        <cylinderGeometry args={[2.8, 3.2, 0.2, 64]} />
+                        <meshStandardMaterial color='#334155' roughness={0.7} />
+                    </mesh>
+                }>
+                <MapModel url="floating_island__low_poly_vr.glb" />
+            </Suspense>
+
+            <group position={PLAYER_CENTER as [number, number, number]}>
+                {gameState.users.map((u: any, i: number) => (
+                    <PlayerNode 
+                        key={u.id} 
+                        u={u} 
+                        index={i} 
+                        totalUsers={gameState.users.length} 
+                        isCurrentTurn={u.id === gameState.currentTurnUserId} 
+                        isMe={u.id === myId} 
+                        isWinner={gameState.winners.includes(u.id)} 
+                        activeBubble={activeBubbles[u.id]}
+                        gameState={gameState}
+                        headRotations={headRotations}
+                    />
+                ))}
+            </group>
+
+            <ContactShadows position={[PLAYER_CENTER[0], PLAYER_CENTER[1] - 0.05, PLAYER_CENTER[2]]} opacity={0.5} scale={15} blur={2.5} far={4} />
+            <FirstPersonCamera 
+                myId={myId} 
+                users={gameState.users} 
+                radius={gameState.users.length > 4 ? PLAYER_CIRCLE_RADIUS_LARGE : PLAYER_CIRCLE_RADIUS_SMALL} 
+                onHeadRotation={onHeadRotation}
+            />
+        </Canvas>
+    </div>
+);
+}
+
+=========================
+DOSYA: client\components\game\WordSelection.tsx
+=========================
+
+import { Button, TextField, Chip } from "@mui/material";
+import { User, GameState } from "./types";
+
+interface WordSelectionProps {
+    gameState: GameState;
+    me: User;
+    wordInput: string;
+    setWordInput: (val: string) => void;
+    onSetWord: () => void;
+    onLeaveRoom: () => void;
+}
+
+export default function WordSelection({
+    gameState, me, wordInput, setWordInput, onSetWord, onLeaveRoom
+}: WordSelectionProps) {
+    const targetUser = gameState.users.find((u: User) => u.id === me?.targetId);
+
+    return (
+        <main className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center p-4 relative">
+            <Button variant="outlined" color="inherit" size="small" onClick={onLeaveRoom} className="absolute top-4 right-4 border-slate-700 text-slate-400">
+                Odadan Ayrıl
+            </Button>
+
+            <div className="glass max-w-lg w-full p-8 rounded-3xl text-center shadow-2xl relative overflow-hidden">
+                {gameState.isBettingEnabled && (
+                    <div className="absolute top-0 left-0 right-0 bg-yellow-500/20 border-b border-yellow-500/50 p-2 flex justify-center items-center gap-2">
+                        <span className="text-xl">💰</span>
+                        <span className="text-yellow-400 font-bold text-sm">BAHİS MODU AKTİF (-50 Altın)</span>
+                    </div>
+                )}
+                <h2 className={`text-3xl font-bold mb-2 text-cyan-400 ${gameState.isBettingEnabled ? 'mt-6' : ''}`}>Kelime Seçimi</h2>
+                {gameState.category && (
+                    <Chip label={`Kategori: ${gameState.category}`} color="secondary" className="mb-6 font-bold" />
+                )}
+                {me?.hasSubmittedWord ? (
+                    <div className="py-8">
+                        <p className="text-xl mb-4">Kelimeyi gönderdin!</p>
+                        <p className="text-slate-400 animate-pulse">Diğer oyuncuların kelimelerini seçmesi bekleniyor...</p>
+                    </div>
+                ) : (
+                    <div className="space-y-6 text-left">
+                        <div className="bg-slate-800 p-4 rounded-xl border border-slate-700">
+                            <p className="text-slate-400 text-sm mb-1">Şu oyuncu için bir kelime/isim belirle:</p>
+                            <p className="text-2xl font-bold text-white">{targetUser?.name}</p>
+                        </div>
+                        <TextField 
+                            fullWidth
+                            label="Kafasında ne yazsın?"
+                            variant="outlined"
+                            value={wordInput}
+                            onChange={(e) => setWordInput(e.target.value)}
+                            sx={{
+                                input: { color: 'white' },
+                                label: { color: '#94a3b8' },
+                                '& .MuiOutlinedInput-root': {
+                                    '& fieldset': { borderColor: '#475569' },
+                                    '&:hover fieldset': { borderColor: '#94a3b8' },
+                                    '&.Mui-focused fieldset': { borderColor: '#a855f7' }
+                                }
+                            }}
+                        />
+                        <Button variant="contained" color="primary" fullWidth size="large" onClick={onSetWord} className="py-3">
+                            Onayla
+                        </Button>
+                    </div>
+                )}
+
+                <div className="mt-8 pt-4 border-t border-slate-700 text-left">
+                    <p className="text-sm text-slate-400 mb-2">Durum:</p>
+                    <div className="flex flex-wrap gap-2">
+                        {gameState.users.map((u: User) => (
+                            <Chip key={u.id} label={u.name} color={u.hasSubmittedWord ? "success" : "default"} variant="outlined" />
+                        ))}
+                    </div>
+                </div>
+            </div>
+        </main>
+    );
+}
+
+
+=========================
+DOSYA: client\components\game\types.tsx
+=========================
+
+import React from 'react';
+import { GiBroadsword, GiWizardStaff, GiDaggers, GiBowArrow, GiHighKick, GiHolySymbol } from 'react-icons/gi';
+
+export type User = {
+    id: string;
+    dbId: string;
+    name: string;
+    isHost: boolean;
+    avatar: string;
+    status: string;
+    targetId: string | null;
+    hasSubmittedWord: boolean;
+    hasPlacedBet?: boolean;
+    isVoiceEnabled: boolean;
+    joker?: number | null;
+    hasUsedJoker?: boolean;
+    silencedTurns?: number;
+    extraQuestions?: number;
+    assignedWord: string | null;
+    lives: number;
+    disconnected?: boolean;
+};
+
+export type GameState = {
+    gameState: "LOBBY" | "BETTING" | "WORD_SELECTION" | "PLAYING" | "ROUND_END";
+    bettingEndTime?: number;
+    objection?: {
+        initiator: string;
+        votes: { [userId: string]: boolean };
+        endTime: number;
+    } | null;
+    roundLogs?: string[];
+    category?: string;
+    isBettingEnabled?: boolean;
+    betAmount?: number;
+    isJokersEnabled?: boolean;
+    activeQuestion?: {
+        askerId: string;
+        question: string;
+        votes: { [userId: string]: string };
+    } | null;
+    users: User[];
+    currentTurnUserId: string | null;
+    turnEndsAt: number | null;
+    chatHistory: any[];
+    winners: string[];
+    hasObjectionUsed?: boolean;
+};
+
+export const AVATARS = [
+    { id: 'default-violet', color: "bg-violet-600" },
+    { id: 'default-red', color: "bg-red-500" },
+    { id: 'default-blue', color: "bg-blue-500" },
+    { id: 'default-green', color: "bg-green-500" },
+    { id: 'default-yellow', color: "bg-yellow-500" },
+    { id: 'default-pink', color: "bg-pink-500" },
+    { id: 'Warrior', color: "bg-red-600", icon: <GiBroadsword />, label: "Savaşçı", model: "Warrior.gltf" },
+    { id: 'Wizard', color: "bg-blue-600", icon: <GiWizardStaff />, label: "Büyücü", model: "Wizard.gltf" },
+    { id: 'Rogue', color: "bg-purple-600", icon: <GiDaggers />, label: "Suikastçi", model: "Rogue.gltf" },
+    { id: 'Ranger', color: "bg-green-600", icon: <GiBowArrow />, label: "Okçu", model: "Ranger.gltf" },
+    { id: 'Monk', color: "bg-orange-600", icon: <GiHighKick />, label: "Keşiş", model: "Monk.gltf" },
+    { id: 'Cleric', color: "bg-yellow-500", icon: <GiHolySymbol />, label: "Şifacı", model: "Cleric.gltf" }
+];
+
+
+=========================
+DOSYA: client\components\game\useWebRTC.ts
+=========================
+
+import { useEffect, useRef, useState } from 'react';
+import { Socket } from 'socket.io-client';
+import { User } from './types';
+import { toast } from 'react-toastify';
+
+export function useWebRTC(socket: Socket | null, myId: string, isVoiceEnabled: boolean, users: User[]) {
+    const [myStream, setMyStream] = useState<MediaStream | null>(null);
+    const peersRef = useRef<{ [socketId: string]: RTCPeerConnection }>({});
+    const [remoteStreams, setRemoteStreams] = useState<{ [socketId: string]: MediaStream }>({});
+    useEffect(() => {
+        if (!isVoiceEnabled) {
+            if (myStream) {
+                myStream.getTracks().forEach(t => t.stop());
+                setMyStream(null);
+            }
+            Object.values(peersRef.current).forEach(p => p.close());
+            peersRef.current = {};
+            setRemoteStreams({});
+            return;
+        }
+
+        if (!myStream) {
+            navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+                setMyStream(stream);
+            }).catch(err => {
+                console.error("Microphone access denied", err);
+                socket?.emit("game:toggle_voice", { enabled: false });
+                toast.error("Mikrofon izni reddedildi!");
+            });
+        }
+    }, [isVoiceEnabled]);
+
+    useEffect(() => {
+        if (!socket || !isVoiceEnabled || !myStream) return;
+
+        const createPeer = (targetId: string, initiator: boolean) => {
+            if (peersRef.current[targetId]) return peersRef.current[targetId];
+
+            const pc = new RTCPeerConnection({
+                iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+            });
+
+            myStream.getTracks().forEach(track => pc.addTrack(track, myStream));
+
+            pc.onicecandidate = (event) => {
+                if (event.candidate) {
+                    socket.emit('webrtc:ice-candidate', { to: targetId, candidate: event.candidate });
+                }
+            };
+
+            pc.ontrack = (event) => {
+                setRemoteStreams(prev => ({ ...prev, [targetId]: event.streams[0] }));
+            };
+
+            pc.onconnectionstatechange = () => {
+                if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
+                    pc.close();
+                    delete peersRef.current[targetId];
+                    setRemoteStreams(prev => {
+                        const copy = { ...prev };
+                        delete copy[targetId];
+                        return copy;
+                    });
+                }
+            };
+
+            if (initiator) {
+                pc.createOffer().then(offer => {
+                    pc.setLocalDescription(offer);
+                    socket.emit('webrtc:offer', { to: targetId, offer });
+                });
+            }
+
+            peersRef.current[targetId] = pc;
+            return pc;
+        };
+
+        const handleOffer = async ({ from, offer }: any) => {
+            const pc = createPeer(from, false);
+            await pc.setRemoteDescription(new RTCSessionDescription(offer));
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+            socket.emit('webrtc:answer', { to: from, answer });
+        };
+
+        const handleAnswer = async ({ from, answer }: any) => {
+            const pc = peersRef.current[from];
+            if (pc) {
+                await pc.setRemoteDescription(new RTCSessionDescription(answer));
+            }
+        };
+
+        const handleIceCandidate = async ({ from, candidate }: any) => {
+            const pc = peersRef.current[from];
+            if (pc) {
+                await pc.addIceCandidate(new RTCIceCandidate(candidate));
+            }
+        };
+
+        socket.on('webrtc:offer', handleOffer);
+        socket.on('webrtc:answer', handleAnswer);
+        socket.on('webrtc:ice-candidate', handleIceCandidate);
+
+        users.forEach(u => {
+            if (u.id !== myId && u.isVoiceEnabled && !peersRef.current[u.id]) {
+                if (myId < u.id) {
+                    createPeer(u.id, true);
+                }
+            }
+        });
+
+        return () => {
+            socket.off('webrtc:offer', handleOffer);
+            socket.off('webrtc:answer', handleAnswer);
+            socket.off('webrtc:ice-candidate', handleIceCandidate);
+        };
+    }, [socket, isVoiceEnabled, myStream, users, myId]);
+
+    return { remoteStreams };
+}
+
+
+=========================
+DOSYA: client\utils\audio.ts
+=========================
+
+export const playTurnSound = () => {
+    try {
+        const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+        if (!AudioContext) return;
+        const ctx = new AudioContext();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(523.25, ctx.currentTime);
+        gain.gain.setValueAtTime(0.5, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.3);
+    } catch (e) {
+        console.error("Audio failed", e);
+    }
+};
+
+export const playWinSound = () => {
+    try {
+        const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+        if (!AudioContext) return;
+        const ctx = new AudioContext();
+        
+        [523.25, 659.25, 783.99, 1046.50].forEach((freq, i) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.type = 'triangle';
+            osc.frequency.value = freq;
+            gain.gain.setValueAtTime(0.2, ctx.currentTime + i * 0.1);
+            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + i * 0.1 + 0.4);
+            osc.start(ctx.currentTime + i * 0.1);
+            osc.stop(ctx.currentTime + i * 0.1 + 0.5);
+        });
+    } catch (e) {
+        console.error("Audio failed", e);
+    }
+};
+
+
+=========================
+DOSYA: server\index.js
+=========================
+
+const express = require("express");
+const http = require("http");
+const cors = require("cors");
+const { Server } = require("socket.io");
+const PORT = process.env.PORT || 4000;
+const app = express();
+app.use(cors({ origin: "http://localhost:3000" }));
+app.use(express.json()); 
+
+const connectDB = require("./config/db");
+connectDB(); 
+
+const server = http.createServer(app);
+
+app.use("/api/auth", require("./routes/auth"));
+app.use("/api/shop", require("./routes/shop"));
+app.use("/api/stats", require("./routes/stats"));
+
+app.get("/health", (req, res) => {
+  res.json({ ok: true, service: "ben-kimim-futbol-server" });
+});
+
+
+const io = new Server(server, {
+  cors: { origin: "http://localhost:3000", methods: ["GET", "POST"] },
+});
+
+const GameManager = require("./game/GameManager");
+
+const gameManager = new GameManager(io);
+app.locals.gameManager = gameManager;
+
+io.on("connection", (socket) => {
+  gameManager.handleConnection(socket);
+});
+
+server.listen(PORT, () => {
+  console.log(`server running on http://localhost:${PORT}`);
+});
+
+
+=========================
+DOSYA: server\package.json
+=========================
+
+{
+  "name": "server",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "nodemon index.js",
+    "start": "node index.js"
+  },
+  "keywords": [],
+  "author": "Bedir Hüseyin Özcan",
+  "license": "MIT",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^9.9.3",
+    "socket.io": "^4.8.3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.11"
+  }
+}
+
+
+=========================
+DOSYA: server\config\db.js
+=========================
+
+const mongoose = require("mongoose");
+
+const connectDB = async () => {
+    try {
+        const conn = await mongoose.connect(process.env.MONGO_URI || "mongodb://127.0.0.1:27017/ben-kimim");
+        console.log(`MongoDB Connected: ${conn.connection.host}`);
+    } catch (error) {
+        console.error(`MongoDB Error: ${error.message}`);
+        process.exit(1);
+    }
+};
+
+module.exports = connectDB;
+
+
+=========================
+DOSYA: server\game\GameManager.js
+=========================
+
+const Room = require("./Room");
+
+class GameManager {
+    constructor(io) {
+        this.io = io;
+        this.rooms = new Map();
+    }
+
+    handleConnection(socket) {
+        console.log("New client connected:", socket.id);
+
+        socket.on("room:create", ({ name, userId, avatar }, cb) => this.handleCreateRoom(socket, name, userId, avatar, cb));
+        socket.on("room:join", ({ roomCode, name, userId, avatar }, cb) => this.handleJoinRoom(socket, roomCode, name, userId, avatar, cb));
+        socket.on("game:update_avatar", ({ avatarIndex }) => this.handleUpdateAvatar(socket, avatarIndex));
+        socket.on("game:start", (settings = {}) => this.handleStartGame(socket, settings));
+        socket.on("game:place_bet", ({ targetId }) => this.handlePlaceBet(socket, targetId));
+        socket.on("game:start_objection", () => {
+            const room = this.getRoomBySocket(socket);
+            if (room) room.startObjection(socket.id);
+        });
+        socket.on("game:vote_objection", ({ vote }) => {
+            const room = this.getRoomBySocket(socket);
+            if (room) room.voteObjection(socket.id, vote);
+        });
+        socket.on("game:set_word", ({ word }) => this.handleSetWord(socket, word));
+        socket.on("game:chat", ({ message }) => this.handleChat(socket, message));
+        socket.on("game:ask_question", ({ question }) => this.handleAskQuestion(socket, question));
+        socket.on("game:submit_vote", ({ vote }) => this.handleSubmitVote(socket, vote));
+        socket.on("game:skip_turn", () => this.handleSkipTurn(socket));
+        socket.on("game:guess", ({ guess }) => this.handleGuess(socket, guess));
+        socket.on("game:set_avatar", ({ avatarId }) => this.handleSetAvatar(socket, avatarId));
+        socket.on("game:toggle_voice", ({ enabled }) => this.handleToggleVoice(socket, enabled));
+        socket.on("game:use_joker", (payload) => this.handleUseJoker(socket, payload));
+        socket.on("game:head_rotation", (payload) => this.handleHeadRotation(socket, payload));
+        socket.on("room:close", () => this.handleCloseRoom(socket));
+
+        // WebRTC Signaling
+        socket.on("webrtc:offer", ({ to, offer }) => this.io.to(to).emit("webrtc:offer", { from: socket.id, offer }));
+        socket.on("webrtc:answer", ({ to, answer }) => this.io.to(to).emit("webrtc:answer", { from: socket.id, answer }));
+        socket.on("webrtc:ice-candidate", ({ to, candidate }) => this.io.to(to).emit("webrtc:ice-candidate", { from: socket.id, candidate }));
+
+        socket.on("disconnect", () => this.handleDisconnect(socket));
+    }
+
+    handleCloseRoom(socket) {
+        const room = this.getRoomBySocket(socket);
+        if (room) {
+            const user = room.users.find(u => u.id === socket.id);
+            if (user && user.isHost) {
+                this.io.to(room.code).emit("game:closed");
+                this.rooms.delete(room.code);
+                console.log(`Room ${room.code} closed by host.`);
+            }
+        }
+    }
+
+    handleCreateRoom(socket, name, userId, avatar, cb) {
+        const code = Math.random().toString(36).slice(2, 8).toUpperCase();
+        const room = new Room(code, this.io);
+        this.rooms.set(code, room);
+
+        socket.join(code);
+        room.addUser(socket.id, name, userId, avatar);
+
+        cb?.({ ok: true, roomCode: code });
+    }
+
+    handleJoinRoom(socket, roomCode, name, userId, avatar, cb) {
+        const code = (roomCode || "").toUpperCase();
+        let room = this.rooms.get(code);
+
+        if (!room) {
+            room = new Room(code, this.io);
+            this.rooms.set(code, room);
+        }
+
+        socket.join(code);
+        room.addUser(socket.id, name, userId, avatar);
+
+        cb?.({ ok: true });
+    }
+
+    handleUpdateAvatar(socket, avatarIndex) {
+        const room = this.getRoomBySocket(socket);
+        if (room) room.updateAvatar(socket.id, avatarIndex);
+    }
+
+    handleSetAvatar(socket, avatarId) {
+        const room = this.getRoomBySocket(socket);
+        if (room) {
+            room.updateAvatar(socket.id, avatarId);
+        }
+    }
+
+    handleToggleVoice(socket, enabled) {
+        const room = this.getRoomBySocket(socket);
+        if (room) {
+            room.updateVoice(socket.id, enabled);
+        }
+    }
+
+    handleStartGame(socket, settings) {
+        const room = this.getRoomBySocket(socket);
+        if (room) room.startGame(settings);
+    }
+
+    handlePlaceBet(socket, targetId) {
+        const room = this.getRoomBySocket(socket);
+        if (room) room.placeBet(socket.id, targetId);
+    }
+
+    handleSetWord(socket, word) {
+        const room = this.getRoomBySocket(socket);
+        if (room) room.setWord(socket.id, word);
+    }
+
+    handleChat(socket, message) {
+        const room = this.getRoomBySocket(socket);
+        if (room) room.handleChat(socket.id, message);
+    }
+
+    handleAskQuestion(socket, question) {
+        const room = this.getRoomBySocket(socket);
+        if (room) room.askQuestion(socket.id, question);
+    }
+
+    handleSubmitVote(socket, vote) {
+        const room = this.getRoomBySocket(socket);
+        if (room) room.submitVote(socket.id, vote);
+    }
+
+    handleSkipTurn(socket) {
+        const room = this.getRoomBySocket(socket);
+        if (room) room.skipTurn(socket.id);
+    }
+
+    handleGuess(socket, guess) {
+        const room = this.getRoomBySocket(socket);
+        if (room) room.guessWord(socket.id, guess);
+    }
+
+    handleUseJoker(socket, payload) {
+        const room = this.getRoomBySocket(socket);
+        if (room) room.useJoker(socket.id, payload);
+    }
+
+    handleHeadRotation(socket, payload) {
+        const room = this.getRoomBySocket(socket);
+        if (room) room.broadcastHeadRotation(socket.id, payload);
+    }
+
+    handleDisconnect(socket) {
+        const room = this.getRoomBySocket(socket);
+        if (room) {
+            const isEmpty = room.removeUser(socket.id);
+            if (isEmpty) {
+                setTimeout(() => {
+                    if (room.users.every(u => u.disconnected)) {
+                        this.rooms.delete(room.code);
+                        console.log(`Room ${room.code} deleted (empty).`);
+                    }
+                }, 10000);
+            }
+        }
+    }
+
+    getRoomBySocket(socket) {
+        for (const [code, room] of this.rooms) {
+            if (room.users.find(u => u.id === socket.id)) return room;
+        }
+        return null;
+    }
+
+    getStats() {
+        let totalPlayers = 0;
+        this.rooms.forEach(room => {
+            totalPlayers += room.users.filter(u => !u.disconnected).length;
+        });
+        return {
+            activeRooms: this.rooms.size,
+            activePlayers: totalPlayers
+        };
+    }
+}
+
+module.exports = GameManager;
+
+
+=========================
+DOSYA: server\game\Room.js
+=========================
+
+const User = require('../models/User');
+
+class Room {
+    constructor(code, io) {
+        this.code = code;
+        this.io = io;
+        this.users = [];
+        this.gameState = "LOBBY";
+        this.category = "";
+        this.activeQuestion = null;
+        
+        this.turnTime = 60;
+        this.timer = null;
+        this.turnTimeLeft = 0;
+        this.currentTurnIndex = 0;
+
+        this.chatHistory = [];
+        this.winners = []; 
+    }
+
+    addUser(socketId, name, dbId, avatar) {
+        if (dbId) {
+            const existingUser = this.users.find(u => u.dbId === dbId && u.disconnected);
+            if (existingUser) {
+                const oldId = existingUser.id;
+                if (existingUser.disconnectTimer) {
+                    clearTimeout(existingUser.disconnectTimer);
+                    existingUser.disconnectTimer = null;
+                }
+                existingUser.id = socketId;
+                existingUser.disconnected = false;
+                
+                this.users.forEach(u => {
+                    if (u.targetId === oldId) u.targetId = socketId;
+                });
+                const winnerIndex = this.winners.indexOf(oldId);
+                if (winnerIndex !== -1) this.winners[winnerIndex] = socketId;
+                if (this.activeQuestion) {
+                    if (this.activeQuestion.askerId === oldId) this.activeQuestion.askerId = socketId;
+                    if (this.activeQuestion.votes[oldId]) {
+                        this.activeQuestion.votes[socketId] = this.activeQuestion.votes[oldId];
+                        delete this.activeQuestion.votes[oldId];
+                    }
+                }
+                this.broadcastState();
+                return;
+            }
+        }
+
+        const isHost = this.users.length === 0;
+        this.users.push({
+            id: socketId,
+            dbId: dbId,
+            name,
+            isHost,
+            avatar: avatar || 'default-violet',
+            targetId: null,
+            assignedWord: null,
+            status: 'playing',
+            hasSubmittedWord: false,
+            isVoiceEnabled: false,
+            lives: 3,
+            disconnected: false,
+            joker: null,
+            hasUsedJoker: false,
+            silencedTurns: 0,
+            extraQuestions: 0
+        });
+        this.broadcastState();
+    }
+
+    removeUser(socketId) {
+        const user = this.users.find(u => u.id === socketId);
+        if (!user) return this.users.length === 0;
+
+        user.disconnected = true;
+        this.broadcastState();
+
+        const allDisconnected = this.users.every(u => u.disconnected);
+        if (allDisconnected) return true; 
+
+        user.disconnectTimer = setTimeout(() => {
+            this.permanentlyRemoveUser(socketId);
+        }, 60000);
+
+        return false;
+    }
+
+    permanentlyRemoveUser(socketId) {
+        const userIndex = this.users.findIndex(u => u.id === socketId);
+        if (userIndex === -1) return;
+        const user = this.users[userIndex];
+        if (!user.disconnected) return; 
+        const wasHost = user.isHost;
+        const wasCurrentTurn = this.gameState === "PLAYING" && this.currentTurnIndex === userIndex;
+
+        this.users.splice(userIndex, 1);
+
+        if (this.users.length > 0 && wasHost) {
+            const nextHost = this.users.find(u => !u.disconnected) || this.users[0];
+            if (nextHost) nextHost.isHost = true;
+        }
+
+        const playingUsers = this.users.filter(u => u.status === 'playing' && !u.disconnected);
+        if (playingUsers.length < 2 && (this.gameState === "PLAYING" || this.gameState === "WORD_SELECTION")) {
+            this.endGame();
+        } else if (wasCurrentTurn && this.gameState === "PLAYING") {
+            
+            this.currentTurnIndex = this.currentTurnIndex % this.users.length;
+            
+            this.nextTurn();
+        }
+
+        this.broadcastState();
+    }
+
+    updateAvatar(userId, avatarIndex) {
+        if (this.gameState !== "LOBBY") return;
+        const user = this.users.find(u => u.id === userId);
+        if (user) {
+            user.avatar = avatarIndex;
+            this.broadcastState();
+        }
+    }
+
+    updateVoice(userId, enabled) {
+        const user = this.users.find(u => u.id === userId);
+        if (user) {
+            user.isVoiceEnabled = enabled;
+            this.broadcastState();
+        }
+    }
+
+    async startGame(settings = {}) {
+        if (this.users.length < 2) return; 
+
+        this.category = settings.category || "Karışık";
+        this.initialPlayerCount = this.users.length;
+        this.isBettingEnabled = settings.bettingEnabled || false;
+        this.betAmount = settings.betAmount || 50;
+        this.isJokersEnabled = settings.jokersEnabled !== undefined ? settings.jokersEnabled : true;
+        this.bets = {};
+        this.hasObjectionUsed = false;
+
+        if (this.isBettingEnabled) {
+            const User = require('../models/User');
+            // Check if all players have enough gold
+            for (let u of this.users) {
+                if (u.dbId) {
+                    const userDb = await User.findById(u.dbId);
+                    if (!userDb || userDb.gold < this.betAmount) {
+                        this.io.to(this.code).emit("game:error", { message: `${u.name} isimli oyuncunun yeterli altını (${this.betAmount}) yok!` });
+                        return;
+                    }
+                } else {
+                    this.io.to(this.code).emit("game:error", { message: `${u.name} giriş yapmadığı için bahisli moda katılamaz!` });
+                    return;
+                }
+            }
+            
+            // Deduct gold from all
+            for (let u of this.users) {
+                await User.findByIdAndUpdate(u.dbId, { $inc: { gold: -this.betAmount } });
+            }
+
+            this.gameState = "BETTING";
+            this.chatHistory = [];
+            this.roundLogs = [];
+            this.winners = [];
+            this.bettingEndTime = Date.now() + 10000;
+            
+            for (let i = 0; i < this.users.length; i++) {
+                this.users[i].status = 'playing';
+                this.users[i].assignedWord = null;
+                this.users[i].hasSubmittedWord = false;
+                this.users[i].hasPlacedBet = false;
+            }
+            this.broadcastState();
+
+            this.betTimer = setTimeout(() => {
+                this.startWordSelection();
+            }, 10000);
+            return;
+        }
+
+        this.startWordSelection();
+    }
+
+    startWordSelection() {
+        if (this.betTimer) clearTimeout(this.betTimer);
+        this.gameState = "WORD_SELECTION";
+        this.chatHistory = [];
+        this.roundLogs = [];
+        this.winners = [];
+
+        const availableJokers = [0, 1, 2, 3, 4];
+        for(let i = availableJokers.length - 1; i > 0; i--){
+            const j = Math.floor(Math.random() * (i + 1));
+            [availableJokers[i], availableJokers[j]] = [availableJokers[j], availableJokers[i]];
+        }
+        
+        for (let i = 0; i < this.users.length; i++) {
+            this.users[i].status = 'playing';
+            this.users[i].assignedWord = null;
+            this.users[i].hasSubmittedWord = false;
+            this.users[i].joker = this.isJokersEnabled ? availableJokers[i % availableJokers.length] : null;
+            this.users[i].hasUsedJoker = false;
+            this.users[i].silencedTurns = 0;
+            this.users[i].extraQuestions = 0;
+            
+            const nextIndex = (i + 1) % this.users.length;
+            this.users[i].targetId = this.users[nextIndex].id;
+        }
+
+        this.broadcastState();
+    }
+
+    placeBet(userId, targetId) {
+        if (this.gameState !== "BETTING") return;
+        const user = this.users.find(u => u.id === userId);
+        if (!user || user.hasPlacedBet) return;
+
+        this.bets[userId] = targetId;
+        user.hasPlacedBet = true;
+
+        const allBet = this.users.filter(u => u.status === 'playing').every(u => u.hasPlacedBet);
+        if (allBet) {
+            this.startWordSelection();
+        } else {
+            this.broadcastState();
+        }
+    }
+
+    startObjection(userId) {
+        if (!this.isBettingEnabled || this.objection || this.gameState !== "PLAYING" || this.hasObjectionUsed) return;
+        
+        const initiator = this.users.find(u => u.id === userId);
+        if (!initiator) return;
+
+        this.hasObjectionUsed = true;
+        if (this.timer) clearTimeout(this.timer);
+        
+        this.objection = {
+            initiator: initiator.name,
+            votes: {},
+            endTime: Date.now() + 15000 
+        };
+        
+        this.objection.votes[userId] = true;
+        this.broadcastState();
+        
+        this.objectionTimer = setTimeout(() => {
+            this.resolveObjection();
+        }, 15000);
+    }
+
+    voteObjection(userId, vote) {
+        if (!this.objection) return;
+        this.objection.votes[userId] = vote;
+        
+        const playingUsers = this.users.filter(u => u.status === 'playing');
+        if (Object.keys(this.objection.votes).length === playingUsers.length) {
+            clearTimeout(this.objectionTimer);
+            this.resolveObjection();
+        } else {
+            this.broadcastState();
+        }
+    }
+
+    async resolveObjection() {
+        if (!this.objection) return;
+        
+        const playingUsers = this.users.filter(u => u.status === 'playing');
+        let yesVotes = 0;
+        for (let v of Object.values(this.objection.votes)) {
+            if (v === true) yesVotes++;
+        }
+        
+        const majority = Math.ceil(playingUsers.length / 2);
+        
+        const User = require('../models/User');
+        if (yesVotes >= majority) {
+            for (let u of this.users) {
+                if (u.dbId) {
+                    await User.findByIdAndUpdate(u.dbId, { $inc: { gold: this.betAmount } }).catch(err => console.error(err));
+                }
+            }
+            this.io.to(this.code).emit("game:error", { message: `🚨 Şike itirazı kabul edildi! Oyun iptal edildi, herkese ${this.betAmount} Altın iade edildi.` });
+            
+            this.objection = null;
+            if (this.timer) clearInterval(this.timer);
+            this.gameState = "LOBBY";
+            this.chatHistory = [];
+            this.broadcastState();
+        } else {
+            this.io.to(this.code).emit("game:error", { message: `❌ Şike itirazı reddedildi! Yeterli çoğunluk sağlanamadı.` });
+            this.objection = null;
+            this.startTimer();
+            this.broadcastState();
+        }
+    }
+    setWord(userId, word) {
+        if (this.gameState !== "WORD_SELECTION") return;
+
+        const user = this.users.find(u => u.id === userId);
+        if (!user || !user.targetId || user.hasSubmittedWord) return;
+
+        const targetUser = this.users.find(u => u.id === user.targetId);
+        if (targetUser) {
+            targetUser.assignedWord = word;
+            user.hasSubmittedWord = true;
+        }
+
+        const allAssigned = this.users.every(u => u.hasSubmittedWord);
+        if (allAssigned) {
+            this.startPlaying();
+        } else {
+            this.broadcastState();
+        }
+    }
+
+    startPlaying() {
+        this.gameState = "PLAYING";
+        this.currentTurnIndex = 0;
+        this.activeQuestion = null;
+        this.startTimer();
+        this.broadcastState();
+    }
+
+    handleChat(userId, message) {
+        const user = this.users.find(u => u.id === userId);
+        if (!user) return;
+
+        this.chatHistory.push({
+            userId: user.id,
+            name: user.name,
+            message: message,
+            timestamp: Date.now()
+        });
+
+        this.broadcastState();
+    }
+
+    skipTurn(userId) {
+        if (this.gameState !== "PLAYING") return;
+        const currentUser = this.users[this.currentTurnIndex];
+        if (currentUser.id !== userId) return;
+
+        this.nextTurn();
+    }
+
+    guessWord(userId, guess) {
+        if (this.gameState !== "PLAYING") return;
+        
+        const currentUser = this.users[this.currentTurnIndex];
+        if (currentUser.id !== userId) return;
+
+        const user = this.users.find(u => u.id === userId);
+        if (!user || user.status !== 'playing') return;
+
+        const normalizedTarget = (user.assignedWord || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+        const normalizedGuess = (guess || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+
+        const isCorrect = normalizedTarget === normalizedGuess || 
+                         (normalizedTarget.includes(normalizedGuess) && normalizedGuess.length > 3) ||
+                         (normalizedGuess.includes(normalizedTarget) && normalizedTarget.length > 3);
+
+        if (isCorrect) {
+            user.status = 'spectator';
+            this.winners.push(user.id);
+            const User = require('../models/User');
+            
+            let winnerReward = 50; 
+            let bettorReward = 0;
+            const rank = this.winners.length; 
+            
+            if (this.isBettingEnabled) {
+                const playersCount = this.initialPlayerCount || this.users.length;
+                const totalPot = playersCount * this.betAmount;
+                let pct = 0;
+                
+                if (playersCount <= 2) {
+                    pct = rank === 1 ? 1.0 : 0;
+                } else if (playersCount === 3) {
+                    pct = rank === 1 ? 0.60 : (rank === 2 ? 0.40 : 0);
+                } else if (playersCount === 4) {
+                    pct = rank === 1 ? 0.50 : (rank === 2 ? 0.30 : (rank === 3 ? 0.20 : 0));
+                } else {
+                    if (rank === 1) pct = 0.40;
+                    else if (rank === 2) pct = 0.30;
+                    else if (rank === 3) pct = 0.20;
+                    else if (rank === 4) pct = 0.10;
+                    else pct = 0;
+                }
+                
+                winnerReward = Math.floor(totalPot * pct);
+                bettorReward = winnerReward; 
+            }
+            
+            if (user.dbId && winnerReward > 0) {
+                User.findByIdAndUpdate(user.dbId, { $inc: { gold: winnerReward, xp: 100 } })
+                    .catch(err => console.error("Gold update error:", err));
+            }
+
+            const winMsg = `${user.name} doğru tahmin etti! (${rank}. oldu) ve ${winnerReward} Altın kazandı! Kelimesi: ${user.assignedWord}`;
+            this.chatHistory.push({ system: true, message: winMsg, timestamp: Date.now() });
+            this.roundLogs.push(winMsg);
+
+            if (this.isBettingEnabled && bettorReward > 0) {
+                const bettors = Object.keys(this.bets || {}).filter(uid => this.bets[uid] === user.id);
+                let bettorNames = [];
+                
+                for (let uid of bettors) {
+                    const bettorUser = this.users.find(u => u.id === uid);
+                    if (bettorUser && bettorUser.dbId) {
+                        User.findByIdAndUpdate(bettorUser.dbId, { $inc: { gold: bettorReward, xp: 50 } })
+                            .catch(err => console.error("Gold update error:", err));
+                        bettorNames.push(bettorUser.name);
+                    }
+                }
+                
+                if (bettorNames.length > 0) {
+                    const betMsg = `🎲 ${user.name} üzerine bahis oynayan ${bettorNames.join(', ')} ekstra ${bettorReward} Altın daha kazandı!`;
+                    this.chatHistory.push({ system: true, message: betMsg, timestamp: Date.now() });
+                    this.roundLogs.push(betMsg);
+                }
+            }
+
+            const playingUsers = this.users.filter(u => u.status === 'playing');
+            if (playingUsers.length <= 1) { 
+                this.endGame();
+                return;
+            }
+
+            if (this.users[this.currentTurnIndex].id === userId) {
+                this.nextTurn();
+            } else {
+                this.broadcastState();
+            }
+        } else {
+            user.lives--;
+            if (user.lives <= 0) {
+                user.status = 'spectator';
+                this.chatHistory.push({
+                    system: true,
+                    message: `${user.name} tüm tahmin haklarını kaybetti ve izleyici oldu! Kelimesi: ${user.assignedWord}`,
+                    timestamp: Date.now()
+                });
+            } else {
+                this.chatHistory.push({
+                    system: true,
+                    message: `${user.name} yanlış tahminde bulundu! (${guess}) (Kalan Can: ${user.lives})`,
+                    timestamp: Date.now()
+                });
+            }
+
+            const playingUsers = this.users.filter(u => u.status === 'playing');
+            if (playingUsers.length <= 1) { 
+                this.endGame();
+                return;
+            }
+
+            if (this.users[this.currentTurnIndex].id === userId) {
+                this.nextTurn();
+            } else {
+                this.broadcastState();
+            }
+        }
+    }
+
+    useJoker(userId, payload) {
+        if (this.gameState !== "PLAYING") return;
+        const user = this.users.find(u => u.id === userId);
+        if (!user || user.status !== 'playing' || user.hasUsedJoker || user.joker === null) return;
+
+        user.hasUsedJoker = true;
+        const jokerType = user.joker;
+
+        switch (jokerType) {
+            case 0: 
+                if (this.currentTurnIndex !== -1 && this.users[this.currentTurnIndex].id === userId) {
+                    if (this.timer) clearTimeout(this.timer);
+                    this.turnTimeLeft = (this.turnStartTime + (this.turnTime * 1000) - Date.now()) / 1000;
+                    const newTime = this.turnTimeLeft + 60;
+                    this.turnStartTime = Date.now() - (this.turnTime * 1000 - newTime * 1000); 
+                    
+                    this.timer = setTimeout(() => {
+                        if (this.gameState === "PLAYING") {
+                            this.nextTurn();
+                        }
+                    }, newTime * 1000);
+                    
+                    this.chatHistory.push({ system: true, message: `${user.name} joker kullanarak süresine 1 dakika ekledi!`, timestamp: Date.now() });
+                }
+                break;
+            case 1: 
+                if (payload && payload.targetId && payload.newWord) {
+                    const target = this.users.find(u => u.id === payload.targetId);
+                    if (target) {
+                        target.assignedWord = payload.newWord;
+                        this.chatHistory.push({ system: true, message: `${user.name}, bir oyuncunun kelimesini değiştirdi!`, timestamp: Date.now() });
+                    }
+                }
+                break;
+            case 2: 
+                user.extraQuestions = 3;
+                this.chatHistory.push({ system: true, message: `${user.name}, joker kullanarak 3 ekstra soru sorma hakkı kazandı!`, timestamp: Date.now() });
+                break;
+            case 3: 
+                if (user.assignedWord) {
+                    const word = user.assignedWord;
+                    
+                    let hintStr = "";
+                    let hiddenIndices = [];
+                    for(let i=0; i<word.length; i++) {
+                        if(word[i] !== ' ') hiddenIndices.push(i);
+                    }
+                    if(hiddenIndices.length > 0) {
+                        const randomIdx = hiddenIndices[Math.floor(Math.random() * hiddenIndices.length)];
+                        for(let i=0; i<word.length; i++) {
+                            if (i === randomIdx || word[i] === ' ') {
+                                hintStr += word[i] + " ";
+                            } else {
+                                hintStr += "_ ";
+                            }
+                        }
+                        this.io.to(user.id).emit("game:joker_hint_result", { hint: hintStr.trim() });
+                        this.chatHistory.push({ system: true, message: `${user.name}, joker kullanarak bir ipucu aldı! (Bir harf açıldı)`, timestamp: Date.now() });
+                    }
+                }
+                break;
+            case 4: 
+                if (payload && payload.targetId) {
+                    const silenceTarget = this.users.find(u => u.id === payload.targetId);
+                    if (silenceTarget) {
+                        silenceTarget.silencedTurns = 2;
+                        this.chatHistory.push({ system: true, message: `${user.name}, bir oyuncuyu 2 tur susturdu!`, timestamp: Date.now() });
+                    }
+                }
+                break;
+        }
+        
+        this.broadcastState();
+    }
+
+    askQuestion(userId, question) {
+        if (this.gameState !== "PLAYING") return;
+        const currentUser = this.users[this.currentTurnIndex];
+        if (currentUser.id !== userId) return;
+
+        this.activeQuestion = {
+            askerId: userId,
+            question: question,
+            votes: {} 
+        };
+        this.broadcastState();
+    }
+
+    submitVote(userId, voteType) {
+        if (this.gameState !== "PLAYING" || !this.activeQuestion) return;
+        if (this.activeQuestion.askerId === userId) return; 
+
+        this.activeQuestion.votes[userId] = voteType;
+        this.broadcastState();
+    }
+
+    nextTurn() {
+        this.activeQuestion = null;
+        if (this.gameState !== "PLAYING") return;
+
+        let attempts = 0;
+        do {
+            this.currentTurnIndex = (this.currentTurnIndex + 1) % this.users.length;
+            attempts++;
+            if (attempts > this.users.length) {
+                this.endGame();
+                return;
+            }
+            
+            const nextUser = this.users[this.currentTurnIndex];
+            if (nextUser.status === 'playing') {
+                if (nextUser.silencedTurns > 0) {
+                    nextUser.silencedTurns--;
+                    this.chatHistory.push({
+                        system: true,
+                        message: `${nextUser.name} susturulduğu için sırasını atlıyor.`,
+                        timestamp: Date.now()
+                    });
+                    continue; 
+                } else {
+                    break; 
+                }
+            }
+        } while (true);
+
+        this.startTimer();
+        this.broadcastState();
+    }
+
+    startTimer() {
+        if (this.timer) clearTimeout(this.timer);
+        
+        this.turnStartTime = Date.now();
+        
+        this.timer = setTimeout(() => {
+            if (this.gameState === "PLAYING") {
+                this.nextTurn();
+            }
+        }, this.turnTime * 1000);
+    }
+
+    endGame() {
+        this.gameState = "ROUND_END";
+        if (this.timer) clearTimeout(this.timer);
+        
+        const User = require('../models/User');
+        for (let u of this.users) {
+            if (u.dbId && !this.winners.includes(u.id)) {
+                User.findByIdAndUpdate(u.dbId, { $inc: { xp: 20 } })
+                    .catch(err => console.error("XP update error:", err));
+            }
+        }
+        
+        this.broadcastState();
+    }
+
+    broadcastState() {
+        this.users.forEach(user => {
+            const usersPayload = this.users.map(u => ({
+                id: u.id,
+                name: u.name,
+                isHost: u.isHost,
+                avatar: u.avatar,
+                status: u.status,
+                targetId: u.targetId,
+                hasSubmittedWord: u.hasSubmittedWord,
+                isVoiceEnabled: u.isVoiceEnabled,
+                lives: u.lives,
+                joker: u.id === user.id ? u.joker : null,
+                hasUsedJoker: u.hasUsedJoker,
+                silencedTurns: u.silencedTurns,
+                assignedWord: (this.gameState === "ROUND_END" || u.id !== user.id) ? u.assignedWord : null
+            }));
+
+            const payload = {
+                gameState: this.gameState,
+                category: this.category,
+                isBettingEnabled: this.isBettingEnabled,
+                betAmount: this.betAmount,
+                isJokersEnabled: this.isJokersEnabled,
+                activeQuestion: this.activeQuestion,
+                users: usersPayload,
+                currentTurnUserId: this.gameState === "PLAYING" ? this.users[this.currentTurnIndex]?.id : null,
+                turnEndsAt: this.gameState === "PLAYING" ? this.turnStartTime + (this.turnTime * 1000) : null,
+                chatHistory: this.chatHistory,
+                winners: this.winners,
+                objection: this.objection,
+                hasObjectionUsed: this.hasObjectionUsed,
+                bettingEndTime: this.bettingEndTime,
+                roundLogs: this.gameState === "ROUND_END" ? this.roundLogs : []
+            };
+
+            this.io.to(user.id).emit("game:state", payload);
+        });
+    }
+    broadcastHeadRotation(userId, payload) {
+        if (!payload || typeof payload.pitch !== 'number' || typeof payload.yaw !== 'number') return;
+        
+        this.io.to(this.code).emit("game:head_update", {
+            userId,
+            pitch: payload.pitch,
+            yaw: payload.yaw
+        });
+    }
+}
+
+module.exports = Room;
+
+
+=========================
+DOSYA: server\models\User.js
+=========================
+
+const mongoose = require("mongoose");
+
+const userSchema = new mongoose.Schema({
+    username: {
+        type: String,
+        required: true,
+        unique: true,
+        trim: true,
+    },
+    email: {
+        type: String,
+        required: true,
+        unique: true,
+        trim: true,
+        lowercase: true,
+    },
+    password: {
+        type: String,
+        required: true,
+    },
+    avatar: {
+        type: String,
+        default: 'Warrior'
+    },
+    gold: {
+        type: Number,
+        default: 0
+    },
+    unlockedAvatars: {
+        type: [String],
+        default: ['Warrior']
+    },
+    lastLoginDate: {
+        type: Date,
+        default: null
+    },
+    loginStreak: {
+        type: Number,
+        default: 0
+    },
+    level: {
+        type: Number,
+        default: 1
+    },
+    xp: {
+        type: Number,
+        default: 0
+    },
+    createdAt: {
+        type: Date,
+        default: Date.now
+    }
+});
+
+module.exports = mongoose.model("User", userSchema);
+
+
+=========================
+DOSYA: server\routes\auth.js
+=========================
+
+const express = require("express");
+const router = express.Router();
+const User = require("../models/User");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+
+const JWT_SECRET = process.env.JWT_SECRET || "kimbuki_super_secret_key_2026";
+
+const authMiddleware = (req, res, next) => {
+    const token = req.header("Authorization")?.replace("Bearer ", "");
+    if (!token) return res.status(401).json({ error: "Erişim reddedildi. Token yok." });
+
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        req.user = decoded;
+        next();
+    } catch (err) {
+        res.status(401).json({ error: "Geçersiz veya süresi dolmuş token." });
+    }
+};
+
+function calculateLevelAndXP(totalXp) {
+    let level = 1;
+    let xpNeededForNext = 200;
+    let xpForCurrentLevel = 0;
+    
+    while (totalXp >= xpForCurrentLevel + xpNeededForNext) {
+        xpForCurrentLevel += xpNeededForNext;
+        level++;
+        xpNeededForNext += 100;
+    }
+    
+    return {
+        level,
+        xpInCurrentLevel: totalXp - xpForCurrentLevel,
+        xpNeededForNext
+    };
+}
+
+router.post("/register", async (req, res) => {
+    try {
+        const { username, email, password } = req.body;
+        if (!username || !email || !password) {
+            return res.status(400).json({ error: "Lütfen kullanıcı adı, e-posta ve şifre girin." });
+        }
+        
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            return res.status(400).json({ error: "Lütfen geçerli bir e-posta adresi girin." });
+        }
+
+        if (username.length < 3) {
+            return res.status(400).json({ error: "Kullanıcı adı en az 3 karakter olmalıdır." });
+        }
+
+        if (password.length < 8) {
+            return res.status(400).json({ error: "Şifre en az 8 karakter olmalıdır." });
+        }
+        if (!/(?=.*[a-z])/.test(password)) {
+            return res.status(400).json({ error: "Şifre en az bir küçük harf içermelidir." });
+        }
+        if (!/(?=.*[A-Z])/.test(password)) {
+            return res.status(400).json({ error: "Şifre en az bir büyük harf içermelidir." });
+        }
+        if (!/(?=.*\d)/.test(password)) {
+            return res.status(400).json({ error: "Şifre en az bir rakam (sayı) içermelidir." });
+        }
+
+        const existingUser = await User.findOne({ $or: [{ username }, { email }] });
+        if (existingUser) {
+            return res.status(400).json({ error: "Bu kullanıcı adı veya e-posta zaten kullanımda." });
+        }
+
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
+
+        const user = new User({
+            username,
+            email,
+            password: hashedPassword,
+            avatar: "default-violet",
+            gold: 0,
+            unlockedAvatars: ["default-violet", "default-red", "default-blue", "default-green", "default-yellow", "default-pink"]
+        });
+        await user.save();
+
+        const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: "30d" });
+
+        res.status(201).json({
+            token,
+            user: { 
+                id: user._id, 
+                username: user.username, 
+                email: user.email, 
+                avatar: user.avatar,
+                gold: user.gold,
+                unlockedAvatars: user.unlockedAvatars,
+level: calculateLevelAndXP(user.xp || 0).level,
+xp: user.xp || 0,
+xpCurrent: calculateLevelAndXP(user.xp || 0).xpInCurrentLevel,
+xpNext: calculateLevelAndXP(user.xp || 0).xpNeededForNext
+            }
+        });
+    } catch (error) {
+        console.error("Register error:", error);
+        res.status(500).json({ error: "Sunucu hatası" });
+    }
+});
+
+router.post("/login", async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        if (!email || !password) {
+            return res.status(400).json({ error: "Lütfen e-posta ve şifre girin." });
+        }
+
+        const user = await User.findOne({ email });
+        if (!user) {
+            return res.status(400).json({ error: "Kullanıcı bulunamadı." });
+        }
+
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) {
+            return res.status(400).json({ error: "Hatalı şifre." });
+        }
+
+        const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: "30d" });
+
+        res.json({
+            token,
+            user: { 
+                id: user._id, 
+                username: user.username, 
+                email: user.email, 
+                avatar: user.avatar,
+                gold: user.gold,
+                unlockedAvatars: user.unlockedAvatars,
+level: calculateLevelAndXP(user.xp || 0).level,
+xp: user.xp || 0,
+xpCurrent: calculateLevelAndXP(user.xp || 0).xpInCurrentLevel,
+xpNext: calculateLevelAndXP(user.xp || 0).xpNeededForNext
+            }
+        });
+    } catch (error) {
+        console.error("Login error:", error);
+        res.status(500).json({ error: "Sunucu hatası" });
+    }
+});
+
+router.get("/me", authMiddleware, async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id).select("-password");
+        if (!user) {
+            return res.status(404).json({ error: "Kullanıcı bulunamadı." });
+        }
+
+        let canClaimDaily = false;
+        let streak = user.loginStreak || 0;
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+        if (!user.lastLoginDate || user.lastLoginDate < today) {
+            canClaimDaily = true;
+            const yesterday = new Date(today);
+            yesterday.setDate(yesterday.getDate() - 1);
+            
+            if (!user.lastLoginDate || user.lastLoginDate < yesterday) {
+                // If they missed yesterday, their NEXT claim will be streak 1
+                streak = 0; 
+            }
+        }
+
+        res.json({
+            id: user._id,
+            username: user.username,
+            email: user.email,
+            avatar: user.avatar,
+            gold: user.gold,
+            unlockedAvatars: user.unlockedAvatars,
+level: calculateLevelAndXP(user.xp || 0).level,
+xp: user.xp || 0,
+xpCurrent: calculateLevelAndXP(user.xp || 0).xpInCurrentLevel,
+xpNext: calculateLevelAndXP(user.xp || 0).xpNeededForNext,
+            canClaimDaily,
+            loginStreak: streak
+        });
+    } catch (error) {
+        res.status(500).json({ error: "Sunucu hatası" });
+    }
+});
+
+router.post("/daily-reward", authMiddleware, async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id);
+        if (!user) return res.status(404).json({ error: "Kullanıcı bulunamadı." });
+
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+        if (user.lastLoginDate && user.lastLoginDate >= today) {
+            return res.status(400).json({ error: "Bugünün ödülünü zaten aldın!" });
+        }
+
+        let streak = user.loginStreak || 0;
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+
+        if (user.lastLoginDate && user.lastLoginDate >= yesterday) {
+            streak++;
+        } else {
+            streak = 1;
+        }
+        if (streak > 7) streak = 7;
+
+        const rewardAmounts = { 1: 50, 2: 100, 3: 150, 4: 200, 5: 250, 6: 300, 7: 500 };
+        const amount = rewardAmounts[streak] || 50;
+
+        user.gold += amount;
+        user.lastLoginDate = today;
+        user.loginStreak = streak;
+        await user.save();
+
+        res.json({ success: true, amount, streak, gold: user.gold });
+    } catch (error) {
+        res.status(500).json({ error: "Sunucu hatası" });
+    }
+});
+
+router.put("/profile", authMiddleware, async (req, res) => {
+    try {
+        const { username, avatar } = req.body;
+        const user = await User.findById(req.user.id);
+        
+        if (!user) return res.status(404).json({ error: "Kullanıcı bulunamadı." });
+
+        if (username && username !== user.username) {
+            const existing = await User.findOne({ username });
+            if (existing) return res.status(400).json({ error: "Bu kullanıcı adı zaten kullanımda." });
+            user.username = username;
+        }
+
+        if (avatar) {
+            if (!user.unlockedAvatars.includes(avatar)) {
+                return res.status(400).json({ error: "Bu karaktere sahip değilsiniz." });
+            }
+            user.avatar = avatar;
+        }
+
+        await user.save();
+        res.json({ 
+            id: user._id, 
+            username: user.username, 
+            avatar: user.avatar,
+            gold: user.gold,
+            unlockedAvatars: user.unlockedAvatars,
+level: calculateLevelAndXP(user.xp || 0).level,
+xp: user.xp || 0,
+xpCurrent: calculateLevelAndXP(user.xp || 0).xpInCurrentLevel,
+xpNext: calculateLevelAndXP(user.xp || 0).xpNeededForNext
+        });
+    } catch (error) {
+        res.status(500).json({ error: "Sunucu hatası" });
+    }
+});
+
+module.exports = router;
+
+
+=========================
+DOSYA: server\routes\shop.js
+=========================
+
+const express = require("express");
+const router = express.Router();
+const User = require("../models/User");
+const jwt = require("jsonwebtoken");
+
+const JWT_SECRET = process.env.JWT_SECRET || "kimbuki_super_secret_key_2026";
+
+const authMiddleware = (req, res, next) => {
+    const token = req.header("Authorization")?.replace("Bearer ", "");
+    if (!token) return res.status(401).json({ error: "Erişim reddedildi. Token yok." });
+
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        req.user = decoded;
+        next();
+    } catch (err) {
+        res.status(401).json({ error: "Geçersiz veya süresi dolmuş token." });
+    }
+};
+
+const PREMIUM_AVATARS = [
+    { id: 'Warrior', price: 100, label: 'Savaşçı', icon: '⚔️' },
+    { id: 'Wizard', price: 200, label: 'Büyücü', icon: '🔮' },
+    { id: 'Rogue', price: 300, label: 'Suikastçi', icon: '🗡️' },
+    { id: 'Ranger', price: 400, label: 'Okçu', icon: '🏹' },
+    { id: 'Monk', price: 500, label: 'Keşiş', icon: '🥋' },
+    { id: 'Cleric', price: 600, label: 'Şifacı', icon: '✨' }
+];
+
+router.get("/items", (req, res) => {
+    res.json(PREMIUM_AVATARS);
+});
+
+router.post("/buy", authMiddleware, async (req, res) => {
+    try {
+        const { avatarId } = req.body;
+        const avatarToBuy = PREMIUM_AVATARS.find(a => a.id === avatarId);
+        
+        if (!avatarToBuy) {
+            return res.status(400).json({ error: "Böyle bir karakter bulunamadı." });
+        }
+
+        const user = await User.findById(req.user.id);
+        if (!user) return res.status(404).json({ error: "Kullanıcı bulunamadı." });
+
+        if (user.unlockedAvatars.includes(avatarId)) {
+            return res.status(400).json({ error: "Bu karaktere zaten sahipsiniz." });
+        }
+
+        if (user.gold < avatarToBuy.price) {
+            return res.status(400).json({ error: "Yeterli altınınız yok." });
+        }
+
+        user.gold -= avatarToBuy.price;
+        user.unlockedAvatars.push(avatarId);
+        await user.save();
+
+        res.json({
+            message: "Satın alma başarılı!",
+            gold: user.gold,
+            unlockedAvatars: user.unlockedAvatars
+        });
+    } catch (error) {
+        console.error("Shop buy error:", error);
+        res.status(500).json({ error: "Sunucu hatası" });
+    }
+});
+
+module.exports = router;
+
+
+=========================
+DOSYA: server\routes\stats.js
+=========================
+
+const express = require("express");
+const router = express.Router();
+const User = require("../models/User");
+
+router.get("/live", (req, res) => {
+    const gameManager = req.app.locals.gameManager;
+    if (!gameManager) return res.json({ activeRooms: 0, activePlayers: 0 });
+    res.json(gameManager.getStats());
+});
+
+router.get("/leaderboard", async (req, res) => {
+    try {
+        const topUsers = await User.find({}, "username gold avatar").sort({ gold: -1 }).limit(10).lean();
+        res.json(topUsers);
+    } catch (err) {
+        res.status(500).json({ error: "Sunucu hatasi" });
+    }
+});
+
+module.exports = router;
+
