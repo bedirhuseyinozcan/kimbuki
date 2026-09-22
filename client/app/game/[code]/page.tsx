@@ -51,7 +51,7 @@ export default function GamePage() {
             return;
         }
 
-        fetch("http://localhost:4000/api/auth/me", {
+        fetch(`${process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:4000"}/api/auth/me`, {
             headers: { "Authorization": `Bearer ${token}` }
         })
         .then(res => res.json())
@@ -69,7 +69,7 @@ export default function GamePage() {
     }, [code]);
 
     const connectToRoom = (user: any) => {
-        const s = io("http://localhost:4000");
+        const s = io(process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:4000");
         setSocket(s);
 
         s.emit("room:join", { roomCode: code, name: user.username, userId: user.id, avatar: user.avatar }, (res: any) => {

@@ -51,14 +51,14 @@ export default function Home() {
         setPlayDialogOpen(true);
     }
 
-    fetch("http://localhost:4000/api/stats/live")
+    fetch(`${process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:4000"}/api/stats/live`)
       .then(res => res.json())
       .then(data => setLiveStats(data))
       .catch(() => {});
 
     const token = localStorage.getItem("gameToken");
     if (token) {
-      fetch("http://localhost:4000/api/auth/me", {
+      fetch(`${process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:4000"}/api/auth/me`, {
         headers: { "Authorization": `Bearer ${token}` }
       })
         .then(res => res.json())
@@ -84,14 +84,14 @@ export default function Home() {
         .catch(() => localStorage.removeItem("gameToken"));
     }
 
-    fetch("http://localhost:4000/api/shop/items")
+    fetch(`${process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:4000"}/api/shop/items`)
       .then(res => res.json())
       .then(data => setShopItems(data))
       .catch(() => {});
   }, []);
 
   const handleOpenLeaderboard = () => {
-      fetch("http://localhost:4000/api/stats/leaderboard")
+      fetch(`${process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:4000"}/api/stats/leaderboard`)
         .then(res => res.json())
         .then(data => {
             setLeaderboard(data);
@@ -134,7 +134,7 @@ export default function Home() {
         : { email: loginEmail, username: loginName, password: loginPassword };
     
     try {
-      const res = await fetch(`http://localhost:4000/api/auth/${endpoint}`, {
+      const res = await fetch(\`${process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:4000"}/api/auth/${endpoint}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
@@ -161,7 +161,7 @@ export default function Home() {
       const token = localStorage.getItem("gameToken");
       if (!token) return;
       try {
-          const res = await fetch("http://localhost:4000/api/auth/profile", {
+          const res = await fetch(`${process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:4000"}/api/auth/profile`, {
               method: "PUT",
               headers: { 
                   "Content-Type": "application/json",
@@ -193,7 +193,7 @@ export default function Home() {
     if (!token) return toast.error("Giriş yapmanız gerekiyor.");
     
     try {
-      const res = await fetch("http://localhost:4000/api/shop/buy", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:4000"}/api/shop/buy`, {
           method: "POST",
           headers: { 
               "Content-Type": "application/json",
@@ -243,7 +243,7 @@ export default function Home() {
     const token = localStorage.getItem("gameToken");
     if (!token) return;
     try {
-        const res = await fetch("http://localhost:4000/api/auth/daily-reward", {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:4000"}/api/auth/daily-reward`, {
             method: "POST",
             headers: { "Authorization": `Bearer ${token}` }
         });
