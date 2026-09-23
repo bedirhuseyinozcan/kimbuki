@@ -307,7 +307,7 @@ class Room {
 
         const targetUser = this.users.find(u => u.id === user.targetId);
         if (targetUser) {
-            targetUser.assignedWord = word;
+            targetUser.assignedWord = word.trim();
             user.hasSubmittedWord = true;
         }
 
@@ -508,24 +508,36 @@ class Room {
                 break;
             case 3: 
                 if (user.assignedWord) {
+                    if (!user.hintStr) {
+                        let hint = "";
+                        for (let i = 0; i < user.assignedWord.length; i++) {
+                            hint += (user.assignedWord[i] === ' ') ? ' ' : '_';
+                        }
+                        user.hintStr = hint;
+                    }
+
                     const word = user.assignedWord;
-                    
-                    let hintStr = "";
                     let hiddenIndices = [];
-                    for(let i=0; i<word.length; i++) {
-                        if(word[i] !== ' ') hiddenIndices.push(i);
+                    for(let i = 0; i < word.length; i++) {
+                        if(user.hintStr[i] === '_') hiddenIndices.push(i);
                     }
                     if(hiddenIndices.length > 0) {
                         const randomIdx = hiddenIndices[Math.floor(Math.random() * hiddenIndices.length)];
-                        for(let i=0; i<word.length; i++) {
-                            if (i === randomIdx || word[i] === ' ') {
-                                hintStr += word[i] + " ";
-                            } else {
-                                hintStr += "_ ";
-                            }
+                        
+                        let newHintStr = "";
+                        for(let i = 0; i < word.length; i++) {
+                            if (i === randomIdx) newHintStr += word[i];
+                            else newHintStr += user.hintStr[i];
                         }
-                        this.io.to(user.id).emit("game:joker_hint_result", { hint: hintStr.trim() });
-                        this.chatHistory.push({ system: true, message: `${user.name}, joker kullanarak bir ipucu aldı! (Bir harf açıldı)`, timestamp: Date.now() });
+                        user.hintStr = newHintStr;
+                        
+                        const formattedHint = user.hintStr.split('').join(' ');
+                        this.chatHistory.push({ 
+                            system: true, 
+                            message: `${user.name}, joker kullanarak bir ipucu aldı! Mevcut kelimesi: ${formattedHint}`, 
+                            timestamp: Date.now() 
+                        });
+                        this.broadcastState();
                     }
                 }
                 break;
@@ -683,7 +695,8 @@ class Room {
                 joker: u.id === user.id ? u.joker : null,
                 hasUsedJoker: u.hasUsedJoker,
                 silencedTurns: u.silencedTurns,
-                assignedWord: (this.gameState === "ROUND_END" || u.id !== user.id) ? u.assignedWord : null
+                assignedWord: (this.gameState === "ROUND_END" || u.id !== user.id) ? u.assignedWord : null,
+                hintStr: (u.id === user.id) ? u.hintStr : null
             }));
 
             const payload = {

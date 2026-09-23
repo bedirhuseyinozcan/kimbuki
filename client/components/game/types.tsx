@@ -17,6 +17,7 @@ export type User = {
     silencedTurns?: number;
     extraQuestions?: number;
     assignedWord: string | null;
+    hintStr?: string | null;
     lives: number;
     disconnected?: boolean;
 };
