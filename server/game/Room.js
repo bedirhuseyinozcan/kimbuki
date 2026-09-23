@@ -548,11 +548,25 @@ class Room {
         const currentUser = this.users[this.currentTurnIndex];
         if (currentUser.id !== userId) return;
 
+        if (this.timer) {
+            clearTimeout(this.timer);
+            this.timer = null;
+        }
+        
+        const remainingMs = this.turnStartTime + (this.turnTime * 1000) - Date.now();
+        this.pausedRemainingMs = remainingMs > 0 ? remainingMs : 0;
+
         this.activeQuestion = {
             askerId: userId,
             question: question,
-            votes: {} 
+            votes: {},
+            endTime: Date.now() + 15000
         };
+        
+        this.questionTimer = setTimeout(() => {
+            this.resolveQuestion();
+        }, 15000);
+
         this.broadcastState();
     }
 
@@ -561,6 +575,36 @@ class Room {
         if (this.activeQuestion.askerId === userId) return; 
 
         this.activeQuestion.votes[userId] = voteType;
+        
+        const playingUsers = this.users.filter(u => u.status === 'playing');
+        const requiredVotes = playingUsers.length - 1;
+        const currentVotes = Object.keys(this.activeQuestion.votes).length;
+        
+        if (currentVotes >= requiredVotes) {
+            if (this.questionTimer) clearTimeout(this.questionTimer);
+            this.resolveQuestion();
+        } else {
+            this.broadcastState();
+        }
+    }
+
+    resolveQuestion() {
+        if (!this.activeQuestion) return;
+        
+        this.activeQuestion = null;
+        if (this.questionTimer) {
+            clearTimeout(this.questionTimer);
+            this.questionTimer = null;
+        }
+        
+        this.turnStartTime = Date.now() - ((this.turnTime * 1000) - this.pausedRemainingMs);
+        
+        this.timer = setTimeout(() => {
+            if (this.gameState === "PLAYING") {
+                this.nextTurn();
+            }
+        }, this.pausedRemainingMs);
+        
         this.broadcastState();
     }
 
@@ -651,7 +695,7 @@ class Room {
                 activeQuestion: this.activeQuestion,
                 users: usersPayload,
                 currentTurnUserId: this.gameState === "PLAYING" ? this.users[this.currentTurnIndex]?.id : null,
-                turnEndsAt: this.gameState === "PLAYING" ? this.turnStartTime + (this.turnTime * 1000) : null,
+                turnEndsAt: this.gameState === "PLAYING" ? (this.activeQuestion ? Date.now() + this.pausedRemainingMs : this.turnStartTime + (this.turnTime * 1000)) : null,
                 chatHistory: this.chatHistory,
                 winners: this.winners,
                 objection: this.objection,

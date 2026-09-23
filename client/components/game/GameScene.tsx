@@ -57,6 +57,7 @@ export default function GameScene({
     const chatEndRef = useRef<HTMLDivElement>(null);
 
     const [timeLeft, setTimeLeft] = useState(0);
+    const [questionTimeLeft, setQuestionTimeLeft] = useState(0);
     const [questionDialogOpen, setQuestionDialogOpen] = useState(false);
     const [questionInput, setQuestionInput] = useState("");
     const [activeBubbles, setActiveBubbles] = useState<{[key:string]: string}>({});
@@ -78,6 +79,12 @@ export default function GameScene({
             return;
         }
         
+        if (gameState.activeQuestion) {
+            const remaining = Math.max(0, Math.floor((gameState.turnEndsAt - Date.now()) / 1000));
+            setTimeLeft(remaining);
+            return; 
+        }
+
         const updateTimer = () => {
             const remaining = Math.max(0, Math.floor((gameState.turnEndsAt! - Date.now()) / 1000));
             setTimeLeft(remaining);
@@ -86,7 +93,23 @@ export default function GameScene({
         updateTimer();
         const interval = setInterval(updateTimer, 500);
         return () => clearInterval(interval);
-    }, [gameState.turnEndsAt]);
+    }, [gameState.turnEndsAt, gameState.activeQuestion]);
+
+    useEffect(() => {
+        if (!gameState.activeQuestion?.endTime) {
+            setQuestionTimeLeft(0);
+            return;
+        }
+        
+        const updateQTimer = () => {
+            const remaining = Math.max(0, Math.floor((gameState.activeQuestion!.endTime! - Date.now()) / 1000));
+            setQuestionTimeLeft(remaining);
+        };
+
+        updateQTimer();
+        const interval = setInterval(updateQTimer, 500);
+        return () => clearInterval(interval);
+    }, [gameState.activeQuestion?.endTime]);
 
     const previousTurnRef = useRef<string | null>(null);
     const previousWinnersRef = useRef<number>(0);
@@ -225,6 +248,9 @@ export default function GameScene({
                                 exit={{ opacity: 0, scale: 0.8, y: "-50%", x: "-50%" }}
                                 className="absolute top-1/2 left-1/2 z-50 glass p-6 rounded-3xl border border-slate-600 shadow-[0_0_50px_rgba(0,0,0,0.8)] text-center w-[95%] max-w-lg backdrop-blur-2xl bg-slate-900/90 pointer-events-auto"
                             >
+                                <div className="absolute -top-4 -right-4 bg-red-500 text-white font-black rounded-full w-12 h-12 flex items-center justify-center border-4 border-slate-900 shadow-xl animate-pulse">
+                                    {questionTimeLeft}s
+                                </div>
                                 <h4 className="text-lg font-bold mb-2 text-cyan-400">
                                     {gameState.users.find((u:User) => u.id === gameState.activeQuestion!.askerId)?.name} soruyor:
                                 </h4>
