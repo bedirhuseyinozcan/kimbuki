@@ -523,7 +523,15 @@ export default function GameScene({
                         variant="outlined"
                         value={questionInput}
                         onChange={e => setQuestionInput(e.target.value)}
-                        onKeyDown={e => { if(e.key === 'Enter') { onAskQuestion(questionInput); setQuestionDialogOpen(false); setQuestionInput(""); } }}
+                        onKeyDown={e => { 
+                            if(e.key === 'Enter') { 
+                                e.preventDefault();
+                                if (!questionInput.trim()) return;
+                                onAskQuestion(questionInput); 
+                                setQuestionDialogOpen(false); 
+                                setQuestionInput(""); 
+                            } 
+                        }}
                     />
                 </DialogContent>
                 <DialogActions className="p-4 pt-0">
