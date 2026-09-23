@@ -370,8 +370,7 @@ class Room {
             this.winners.push(user.id);
             const User = require('../models/User');
             
-            let winnerReward = 50; 
-            let bettorReward = 0;
+            let winnerReward = 0; 
             const rank = this.winners.length; 
             
             if (this.isBettingEnabled) {
@@ -394,15 +393,25 @@ class Room {
                 }
                 
                 winnerReward = Math.floor(totalPot * pct);
-                bettorReward = winnerReward; 
             }
             
-            if (user.dbId && winnerReward > 0) {
-                User.findByIdAndUpdate(user.dbId, { $inc: { gold: winnerReward, xp: 100 } })
-                    .catch(err => console.error("Gold update error:", err));
+            let xpReward = 30;
+            if (rank === 1) xpReward = 150;
+            else if (rank === 2) xpReward = 100;
+            else if (rank === 3) xpReward = 75;
+            else if (rank === 4) xpReward = 50;
+            
+            if (user.dbId) {
+                User.findByIdAndUpdate(user.dbId, { $inc: { gold: winnerReward, xp: xpReward } })
+                    .catch(err => console.error("Reward update error:", err));
             }
 
-            const winMsg = `${user.name} doğru tahmin etti! (${rank}. oldu) ve ${winnerReward} Altın kazandı! Kelimesi: ${user.assignedWord}`;
+            let winMsg = "";
+            if (this.isBettingEnabled) {
+                winMsg = `${user.name} doğru tahmin etti! (${rank}. oldu) ve ${winnerReward} Altın kazandı! Kelimesi: ${user.assignedWord}`;
+            } else {
+                winMsg = `${user.name} doğru tahmin etti! (${rank}. oldu) ve ${xpReward} XP kazandı! Kelimesi: ${user.assignedWord}`;
+            }
             this.chatHistory.push({ system: true, message: winMsg, timestamp: Date.now() });
             this.roundLogs.push(winMsg);
 
