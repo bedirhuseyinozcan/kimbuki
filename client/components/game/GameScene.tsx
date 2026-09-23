@@ -348,6 +348,15 @@ export default function GameScene({
                     {me?.status === 'playing' && gameState.gameState === "PLAYING" && (
                         <div className="glass p-6 rounded-3xl flex flex-col justify-center items-center gap-4 border border-slate-700/50 pointer-events-auto shadow-2xl bg-slate-900/60 backdrop-blur-lg">
                             
+                            {me?.hintStr && (
+                                <div className="w-full bg-slate-800/80 rounded-xl p-3 text-center border border-slate-600 mb-2 shadow-inner">
+                                    <p className="text-xs text-slate-400 uppercase font-bold mb-1">KELİMEN</p>
+                                    <p className="text-2xl font-black tracking-[0.3em] text-cyan-400 drop-shadow-md whitespace-pre-wrap">
+                                        {me.hintStr.split('').map(c => c === ' ' ? '   ' : c).join(' ')}
+                                    </p>
+                                </div>
+                            )}
+
                             <motion.div whileHover={{ scale: isMyTurn ? 1.05 : 1 }} whileTap={{ scale: isMyTurn ? 0.95 : 1 }} className="w-full">
                                 <Button 
                                     variant="contained" 
