@@ -18,6 +18,23 @@ function FirstPersonCamera({ myId, users, radius, onHeadRotation }: any) {
     const { camera } = useThree();
     const lastEmitTime = useRef(0);
     const lastEmittedRot = useRef({ pitch: 0, yaw: 0 });
+    const isDragging = useRef(false);
+    const currentLook = useRef({ yaw: 0, pitch: 0 });
+
+    React.useEffect(() => {
+        const handleDown = (e: MouseEvent) => { 
+            if(e.button === 0 && (e.target as HTMLElement).tagName.toUpperCase() === 'CANVAS') {
+                isDragging.current = true; 
+            }
+        };
+        const handleUp = (e: MouseEvent) => { if(e.button === 0) isDragging.current = false; };
+        window.addEventListener('mousedown', handleDown);
+        window.addEventListener('mouseup', handleUp);
+        return () => {
+            window.removeEventListener('mousedown', handleDown);
+            window.removeEventListener('mouseup', handleUp);
+        }
+    }, []);
 
     useFrame((state, delta) => {
         const myIndex = users.findIndex((u: any) => u.id === myId);
@@ -42,17 +59,25 @@ function FirstPersonCamera({ myId, users, radius, onHeadRotation }: any) {
 
         camera.lookAt(targetX, targetY, targetZ);
         
-        const mouseX = state.pointer.x; 
-        const mouseY = state.pointer.y; 
-        
         const maxYaw = Math.PI / 3; 
         const maxPitch = Math.PI / 4; 
         
-        const yaw = -mouseX * maxYaw;
-        const pitch = mouseY * maxPitch;
+        let targetYaw = 0;
+        let targetPitch = 0;
 
-        camera.rotateY(yaw);
-        camera.rotateX(pitch);
+        if (isDragging.current) {
+            targetYaw = -state.pointer.x * maxYaw;
+            targetPitch = state.pointer.y * maxPitch;
+        }
+
+        currentLook.current.yaw = THREE.MathUtils.lerp(currentLook.current.yaw, targetYaw, 10 * delta);
+        currentLook.current.pitch = THREE.MathUtils.lerp(currentLook.current.pitch, targetPitch, 10 * delta);
+
+        camera.rotateY(currentLook.current.yaw);
+        camera.rotateX(currentLook.current.pitch);
+
+        const pitch = currentLook.current.pitch;
+        const yaw = currentLook.current.yaw;
 
         const now = Date.now();
         if (now - lastEmitTime.current > 100) {
