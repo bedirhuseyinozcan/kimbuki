@@ -273,26 +273,26 @@ export default function Home() {
                   KİMBUKİ
                 </Typography>
             </div>
-            <div className="hidden md:flex gap-6 items-center">
-              <Button color="inherit" className="text-slate-300 hover:text-white" onClick={() => scrollToSection('nasil-oynanir')}>Nasıl Oynanır?</Button>
-              <Button color="inherit" className="text-slate-300 hover:text-white" onClick={() => scrollToSection('biz-kimiz')}>Biz Kimiz?</Button>
+            <div className="hidden lg:flex gap-2 xl:gap-4 items-center">
+              <Button color="inherit" className="whitespace-nowrap text-slate-300 hover:text-white" onClick={() => scrollToSection('nasil-oynanir')}>Nasıl Oynanır?</Button>
+              <Button color="inherit" className="whitespace-nowrap text-slate-300 hover:text-white" onClick={() => scrollToSection('biz-kimiz')}>Biz Kimiz?</Button>
               
               {user && (
                 <>
                     <Button 
                         color={user.canClaimDaily ? "success" : "inherit"} 
-                        className={`font-bold border rounded-full px-4 ${user.canClaimDaily ? 'border-green-500/50 bg-green-500/10 text-green-400 animate-pulse' : 'border-slate-500/50 bg-slate-500/10 text-slate-400'}`} 
+                        className={`whitespace-nowrap font-bold border rounded-full px-4 ${user.canClaimDaily ? 'border-green-500/50 bg-green-500/10 text-green-400 animate-pulse' : 'border-slate-500/50 bg-slate-500/10 text-slate-400'}`} 
                         onClick={() => setDailyRewardDialogOpen(true)}
                     >
                         🎁 GÜNLÜK ÖDÜL
                     </Button>
-                    <Button color="warning" className="font-bold border border-yellow-500/50 bg-yellow-500/10 rounded-full px-4" startIcon={<AttachMoneyIcon />}>
+                    <Button color="warning" className="whitespace-nowrap font-bold border border-yellow-500/50 bg-yellow-500/10 rounded-full px-4" startIcon={<AttachMoneyIcon />}>
                         {user.gold || 0}
                     </Button>
-                    <Button color="inherit" className="text-cyan-400 hover:text-cyan-300 font-bold" onClick={() => setShopDialogOpen(true)} startIcon={<StorefrontIcon />}>
+                    <Button color="inherit" className="whitespace-nowrap text-cyan-400 hover:text-cyan-300 font-bold" onClick={() => setShopDialogOpen(true)} startIcon={<StorefrontIcon />}>
                         Mağaza
                     </Button>
-                    <Button color="inherit" className="text-amber-400 hover:text-amber-300 font-bold" onClick={handleOpenLeaderboard}>
+                    <Button color="inherit" className="whitespace-nowrap text-amber-400 hover:text-amber-300 font-bold" onClick={handleOpenLeaderboard}>
                         🏆 Liderlik
                     </Button>
                     <Button color="inherit" style={{ minWidth: '160px', maxWidth: '180px' }} className="flex flex-col items-stretch justify-center normal-case px-4 py-2 bg-slate-800/80 hover:bg-slate-700/80 rounded-2xl border border-slate-700/50 shadow-lg shadow-black/20" onClick={openProfile}>
