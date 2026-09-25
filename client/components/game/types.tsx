@@ -42,6 +42,11 @@ export type GameState = {
         votes: { [userId: string]: string };
         endTime?: number;
     } | null;
+    lastResolvedQuestion?: {
+        askerId: string;
+        question: string;
+        votes: { [userId: string]: string };
+    } | null;
     users: User[];
     currentTurnUserId: string | null;
     turnEndsAt: number | null;

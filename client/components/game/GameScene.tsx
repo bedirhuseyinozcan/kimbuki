@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+﻿import React, { useEffect, useState, useRef } from "react";
 import { Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Avatar, IconButton, Chip, MenuItem } from "@mui/material";
 import SendIcon from '@mui/icons-material/Send';
 import SkipNextIcon from '@mui/icons-material/SkipNext';
@@ -236,6 +236,29 @@ export default function GameScene({
                             </p>
                         </div>
                     )}
+
+                    {gameState.currentTurnUserId === gameState.lastResolvedQuestion?.askerId && gameState.lastResolvedQuestion && (
+                        <div className="mt-4 p-3 rounded-xl border bg-cyan-900/30 border-cyan-500/30 overflow-y-auto custom-scrollbar max-h-[150px]">
+                            <h4 className="font-bold text-sm text-cyan-400 mb-1">
+                                Sorduğu Soru
+                            </h4>
+                            <p className="text-sm font-bold text-slate-200 mb-2">"{gameState.lastResolvedQuestion.question}"</p>
+                            <div className="flex gap-2 text-xs flex-wrap">
+                                {Object.entries(gameState.lastResolvedQuestion.votes).map(([voterId, vote]) => {
+                                    const voter = gameState.users.find(u => u.id === voterId);
+                                    if (!voter) return null;
+                                    const voteColor = vote === 'yes' ? 'text-green-400' : vote === 'no' ? 'text-red-400' : 'text-slate-400';
+                                    const voteText = vote === 'yes' ? 'Evet' : vote === 'no' ? 'Hayır' : 'Bilmiyorum';
+                                    return (
+                                        <div key={voterId} className="bg-slate-800/80 px-2 py-1 rounded border border-slate-700">
+                                            <span className="text-slate-400 mr-1">{voter.name}:</span>
+                                            <span className={`font-bold ${voteColor}`}>{voteText}</span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 <div className="flex-1 flex flex-col relative justify-between">
@@ -259,13 +282,13 @@ export default function GameScene({
                                 {gameState.activeQuestion.askerId !== myId && me?.status === 'playing' ? (
                                     <div className="flex justify-center gap-4">
                                         <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-                                            <Button variant="contained" color="success" size="large" onClick={() => onSubmitVote("yes")} className="text-xl py-3 px-6 rounded-xl font-black">Evet 👍</Button>
+                                            <Button variant={gameState.activeQuestion.votes[myId] === 'yes' ? 'contained' : (gameState.activeQuestion.votes[myId] ? 'outlined' : 'contained')} color="success" size="large" onClick={() => onSubmitVote("yes")} className="text-xl py-3 px-6 rounded-xl font-black">Evet 👍</Button>
                                         </motion.div>
                                         <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-                                            <Button variant="contained" color="error" size="large" onClick={() => onSubmitVote("no")} className="text-xl py-3 px-6 rounded-xl font-black">Hayır 👎</Button>
+                                            <Button variant={gameState.activeQuestion.votes[myId] === 'no' ? 'contained' : (gameState.activeQuestion.votes[myId] ? 'outlined' : 'contained')} color="error" size="large" onClick={() => onSubmitVote("no")} className="text-xl py-3 px-6 rounded-xl font-black">Hayır 👎</Button>
                                         </motion.div>
                                         <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-                                            <Button variant="contained" color="warning" size="large" onClick={() => onSubmitVote("sometimes")} className="text-xl py-3 px-6 rounded-xl font-black">Bazen 🤔</Button>
+                                            <Button variant={gameState.activeQuestion.votes[myId] === 'sometimes' ? 'contained' : (gameState.activeQuestion.votes[myId] ? 'outlined' : 'contained')} color="warning" size="large" onClick={() => onSubmitVote("sometimes")} className="text-xl py-3 px-6 rounded-xl font-black">Bazen 🤔</Button>
                                         </motion.div>
                                     </div>
                                 ) : (
