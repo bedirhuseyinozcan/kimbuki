@@ -124,6 +124,13 @@ router.post("/login", async (req, res) => {
             return res.status(400).json({ error: "Hatalı şifre." });
         }
 
+        if (!user.unlockedAvatars) user.unlockedAvatars = [];
+        if (!user.unlockedAvatars.includes('Warrior')) {
+            user.unlockedAvatars.push('Warrior');
+            if (user.avatar.startsWith('default-')) user.avatar = 'Warrior';
+            await user.save();
+        }
+
         const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: "30d" });
 
         res.json({
@@ -152,6 +159,13 @@ router.get("/me", authMiddleware, async (req, res) => {
         const user = await User.findById(req.user.id).select("-password");
         if (!user) {
             return res.status(404).json({ error: "Kullanıcı bulunamadı." });
+        }
+
+        if (!user.unlockedAvatars) user.unlockedAvatars = [];
+        if (!user.unlockedAvatars.includes('Warrior')) {
+            user.unlockedAvatars.push('Warrior');
+            if (user.avatar.startsWith('default-')) user.avatar = 'Warrior';
+            await user.save();
         }
 
         let canClaimDaily = false;

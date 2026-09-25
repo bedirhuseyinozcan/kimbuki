@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -217,7 +217,7 @@ export default function Home() {
 
   const openProfile = () => {
       setLoginName(user?.username || "");
-      setSelectedAvatar(user?.avatar || "default-violet");
+      setSelectedAvatar(user?.avatar || "Warrior");
       setProfileDialogOpen(true);
   };
 
