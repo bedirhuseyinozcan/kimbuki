@@ -383,7 +383,7 @@ class Room {
 
     handleChat(userId, message) {
         const user = this.users.find(u => u.id === userId);
-        if (!user) return;
+        if (!user || !message || message.length > 150) return;
 
         this.chatHistory.push({
             userId: user.id,
