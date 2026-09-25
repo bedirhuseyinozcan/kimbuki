@@ -211,7 +211,7 @@ export default function GameScene({
 
             <div className="w-full h-full flex-1 flex flex-col md:flex-row gap-6 relative z-10 mt-12 md:mt-10 px-2 md:px-6 pointer-events-none">
                 
-                <div className={`w-full md:w-1/4 self-start glass p-4 rounded-3xl flex flex-col border border-slate-700/50 pointer-events-auto shadow-2xl bg-slate-900/60 backdrop-blur-lg transition-all duration-300 ${isNotepadOpen ? 'h-[300px] md:h-[500px]' : 'h-auto'}`}>
+                <div className={`w-full md:w-1/4 self-start glass p-3 rounded-2xl flex flex-col border border-slate-700/50 pointer-events-auto shadow-2xl bg-slate-900/60 backdrop-blur-lg transition-all duration-300 ${isNotepadOpen ? 'h-[250px] md:h-[400px]' : 'h-auto'}`}>
                     <h3 
                         className="font-bold text-lg flex items-center justify-between gap-2 text-yellow-400 cursor-pointer select-none hover:text-yellow-300"
                         onClick={() => setIsNotepadOpen(!isNotepadOpen)}
@@ -244,26 +244,30 @@ export default function GameScene({
                         </div>
                     )}
 
-                    {gameState.currentTurnUserId === gameState.lastResolvedQuestion?.askerId && gameState.lastResolvedQuestion && (
-                        <div className="mt-4 p-3 rounded-xl border bg-cyan-900/30 border-cyan-500/30 overflow-y-auto custom-scrollbar max-h-[150px]">
-                            <h4 className="font-bold text-sm text-cyan-400 mb-1">
-                                Sorduğu Soru
-                            </h4>
-                            <p className="text-sm font-bold text-slate-200 mb-2">"{gameState.lastResolvedQuestion.question}"</p>
-                            <div className="flex gap-2 text-xs flex-wrap">
-                                {Object.entries(gameState.lastResolvedQuestion.votes).map(([voterId, vote]) => {
-                                    const voter = gameState.users.find(u => u.id === voterId);
-                                    if (!voter) return null;
-                                    const voteColor = vote === 'yes' ? 'text-green-400' : vote === 'no' ? 'text-red-400' : 'text-slate-400';
-                                    const voteText = vote === 'yes' ? 'Evet' : vote === 'no' ? 'Hayır' : 'Bilmiyorum';
-                                    return (
-                                        <div key={voterId} className="bg-slate-800/80 px-2 py-1 rounded border border-slate-700">
-                                            <span className="text-slate-400 mr-1">{voter.name}:</span>
-                                            <span className={`font-bold ${voteColor}`}>{voteText}</span>
-                                        </div>
-                                    );
-                                })}
-                            </div>
+                    {gameState.resolvedQuestionsThisTurn && gameState.resolvedQuestionsThisTurn.length > 0 && (
+                        <div className="mt-4 flex flex-col gap-3 overflow-y-auto custom-scrollbar max-h-[200px] pr-2">
+                            {gameState.resolvedQuestionsThisTurn.map((q, index) => (
+                                <div key={index} className="p-3 rounded-xl border bg-cyan-900/30 border-cyan-500/30">
+                                    <h4 className="font-bold text-sm text-cyan-400 mb-1">
+                                        {index + 1}. Soru
+                                    </h4>
+                                    <p className="text-sm font-bold text-slate-200 mb-2">"{q.question}"</p>
+                                    <div className="flex gap-2 text-xs flex-wrap">
+                                        {Object.entries(q.votes).map(([voterId, vote]) => {
+                                            const voter = gameState.users.find(u => u.id === voterId);
+                                            if (!voter) return null;
+                                            const voteColor = vote === 'yes' ? 'text-green-400' : vote === 'no' ? 'text-red-400' : 'text-yellow-400';
+                                            const voteText = vote === 'yes' ? 'Evet' : vote === 'no' ? 'Hayır' : 'Bazen';
+                                            return (
+                                                <div key={voterId} className="bg-slate-800/80 px-2 py-1 rounded border border-slate-700">
+                                                    <span className="text-slate-400 mr-1">{voter.name}:</span>
+                                                    <span className={`font-bold ${voteColor}`}>{voteText}</span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     )}
                 </div>
@@ -289,13 +293,13 @@ export default function GameScene({
                                 {gameState.activeQuestion.askerId !== myId && me?.status === 'playing' ? (
                                     <div className="flex justify-center gap-4">
                                         <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-                                            <Button variant={gameState.activeQuestion.votes[myId] === 'yes' ? 'contained' : (gameState.activeQuestion.votes[myId] ? 'outlined' : 'contained')} color="success" size="large" onClick={() => onSubmitVote("yes")} className="text-xl py-3 px-6 rounded-xl font-black">Evet 👍</Button>
+                                            <Button variant={gameState.activeQuestion.votes[myId] === 'yes' ? 'contained' : (gameState.activeQuestion.votes[myId] ? 'outlined' : 'contained')} color="success" size="medium" onClick={() => onSubmitVote("yes")} className="text-xl py-3 px-6 rounded-xl font-black">Evet 👍</Button>
                                         </motion.div>
                                         <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-                                            <Button variant={gameState.activeQuestion.votes[myId] === 'no' ? 'contained' : (gameState.activeQuestion.votes[myId] ? 'outlined' : 'contained')} color="error" size="large" onClick={() => onSubmitVote("no")} className="text-xl py-3 px-6 rounded-xl font-black">Hayır 👎</Button>
+                                            <Button variant={gameState.activeQuestion.votes[myId] === 'no' ? 'contained' : (gameState.activeQuestion.votes[myId] ? 'outlined' : 'contained')} color="error" size="medium" onClick={() => onSubmitVote("no")} className="text-xl py-3 px-6 rounded-xl font-black">Hayır 👎</Button>
                                         </motion.div>
                                         <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-                                            <Button variant={gameState.activeQuestion.votes[myId] === 'sometimes' ? 'contained' : (gameState.activeQuestion.votes[myId] ? 'outlined' : 'contained')} color="warning" size="large" onClick={() => onSubmitVote("sometimes")} className="text-xl py-3 px-6 rounded-xl font-black">Bazen 🤔</Button>
+                                            <Button variant={gameState.activeQuestion.votes[myId] === 'sometimes' ? 'contained' : (gameState.activeQuestion.votes[myId] ? 'outlined' : 'contained')} color="warning" size="medium" onClick={() => onSubmitVote("sometimes")} className="text-xl py-3 px-6 rounded-xl font-black">Bazen 🤔</Button>
                                         </motion.div>
                                     </div>
                                 ) : (
@@ -340,7 +344,7 @@ export default function GameScene({
                     <div className="flex-1" />
 
                  
-                    <div className="bg-slate-900/80 backdrop-blur-md border border-slate-700/50 rounded-2xl h-40 flex flex-col z-10 relative pointer-events-auto shadow-2xl">
+                    <div className="bg-slate-900/80 backdrop-blur-md border border-slate-700/50 rounded-2xl h-40 focus-within:h-72 transition-all duration-300 flex flex-col z-10 relative pointer-events-auto shadow-2xl">
                         <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar pointer-events-auto">
                             {gameState.chatHistory.map((msg: any, i: number) => (
                                 <div key={i} className={`text-sm ${msg.system ? 'text-cyan-400 text-center italic my-2' : ''}`}>
@@ -374,9 +378,9 @@ export default function GameScene({
 
                 </div>
 
-                <div className="w-full md:w-1/4 flex flex-col gap-4">
+                <div className="w-full md:w-1/4 flex flex-col gap-3">
                     {me?.status === 'playing' && gameState.gameState === "PLAYING" && (
-                        <div className="glass p-6 rounded-3xl flex flex-col justify-center items-center gap-4 border border-slate-700/50 pointer-events-auto shadow-2xl bg-slate-900/60 backdrop-blur-lg">
+                        <div className="glass p-4 rounded-2xl flex flex-col justify-center items-center gap-3 border border-slate-700/50 pointer-events-auto shadow-xl bg-slate-900/60 backdrop-blur-lg">
                             
                             {me?.hintStr && (
                                 <div className="w-full bg-slate-800/80 rounded-xl p-3 text-center border border-slate-600 mb-2 shadow-inner">
@@ -391,12 +395,12 @@ export default function GameScene({
                                 <Button 
                                     variant="contained" 
                                     color="info" 
-                                    size="large" 
+                                    size="medium" 
                                     fullWidth 
                                     startIcon={<QuestionAnswerIcon />}
                                     onClick={() => setQuestionDialogOpen(true)}
-                                    disabled={!isMyTurn || ((me?.questionsAskedThisTurn ?? 0) >= 1 && (me?.extraQuestions ?? 0) <= 0)}
-                                    className={`py-4 rounded-xl border-2 font-bold ${isMyTurn ? 'bg-cyan-600 shadow-lg shadow-cyan-500/30' : 'opacity-50'}`}
+                                    disabled={!isMyTurn || ((me?.questionsAskedThisTurn ?? 0) >= 1 && (me?.extraQuestions ?? 0) <= 0) || !!gameState.activeQuestion}
+                                    className={`py-3 rounded-xl border-2 font-bold ${isMyTurn && !gameState.activeQuestion ? 'bg-cyan-600 shadow-lg shadow-cyan-500/30' : 'opacity-50'}`}
                                 >
                                     Soru Sor & Oylat
                                 </Button>
@@ -408,11 +412,11 @@ export default function GameScene({
                                 <Button 
                                     variant="contained" 
                                     color="success" 
-                                    size="large" 
+                                    size="medium" 
                                     fullWidth 
                                     onClick={() => setGuessDialogOpen(true)}
                                     disabled={!isMyTurn}
-                                    className={`py-4 rounded-xl text-lg font-bold shadow-lg shadow-green-500/20 ${!isMyTurn ? 'opacity-50' : ''}`}
+                                    className={`py-3 rounded-xl text-lg font-bold shadow-lg shadow-green-500/20 ${!isMyTurn ? 'opacity-50' : ''}`}
                                 >
                                     TAHMİN ET
                                 </Button>
@@ -422,7 +426,7 @@ export default function GameScene({
                                 <Button 
                                     variant="outlined" 
                                     color="warning" 
-                                    size="large" 
+                                    size="medium" 
                                     fullWidth 
                                     startIcon={<SkipNextIcon />}
                                     onClick={handleSkip}
@@ -438,7 +442,7 @@ export default function GameScene({
                                     <Button 
                                         variant="contained" 
                                         color="secondary" 
-                                        size="large" 
+                                        size="medium" 
                                         fullWidth 
                                         onClick={() => setJokerDialogOpen(true)}
                                         disabled={!isMyTurn}
@@ -590,10 +594,10 @@ export default function GameScene({
                             <p className="text-green-400 font-bold text-xl animate-pulse">Oy verdin, diğerleri bekleniyor...</p>
                         ) : (
                             <div className="flex gap-4 justify-center">
-                                <Button variant="contained" color="error" size="large" onClick={() => onVoteObjection(true)} className="flex-1 py-3 font-bold text-lg">
+                                <Button variant="contained" color="error" size="medium" onClick={() => onVoteObjection(true)} className="flex-1 py-3 font-bold text-lg">
                                     EVET, ŞİKE VAR!
                                 </Button>
-                                <Button variant="outlined" color="inherit" size="large" onClick={() => onVoteObjection(false)} className="flex-1 py-3 font-bold text-lg border-slate-600 text-slate-300">
+                                <Button variant="outlined" color="inherit" size="medium" onClick={() => onVoteObjection(false)} className="flex-1 py-3 font-bold text-lg border-slate-600 text-slate-300">
                                     HAYIR, TEMİZ
                                 </Button>
                             </div>

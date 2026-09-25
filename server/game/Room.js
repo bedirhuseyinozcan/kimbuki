@@ -616,6 +616,7 @@ class Room {
 
     askQuestion(userId, question) {
         if (this.gameState !== "PLAYING") return;
+        if (this.activeQuestion) return;
         const currentUser = this.users[this.currentTurnIndex];
         if (currentUser.id !== userId) return;
 
@@ -666,7 +667,7 @@ class Room {
     resolveQuestion() {
         if (!this.activeQuestion) return;
         
-        this.lastResolvedQuestion = this.activeQuestion;
+        if (!this.resolvedQuestionsThisTurn) this.resolvedQuestionsThisTurn = []; this.resolvedQuestionsThisTurn.push(this.activeQuestion);
         this.activeQuestion = null;
         if (this.questionTimer) {
             clearTimeout(this.questionTimer);
@@ -686,7 +687,7 @@ class Room {
 
     nextTurn() {
         this.activeQuestion = null;
-        this.lastResolvedQuestion = null;
+        this.resolvedQuestionsThisTurn = [];
         if (this.gameState !== "PLAYING") return;
 
         let attempts = 0;
@@ -774,7 +775,7 @@ class Room {
                 betAmount: this.betAmount,
                 isJokersEnabled: this.isJokersEnabled,
                 activeQuestion: this.activeQuestion,
-                lastResolvedQuestion: this.lastResolvedQuestion || null,
+                resolvedQuestionsThisTurn: this.resolvedQuestionsThisTurn || [],
                 users: usersPayload,
                 currentTurnUserId: this.gameState === "PLAYING" ? this.users[this.currentTurnIndex]?.id : null,
                 turnEndsAt: this.gameState === "PLAYING" ? (this.activeQuestion ? Date.now() + this.pausedRemainingMs : this.turnStartTime + (this.turnTime * 1000)) : null,

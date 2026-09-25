@@ -1,4 +1,4 @@
-import { Button, TextField, Chip } from "@mui/material";
+﻿import { Button, TextField, Chip } from "@mui/material";
 import { User, GameState } from "./types";
 
 interface WordSelectionProps {
@@ -18,11 +18,7 @@ export default function WordSelection({
     const targetUser = gameState.users.find((u: User) => u.id === me?.targetId);
 
     return (
-        <main className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center p-4 relative">
-            <Button variant="outlined" color="inherit" size="small" onClick={onLeaveRoom} className="absolute top-4 right-4 border-slate-700 text-slate-400">
-                Odadan Ayrıl
-            </Button>
-
+        <main className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center p-4 relative gap-12">
             <div className="glass max-w-lg w-full p-8 rounded-3xl text-center shadow-2xl relative overflow-hidden">
                 {gameState.isBettingEnabled && (
                     <div className="absolute top-0 left-0 right-0 bg-yellow-500/20 border-b border-yellow-500/50 p-2 flex justify-center items-center gap-2">
@@ -87,6 +83,10 @@ export default function WordSelection({
                     </div>
                 </div>
             </div>
+            
+            <Button variant="outlined" color="inherit" size="small" onClick={onLeaveRoom} className="border-slate-700 text-slate-400 hover:text-red-400 hover:border-red-500 hover:bg-red-500/10">
+                Odadan Ayrıl
+            </Button>
         </main>
     );
 }
