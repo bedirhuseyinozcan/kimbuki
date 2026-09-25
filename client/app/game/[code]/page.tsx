@@ -165,6 +165,7 @@ export default function GamePage() {
     };
 
     const handleLeaveRoom = () => {
+        socket?.emit("game:leave");
         if (socket) socket.disconnect();
         sessionStorage.removeItem("username");
         router.push("/");

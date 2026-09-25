@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { GiBroadsword, GiWizardStaff, GiDaggers, GiBowArrow, GiHighKick, GiHolySymbol } from 'react-icons/gi';
 
 export type User = {
@@ -43,11 +43,7 @@ export type GameState = {
         votes: { [userId: string]: string };
         endTime?: number;
     } | null;
-    lastResolvedQuestion?: {
-        askerId: string;
-        question: string;
-        votes: { [userId: string]: string };
-    } | null;
+    resolvedQuestionsThisTurn?: { askerId: string; question: string; votes: { [userId: string]: string }; }[];
     users: User[];
     currentTurnUserId: string | null;
     turnEndsAt: number | null;

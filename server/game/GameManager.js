@@ -41,7 +41,22 @@ class GameManager {
         socket.on("webrtc:answer", ({ to, answer }) => this.io.to(to).emit("webrtc:answer", { from: socket.id, answer }));
         socket.on("webrtc:ice-candidate", ({ to, candidate }) => this.io.to(to).emit("webrtc:ice-candidate", { from: socket.id, candidate }));
 
+        socket.on("game:leave", () => this.handleLeave(socket));
         socket.on("disconnect", () => this.handleDisconnect(socket));
+    }
+
+    handleLeave(socket) {
+        const room = this.getRoomBySocket(socket);
+        if (room) {
+            const user = room.users.find(u => u.id === socket.id);
+            if (user) {
+                user.disconnected = true;
+                room.permanentlyRemoveUser(socket.id);
+            }
+            if (room.users.length === 0) {
+                this.rooms.delete(room.code);
+            }
+        }
     }
 
     handleCloseRoom(socket) {
