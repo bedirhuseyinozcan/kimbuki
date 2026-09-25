@@ -118,7 +118,7 @@ export default function GamePage() {
 
     if (!gameState) return <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white text-2xl animate-pulse">Odaya bağlanıyor...</div>;
 
-    const handleStart = (settings: { category?: string, bettingEnabled?: boolean, jokersEnabled?: boolean, betAmount?: number }) => socket?.emit("game:start", settings);
+    const handleStart = (settings: { category?: string, bettingEnabled?: boolean, jokersEnabled?: boolean, betAmount?: number, theme?: "day" | "night" }) => socket?.emit("game:start", settings);
     
     const handleSetWord = () => {
         if (!wordInput.trim()) return;
