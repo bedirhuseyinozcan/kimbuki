@@ -16,6 +16,7 @@ export type User = {
     hasUsedJoker?: boolean;
     silencedTurns?: number;
     extraQuestions?: number;
+    questionsAskedThisTurn?: number;
     assignedWord: string | null;
     hintStr?: string | null;
     lives: number;
