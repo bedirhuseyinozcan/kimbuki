@@ -1,4 +1,4 @@
-﻿const User = require('../models/User');
+const User = require('../models/User');
 
 class Room {
     constructor(code, io) {
@@ -141,6 +141,7 @@ class Room {
         this.isJokersEnabled = settings.jokersEnabled !== undefined ? settings.jokersEnabled : true;
         this.bets = {};
         this.hasObjectionUsed = false;
+        this.objection = null;
 
         if (this.isBettingEnabled) {
             const User = require('../models/User');
@@ -171,6 +172,7 @@ class Room {
             
             for (let i = 0; i < this.users.length; i++) {
                 this.users[i].status = 'playing';
+                this.users[i].lives = 3;
                 this.users[i].assignedWord = null;
                 this.users[i].hasSubmittedWord = false;
                 this.users[i].hasPlacedBet = false;
@@ -201,6 +203,7 @@ class Room {
         
         for (let i = 0; i < this.users.length; i++) {
             this.users[i].status = 'playing';
+            this.users[i].lives = 3;
             this.users[i].assignedWord = null;
             this.users[i].hasSubmittedWord = false;
             this.users[i].joker = this.isJokersEnabled ? availableJokers[i % availableJokers.length] : null;
@@ -373,6 +376,7 @@ class Room {
         this.gameState = "PLAYING";
         this.currentTurnIndex = 0;
         this.activeQuestion = null;
+        this.resolvedQuestionsThisTurn = [];
         this.startTimer();
         this.broadcastState();
     }
