@@ -621,6 +621,7 @@ class Room {
     askQuestion(userId, question) {
         if (this.gameState !== "PLAYING") return;
         if (this.activeQuestion) return;
+        if (!question || question.length > 150) return;
         const currentUser = this.users[this.currentTurnIndex];
         if (currentUser.id !== userId) return;
 

@@ -251,7 +251,7 @@ export default function GameScene({
                                     <h4 className="font-bold text-sm text-cyan-400 mb-1">
                                         {index + 1}. Soru
                                     </h4>
-                                    <p className="text-sm font-bold text-slate-200 mb-2">"{q.question}"</p>
+                                    <p className="text-sm font-bold text-slate-200 mb-2 break-words break-all">"{q.question}"</p>
                                     <div className="flex gap-2 text-xs flex-wrap">
                                         {Object.entries(q.votes).map(([voterId, vote]) => {
                                             const voter = gameState.users.find(u => u.id === voterId);
@@ -288,7 +288,7 @@ export default function GameScene({
                                 <h4 className="text-lg font-bold mb-2 text-cyan-400">
                                     {gameState.users.find((u:User) => u.id === gameState.activeQuestion!.askerId)?.name} soruyor:
                                 </h4>
-                                <p className="text-3xl font-black mb-8 leading-tight">"{gameState.activeQuestion.question}"</p>
+                                <p className="text-3xl font-black mb-8 leading-tight break-words break-all">"{gameState.activeQuestion.question}"</p>
                                 
                                 {gameState.activeQuestion.askerId !== myId && me?.status === 'playing' ? (
                                     <div className="flex justify-center gap-4">
@@ -562,8 +562,7 @@ export default function GameScene({
                     <TextField 
                         autoFocus
                         fullWidth
-                        label="Sorunuz"
-                        placeholder="Örn: Gerçek bir insan mıyım?"
+                        label="Sorunuz" slotProps={{ htmlInput: { maxLength: 120 } }} placeholder="Örn: Gerçek bir insan mıyım?"
                         variant="outlined"
                         value={questionInput}
                         onChange={e => setQuestionInput(e.target.value)}
