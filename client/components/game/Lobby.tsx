@@ -1,4 +1,4 @@
-import { Button, TextField, IconButton, Avatar, Chip, FormControlLabel, Switch } from "@mui/material";
+﻿import { Button, TextField, IconButton, Avatar, Chip, FormControlLabel, Switch } from "@mui/material";
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CancelIcon from '@mui/icons-material/Cancel';
 import LogoutIcon from '@mui/icons-material/Logout';
@@ -10,7 +10,7 @@ interface LobbyProps {
     code: string;
     inviteUrl: string;
     myId: string;
-    onStart: (settings: { category: string, bettingEnabled: boolean, jokersEnabled: boolean, betAmount: number }) => void;
+    onStart: (settings: { category: string, bettingEnabled: boolean, jokersEnabled: boolean, betAmount: number, theme: "day"|"night" }) => void;
     onCloseRoom: () => void;
     onLeaveRoom: () => void;
     onCopyLink: () => void;
@@ -25,7 +25,7 @@ export default function Lobby({
     const [category, setCategory] = useState("Karışık");
     const [bettingEnabled, setBettingEnabled] = useState(false);
     const [betAmount, setBetAmount] = useState(50);
-    const [jokersEnabled, setJokersEnabled] = useState(true);
+    const [jokersEnabled, setJokersEnabled] = useState(true); const [theme, setTheme] = useState<"day" | "night">("day");
 
     return (
         <main className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center p-4 relative">
@@ -143,9 +143,22 @@ export default function Lobby({
                                         label="🃏 Joker Modu" 
                                         className="text-slate-200"
                                     />
+                                    <div className="flex flex-col gap-2 border-t border-slate-700 pt-4">
+                                        <p className="text-sm text-slate-400 font-bold mb-1">🗺️ Harita Teması</p>
+                                        <Select
+                                            value={theme}
+                                            onChange={(e) => setTheme(e.target.value as "day" | "night")}
+                                            variant="outlined"
+                                            size="small"
+                                            sx={{ color: 'white', '.MuiOutlinedInput-notchedOutline': { borderColor: '#475569' } }}
+                                        >
+                                            <MenuItem value="day">☀️ Gündüz (Aydınlık Orman)</MenuItem>
+                                            <MenuItem value="night">🌙 Gece (Karanlık Orman)</MenuItem>
+                                        </Select>
+                                    </div>
                                 </div>
                             </div>
-                            <Button variant="contained" color="secondary" size="large" fullWidth onClick={() => onStart({ category, bettingEnabled, jokersEnabled, betAmount })} className="py-3 text-lg font-bold rounded-xl bg-gradient-to-r from-violet-600 to-cyan-600">
+                            <Button variant="contained" color="secondary" size="large" fullWidth onClick={() => onStart({ category, bettingEnabled, jokersEnabled, betAmount, theme })} className="py-3 text-lg font-bold rounded-xl bg-gradient-to-r from-violet-600 to-cyan-600">
                                 OYUNU BAŞLAT
                             </Button>
                         </div>

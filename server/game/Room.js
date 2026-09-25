@@ -1,4 +1,4 @@
-const User = require('../models/User');
+﻿const User = require('../models/User');
 
 class Room {
     constructor(code, io) {
@@ -6,7 +6,7 @@ class Room {
         this.io = io;
         this.users = [];
         this.gameState = "LOBBY";
-        this.category = "";
+        this.category = ""; this.theme = "day";
         this.activeQuestion = null;
         
         this.turnTime = 60;
@@ -134,7 +134,7 @@ class Room {
     async startGame(settings = {}) {
         if (this.users.length < 2) return; 
 
-        this.category = settings.category || "Karışık";
+        this.category = settings.category || "Karışık"; this.theme = settings.theme || "day";
         this.initialPlayerCount = this.users.length;
         this.isBettingEnabled = settings.bettingEnabled || false;
         this.betAmount = settings.betAmount || 50;
@@ -769,7 +769,7 @@ class Room {
 
             const payload = {
                 gameState: this.gameState,
-                category: this.category,
+                category: this.category, theme: this.theme,
                 isBettingEnabled: this.isBettingEnabled,
                 betAmount: this.betAmount,
                 isJokersEnabled: this.isJokersEnabled,

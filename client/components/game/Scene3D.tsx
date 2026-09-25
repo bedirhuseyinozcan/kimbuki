@@ -217,14 +217,16 @@ function MapModel({ url }: { url: string }) {
 }
 
 export default function Scene3D({ gameState, myId, activeBubbles, headRotations, onHeadRotation }: any) {
+    const isDay = gameState?.theme !== "night";
+
     return (
         <div className='absolute inset-0 w-full h-full z-0 pointer-events-auto'>
             <Canvas shadows camera={{ position: [0, 4.5, 8], fov: 45 }}>
-                <color attach='background' args={['#0f172a']} />
-                <fog attach='fog' args={['#0f172a', 8, 30]} />
-                <ambientLight intensity={0.5} />
-                <directionalLight castShadow position={[5, 10, 5]} intensity={1.5} shadow-mapSize={[2048, 2048]} />
-                <pointLight position={[0, 4, 0]} intensity={1.2} color='#eab308' distance={10} />
+                <color attach='background' args={[isDay ? '#38bdf8' : '#0f172a']} />
+                <fog attach='fog' args={[isDay ? '#38bdf8' : '#0f172a', isDay ? 15 : 8, isDay ? 40 : 30]} />
+                <ambientLight intensity={isDay ? 0.9 : 0.4} />
+                <directionalLight castShadow position={[10, 15, 5]} intensity={isDay ? 2.2 : 1.2} color={isDay ? "#ffedd5" : "#e0f2fe"} shadow-mapSize={[2048, 2048]} />
+                <pointLight position={[0, 4, 0]} intensity={isDay ? 0.5 : 1.5} color={isDay ? '#eab308' : '#38bdf8'} distance={10} />
                 
                 <Suspense fallback={
                     <mesh position={[0, -0.1, 0]} receiveShadow>
