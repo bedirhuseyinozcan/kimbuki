@@ -365,7 +365,7 @@ export default function GameScene({
                                     fullWidth 
                                     startIcon={<QuestionAnswerIcon />}
                                     onClick={() => setQuestionDialogOpen(true)}
-                                    disabled={!isMyTurn}
+                                    disabled={!isMyTurn || ((me?.questionsAskedThisTurn ?? 0) >= 1 && (me?.extraQuestions ?? 0) <= 0)}
                                     className={`py-4 rounded-xl border-2 font-bold ${isMyTurn ? 'bg-cyan-600 shadow-lg shadow-cyan-500/30' : 'opacity-50'}`}
                                 >
                                     Soru Sor & Oylat

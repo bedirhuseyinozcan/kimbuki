@@ -207,6 +207,8 @@ class Room {
             this.users[i].hasUsedJoker = false;
             this.users[i].silencedTurns = 0;
             this.users[i].extraQuestions = 0;
+            this.users[i].questionsAskedThisTurn = 0;
+            this.users[i].hintStr = null;
             
             const nextIndex = (i + 1) % this.users.length;
             this.users[i].targetId = this.users[nextIndex].id;
@@ -569,6 +571,20 @@ class Room {
         const currentUser = this.users[this.currentTurnIndex];
         if (currentUser.id !== userId) return;
 
+        const asked = currentUser.questionsAskedThisTurn || 0;
+        
+        if (asked >= 1) {
+            
+            if (currentUser.extraQuestions > 0) {
+                currentUser.extraQuestions--;
+            } else {
+                this.io.to(currentUser.id).emit("game:error", { message: "Bu turdaki soru hakkını doldurdun! Lütfen tahmin et veya sıranı bekle." });
+                return;
+            }
+        }
+
+        currentUser.questionsAskedThisTurn = asked + 1;
+
         if (this.timer) {
             clearTimeout(this.timer);
             this.timer = null;
@@ -653,6 +669,7 @@ class Room {
                     });
                     continue; 
                 } else {
+                    nextUser.questionsAskedThisTurn = 0;
                     break; 
                 }
             }
@@ -704,6 +721,8 @@ class Room {
                 joker: u.id === user.id ? u.joker : null,
                 hasUsedJoker: u.hasUsedJoker,
                 silencedTurns: u.silencedTurns,
+                extraQuestions: u.extraQuestions || 0,
+                questionsAskedThisTurn: u.questionsAskedThisTurn || 0,
                 assignedWord: (this.gameState === "ROUND_END" || u.id !== user.id) ? u.assignedWord : null,
                 hintStr: (u.id === user.id) ? u.hintStr : null
             }));
