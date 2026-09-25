@@ -20,7 +20,7 @@ class Room {
 
     addUser(socketId, name, dbId, avatar) {
         if (dbId) {
-            const existingUser = this.users.find(u => u.dbId === dbId && u.disconnected);
+            const existingUser = this.users.find(u => u.dbId === dbId);
             if (existingUser) {
                 const oldId = existingUser.id;
                 if (existingUser.disconnectTimer) {
