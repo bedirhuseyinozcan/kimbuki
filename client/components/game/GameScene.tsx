@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Avatar, IconButton, Chip, MenuItem } from "@mui/material";
 import SendIcon from '@mui/icons-material/Send';
 import SkipNextIcon from '@mui/icons-material/SkipNext';
@@ -65,6 +65,7 @@ export default function GameScene({
     const [jokerDialogOpen, setJokerDialogOpen] = useState(false);
     const [jokerTarget, setJokerTarget] = useState("");
     const [jokerWord, setJokerWord] = useState("");
+    const [isNotepadOpen, setIsNotepadOpen] = useState(true);
 
     const handleUseJokerSubmit = () => {
         onUseJoker({ targetId: jokerTarget, newWord: jokerWord });
@@ -210,17 +211,23 @@ export default function GameScene({
 
             <div className="w-full h-full flex-1 flex flex-col md:flex-row gap-6 relative z-10 mt-12 md:mt-10 px-2 md:px-6 pointer-events-none">
                 
-                <div className="w-full md:w-1/4 glass p-4 rounded-3xl flex flex-col border border-slate-700/50 h-[300px] md:h-[500px] pointer-events-auto shadow-2xl bg-slate-900/60 backdrop-blur-lg">
-                    <h3 className="font-bold text-lg mb-2 flex items-center gap-2 text-yellow-400">
-                        <span>📝 Not Defterim</span>
+                <div className={`w-full md:w-1/4 self-start glass p-4 rounded-3xl flex flex-col border border-slate-700/50 pointer-events-auto shadow-2xl bg-slate-900/60 backdrop-blur-lg transition-all duration-300 ${isNotepadOpen ? 'h-[300px] md:h-[500px]' : 'h-auto'}`}>
+                    <h3 
+                        className="font-bold text-lg flex items-center justify-between gap-2 text-yellow-400 cursor-pointer select-none hover:text-yellow-300"
+                        onClick={() => setIsNotepadOpen(!isNotepadOpen)}
+                    >
+                        <span className="flex items-center gap-2">📝 Not Defterim</span>
+                        <span className="text-sm bg-slate-800/80 px-2 py-1 rounded-lg">{isNotepadOpen ? '▲ Gizle' : '▼ Aç'}</span>
                     </h3>
-                    <textarea
-                        placeholder="Örn: Gerçek bir insan mı? Yaşıyor mu?..."
-                        value={notepad}
-                        onChange={e => setNotepad(e.target.value)}
-                        spellCheck="false"
-                        className="flex-1 w-full bg-yellow-900/20 rounded-xl text-slate-200 p-3 border border-yellow-500/30 focus:border-yellow-500/60 outline-none resize-none min-h-0 custom-scrollbar"
-                    />
+                    {isNotepadOpen && (
+                        <textarea
+                            placeholder="Örn: Gerçek bir insan mı? Yaşıyor mu?..."
+                            value={notepad}
+                            onChange={e => setNotepad(e.target.value)}
+                            spellCheck="false"
+                            className="flex-1 w-full bg-yellow-900/20 rounded-xl text-slate-200 p-3 mt-2 border border-yellow-500/30 focus:border-yellow-500/60 outline-none resize-none min-h-0 custom-scrollbar"
+                        />
+                    )}
                     
                     {me?.joker !== undefined && me?.joker !== null && (
                         <div className={`mt-4 p-3 rounded-xl border ${me.hasUsedJoker ? 'bg-slate-800/50 border-slate-700/50 opacity-60' : 'bg-fuchsia-900/30 border-fuchsia-500/30'}`}>
