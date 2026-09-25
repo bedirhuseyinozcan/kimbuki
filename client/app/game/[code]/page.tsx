@@ -232,7 +232,10 @@ export default function GamePage() {
         if (gameState.gameState === "WORD_SELECTION") {
             return <WordSelection 
                 gameState={gameState} me={me!} wordInput={wordInput} setWordInput={setWordInput} 
-                onSetWord={handleSetWord} onLeaveRoom={handleLeaveRoom} 
+                onSetWord={handleSetWord} 
+                onEditWord={() => socket?.emit("game:edit_word")}
+                onShuffleTargets={() => socket?.emit("game:shuffle_targets")}
+                onLeaveRoom={handleLeaveRoom} 
             />;
         }
         if (gameState.gameState === "PLAYING") {

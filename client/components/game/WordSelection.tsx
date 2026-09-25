@@ -7,11 +7,13 @@ interface WordSelectionProps {
     wordInput: string;
     setWordInput: (val: string) => void;
     onSetWord: () => void;
+    onEditWord: () => void;
+    onShuffleTargets: () => void;
     onLeaveRoom: () => void;
 }
 
 export default function WordSelection({
-    gameState, me, wordInput, setWordInput, onSetWord, onLeaveRoom
+    gameState, me, wordInput, setWordInput, onSetWord, onEditWord, onShuffleTargets, onLeaveRoom
 }: WordSelectionProps) {
     const targetUser = gameState.users.find((u: User) => u.id === me?.targetId);
 
@@ -28,13 +30,24 @@ export default function WordSelection({
                         <span className="text-yellow-400 font-bold text-sm">BAHİS MODU AKTİF (-50 Altın)</span>
                     </div>
                 )}
-                <h2 className={`text-3xl font-bold mb-2 text-cyan-400 ${gameState.isBettingEnabled ? 'mt-6' : ''}`}>Kelime Seçimi</h2>
+                <div className="flex items-center justify-center gap-3 mb-2">
+                    <h2 className={`text-3xl font-bold text-cyan-400 ${gameState.isBettingEnabled ? 'mt-6' : ''}`}>Kelime Seçimi</h2>
+                    {me?.isHost && (
+                        <Button variant="outlined" color="info" size="small" onClick={onShuffleTargets} className={`rounded-full min-w-0 w-10 h-10 p-0 ${gameState.isBettingEnabled ? 'mt-6' : ''}`} title="Hedefleri Karıştır">
+                            🎲
+                        </Button>
+                    )}
+                </div>
                 {gameState.category && (
                     <Chip label={`Kategori: ${gameState.category}`} color="secondary" className="mb-6 font-bold" />
                 )}
                 {me?.hasSubmittedWord ? (
                     <div className="py-8">
-                        <p className="text-xl mb-4">Kelimeyi gönderdin!</p>
+                        <p className="text-xl mb-2">Kelimeyi gönderdin!</p>
+                        <p className="text-xl font-black text-fuchsia-400 mb-6 uppercase tracking-widest">{targetUser?.assignedWord}</p>
+                        <Button variant="outlined" color="warning" onClick={onEditWord} className="mb-6 font-bold border-2">
+                            Kelimeyi Düzenle ✏️
+                        </Button>
                         <p className="text-slate-400 animate-pulse">Diğer oyuncuların kelimelerini seçmesi bekleniyor...</p>
                     </div>
                 ) : (
