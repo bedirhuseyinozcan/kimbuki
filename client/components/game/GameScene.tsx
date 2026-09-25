@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+﻿import React, { useEffect, useState, useRef } from "react";
 import { Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Avatar, IconButton, Chip, MenuItem } from "@mui/material";
 import SendIcon from '@mui/icons-material/Send';
 import SkipNextIcon from '@mui/icons-material/SkipNext';
@@ -349,7 +349,7 @@ export default function GameScene({
                             {gameState.chatHistory.map((msg: any, i: number) => (
                                 <div key={i} className={`text-sm ${msg.system ? 'text-cyan-400 text-center italic my-2' : ''}`}>
                                     {!msg.system && <strong className="text-violet-400">{msg.name}: </strong>}
-                                    <span className={msg.system ? 'font-bold' : 'text-slate-200'}>{msg.message}</span>
+                                    <span className={`break-words break-all ${msg.system ? 'font-bold' : 'text-slate-200'}`}>{msg.message}</span>
                                 </div>
                             ))}
                             <div ref={chatEndRef} />
@@ -358,6 +358,7 @@ export default function GameScene({
                             <TextField 
                                 fullWidth 
                                 size="small"
+                                slotProps={{ htmlInput: { maxLength: 120 } }}
                                 placeholder={me?.status === 'playing' ? "Soru sor veya cevapla..." : "İzleyici sohbeti..."}
                                 value={chatInput}
                                 onChange={e => setChatInput(e.target.value)}
