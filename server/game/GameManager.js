@@ -23,6 +23,8 @@ class GameManager {
             if (room) room.voteObjection(socket.id, vote);
         });
         socket.on("game:set_word", ({ word }) => this.handleSetWord(socket, word));
+        socket.on("game:edit_word", () => this.handleEditWord(socket));
+        socket.on("game:shuffle_targets", () => this.handleShuffleTargets(socket));
         socket.on("game:chat", ({ message }) => this.handleChat(socket, message));
         socket.on("game:ask_question", ({ question }) => this.handleAskQuestion(socket, question));
         socket.on("game:submit_vote", ({ vote }) => this.handleSubmitVote(socket, vote));
@@ -112,6 +114,16 @@ class GameManager {
     handleSetWord(socket, word) {
         const room = this.getRoomBySocket(socket);
         if (room) room.setWord(socket.id, word);
+    }
+
+    handleEditWord(socket) {
+        const room = this.getRoomBySocket(socket);
+        if (room) room.editWord(socket.id);
+    }
+
+    handleShuffleTargets(socket) {
+        const room = this.getRoomBySocket(socket);
+        if (room) room.shuffleTargets(socket.id);
     }
 
     handleChat(socket, message) {

@@ -321,6 +321,54 @@ class Room {
         }
     }
 
+    editWord(userId) {
+        if (this.gameState !== "WORD_SELECTION") return;
+        const user = this.users.find(u => u.id === userId);
+        if (user && user.hasSubmittedWord) {
+            user.hasSubmittedWord = false;
+            const targetUser = this.users.find(u => u.id === user.targetId);
+            if (targetUser) {
+                targetUser.assignedWord = null;
+            }
+            this.broadcastState();
+        }
+    }
+
+    shuffleTargets(userId) {
+        if (this.gameState !== "WORD_SELECTION") return;
+        const user = this.users.find(u => u.id === userId);
+        if (!user || !user.isHost) return;
+
+        const ids = this.users.map(u => u.id);
+        let shuffled = [...ids];
+        let isValid = false;
+        let attempts = 0;
+        
+        while (!isValid && attempts < 100) {
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+            isValid = true;
+            for (let i = 0; i < ids.length; i++) {
+                if (ids[i] === shuffled[i]) {
+                    isValid = false;
+                    break;
+                }
+            }
+            attempts++;
+        }
+
+        if (isValid) {
+            for (let i = 0; i < this.users.length; i++) {
+                this.users[i].targetId = shuffled[i];
+                this.users[i].hasSubmittedWord = false;
+                this.users[i].assignedWord = null;
+            }
+            this.broadcastState();
+        }
+    }
+
     startPlaying() {
         this.gameState = "PLAYING";
         this.currentTurnIndex = 0;
