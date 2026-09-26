@@ -36,11 +36,6 @@ class GameManager {
         socket.on("game:head_rotation", (payload) => this.handleHeadRotation(socket, payload));
         socket.on("room:close", () => this.handleCloseRoom(socket));
 
-        // WebRTC Signaling
-        socket.on("webrtc:offer", ({ to, offer }) => this.io.to(to).emit("webrtc:offer", { from: socket.id, offer }));
-        socket.on("webrtc:answer", ({ to, answer }) => this.io.to(to).emit("webrtc:answer", { from: socket.id, answer }));
-        socket.on("webrtc:ice-candidate", ({ to, candidate }) => this.io.to(to).emit("webrtc:ice-candidate", { from: socket.id, candidate }));
-
         socket.on("game:leave", () => this.handleLeave(socket));
         socket.on("disconnect", () => this.handleDisconnect(socket));
     }

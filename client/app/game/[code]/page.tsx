@@ -297,9 +297,9 @@ export default function GamePage() {
     const roomOptions = {
         audioCaptureDefaults: {
             deviceId: typeof window !== 'undefined' ? (localStorage.getItem('preferredMic') || undefined) : undefined,
-            echoCancellation: false,
-            autoGainControl: false,
-            noiseSuppression: false,
+            echoCancellation: true,
+            autoGainControl: true,
+            noiseSuppression: true,
         }
     };
 

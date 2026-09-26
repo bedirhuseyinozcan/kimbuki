@@ -425,6 +425,7 @@ class Room {
             const User = require('../models/User');
             
             let winnerReward = 0; 
+            let bettorReward = 0;
             const rank = this.winners.length; 
             
             if (this.isBettingEnabled) {
@@ -447,6 +448,7 @@ class Room {
                 }
                 
                 winnerReward = Math.floor(totalPot * pct);
+                bettorReward = winnerReward;
             }
             
             let xpReward = 30;
@@ -645,7 +647,7 @@ class Room {
         }
         
         const remainingMs = this.turnStartTime + (this.turnTime * 1000) - Date.now();
-        this.pausedRemainingMs = remainingMs > 0 ? remainingMs : 0;
+        this.pausedRemainingMs = Math.max(10000, remainingMs);
 
         this.activeQuestion = {
             askerId: userId,
