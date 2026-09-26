@@ -37,7 +37,13 @@ export function useWebRTC(socket: Socket | null, myId: string, isVoiceEnabled: b
             if (peersRef.current[targetId]) return peersRef.current[targetId];
 
             const pc = new RTCPeerConnection({
-                iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+                iceServers: [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:stun1.l.google.com:19302' },
+                    { urls: 'stun:stun2.l.google.com:19302' },
+                    { urls: 'stun:stun3.l.google.com:19302' },
+                    { urls: 'stun:stun4.l.google.com:19302' }
+                ]
             });
 
             myStream.getTracks().forEach(track => pc.addTrack(track, myStream));
