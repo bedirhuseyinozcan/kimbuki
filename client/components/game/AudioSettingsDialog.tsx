@@ -23,7 +23,10 @@ export default function AudioSettingsDialog({ open, onClose }: AudioSettingsDial
 
     useEffect(() => {
         if (open) {
-            navigator.mediaDevices.enumerateDevices().then(deviceInfos => {
+            navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+                stream.getTracks().forEach(t => t.stop()); // İzni aldık, akışı kapatabiliriz
+                return navigator.mediaDevices.enumerateDevices();
+            }).then(deviceInfos => {
                 const audioInputs = deviceInfos.filter(d => d.kind === 'audioinput');
                 const audioOutputs = deviceInfos.filter(d => d.kind === 'audiooutput');
                 
@@ -43,6 +46,8 @@ export default function AudioSettingsDialog({ open, onClose }: AudioSettingsDial
                 } else if (audioOutputs.length > 0) {
                     setSelectedOutput(audioOutputs[0].deviceId);
                 }
+            }).catch(err => {
+                console.error("Audio permission error in settings:", err);
             });
         } else {
             stopTest();
