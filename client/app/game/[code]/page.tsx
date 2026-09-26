@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -159,7 +159,7 @@ export default function GamePage() {
         if (enabled) {
             try {
                 const savedMic = localStorage.getItem('preferredMic');
-                const constraints = savedMic ? { audio: { deviceId: { exact: savedMic } } } : { audio: true };
+                const constraints = savedMic ? { audio: { deviceId: { exact: savedMic }, echoCancellation: false, autoGainControl: false, noiseSuppression: false } } : { audio: { echoCancellation: false, autoGainControl: false, noiseSuppression: false } };
                 const stream = await navigator.mediaDevices.getUserMedia(constraints);
                 stream.getTracks().forEach(track => track.stop());
                 socket?.emit("game:toggle_voice", { enabled: true });
@@ -285,9 +285,13 @@ export default function GamePage() {
                 <audio key={id} ref={el => { 
                     if (el && el.srcObject !== stream) { 
                         el.srcObject = stream as any;
+                        const savedSpeaker = typeof window !== 'undefined' ? localStorage.getItem('preferredSpeaker') : null;
+                        if (savedSpeaker && 'setSinkId' in el) {
+                            (el as any).setSinkId(savedSpeaker).catch((e: any) => console.error("setSinkId error", e));
+                        }
                         el.play().catch(e => console.warn("Autoplay blocked:", e));
                     } 
-                }} />
+                }} autoPlay />
             ))}
         </>
     );
