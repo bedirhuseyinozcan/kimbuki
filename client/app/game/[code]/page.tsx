@@ -155,8 +155,18 @@ export default function GamePage() {
         socket?.emit("game:use_joker", payload);
     };
 
-    const toggleVoice = (enabled: boolean) => {
-        socket?.emit("game:toggle_voice", { enabled });
+    const toggleVoice = async (enabled: boolean) => {
+        if (enabled) {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                stream.getTracks().forEach(track => track.stop());
+                socket?.emit("game:toggle_voice", { enabled: true });
+            } catch (err) {
+                toast.error("Mikrofon izni reddedildi veya bulunamadı!");
+            }
+        } else {
+            socket?.emit("game:toggle_voice", { enabled: false });
+        }
     };
 
     const copyLink = () => {
