@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+﻿import { useEffect, useRef, useState } from 'react';
 import { Socket } from 'socket.io-client';
 import { User } from './types';
 import { toast } from 'react-toastify';
@@ -21,7 +21,7 @@ export function useWebRTC(socket: Socket | null, myId: string, isVoiceEnabled: b
 
         if (!myStream) {
             const savedMic = localStorage.getItem('preferredMic');
-            const constraints = savedMic ? { audio: { deviceId: { exact: savedMic } } } : { audio: true };
+            const constraints = savedMic ? { audio: { deviceId: { exact: savedMic }, echoCancellation: false, autoGainControl: false, noiseSuppression: false } } : { audio: { echoCancellation: false, autoGainControl: false, noiseSuppression: false } };
             navigator.mediaDevices.getUserMedia(constraints).then(stream => {
                 setMyStream(stream);
             }).catch(err => {
