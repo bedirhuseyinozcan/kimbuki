@@ -12,7 +12,19 @@ import WordSelection from "@/components/game/WordSelection";
 import GameScene from "@/components/game/GameScene";
 import GameOver from "@/components/game/GameOver";
 import BettingPhase from "@/components/game/BettingPhase";
-import { useWebRTC } from "@/components/game/useWebRTC";
+import { LiveKitRoom, RoomAudioRenderer, useRoomContext } from '@livekit/components-react';
+import '@livekit/components-styles';
+
+function LiveKitSpeakerSync() {
+    const room = useRoomContext();
+    useEffect(() => {
+        const savedSpeaker = typeof window !== 'undefined' ? localStorage.getItem('preferredSpeaker') : null;
+        if (savedSpeaker && room) {
+            room.switchActiveDevice('audiooutput', savedSpeaker).catch(e => console.error("setSinkId error", e));
+        }
+    }, [room]);
+    return null;
+}
 
 export default function GamePage() {
     const { code } = useParams();
@@ -34,7 +46,23 @@ export default function GamePage() {
 
     const myId = socket?.id || "";
     const me = gameState?.users.find((u: User) => u.id === myId);
-    const { remoteStreams } = useWebRTC(socket, myId, me?.isVoiceEnabled || false, gameState?.users || []);
+    
+    const [token, setToken] = useState("");
+
+    useEffect(() => {
+        if (!me?.id || !code) return;
+        (async () => {
+            try {
+                const resp = await fetch(`/api/livekit?room=${code}&username=${me.id}`);
+                const data = await resp.json();
+                if (data.token) {
+                    setToken(data.token);
+                }
+            } catch (e) {
+                console.error("LiveKit token fetch error", e);
+            }
+        })();
+    }, [me?.id, code]);
 
     const [checkingAuth, setCheckingAuth] = useState(true);
 
@@ -156,19 +184,7 @@ export default function GamePage() {
     };
 
     const toggleVoice = async (enabled: boolean) => {
-        if (enabled) {
-            try {
-                const savedMic = localStorage.getItem('preferredMic');
-                const constraints = savedMic ? { audio: { deviceId: { exact: savedMic }, echoCancellation: false, autoGainControl: false, noiseSuppression: false } } : { audio: { echoCancellation: false, autoGainControl: false, noiseSuppression: false } };
-                const stream = await navigator.mediaDevices.getUserMedia(constraints);
-                stream.getTracks().forEach(track => track.stop());
-                socket?.emit("game:toggle_voice", { enabled: true });
-            } catch (err) {
-                toast.error("Mikrofon izni reddedildi veya bulunamadı!");
-            }
-        } else {
-            socket?.emit("game:toggle_voice", { enabled: false });
-        }
+        socket?.emit("game:toggle_voice", { enabled });
     };
 
     const copyLink = () => {
@@ -278,21 +294,27 @@ export default function GamePage() {
         return null;
     };
 
+    const roomOptions = {
+        audioCaptureDefaults: {
+            deviceId: typeof window !== 'undefined' ? (localStorage.getItem('preferredMic') || undefined) : undefined,
+            echoCancellation: false,
+            autoGainControl: false,
+            noiseSuppression: false,
+        }
+    };
+
     return (
-        <>
+        <LiveKitRoom
+            video={false}
+            audio={me?.isVoiceEnabled || false}
+            token={token}
+            serverUrl={process.env.NEXT_PUBLIC_LIVEKIT_URL}
+            connect={!!token}
+            options={roomOptions}
+        >
             {renderGameState()}
-            {Object.entries(remoteStreams).map(([id, stream]) => (
-                <audio key={id} ref={el => { 
-                    if (el && el.srcObject !== stream) { 
-                        el.srcObject = stream as any;
-                        const savedSpeaker = typeof window !== 'undefined' ? localStorage.getItem('preferredSpeaker') : null;
-                        if (savedSpeaker && 'setSinkId' in el) {
-                            (el as any).setSinkId(savedSpeaker).catch((e: any) => console.error("setSinkId error", e));
-                        }
-                        el.play().catch(e => console.warn("Autoplay blocked:", e));
-                    } 
-                }} autoPlay />
-            ))}
-        </>
+            <RoomAudioRenderer />
+            <LiveKitSpeakerSync />
+        </LiveKitRoom>
     );
 }
