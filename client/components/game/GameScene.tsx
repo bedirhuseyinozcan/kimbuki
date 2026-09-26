@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Avatar, IconButton, Chip, MenuItem } from "@mui/material";
 import SendIcon from '@mui/icons-material/Send';
 import SkipNextIcon from '@mui/icons-material/SkipNext';
@@ -6,6 +6,8 @@ import HelpIcon from '@mui/icons-material/Help';
 import PersonIcon from '@mui/icons-material/Person';
 import QuestionAnswerIcon from '@mui/icons-material/QuestionAnswer';
 import MicIcon from '@mui/icons-material/Mic';
+import SettingsIcon from '@mui/icons-material/Settings';
+import AudioSettingsDialog from './AudioSettingsDialog';
 import MicOffIcon from '@mui/icons-material/MicOff';
 import { User, GameState, AVATARS } from "./types";
 import { playTurnSound, playWinSound } from "@/utils/audio";
@@ -66,6 +68,7 @@ export default function GameScene({
     const [jokerTarget, setJokerTarget] = useState("");
     const [jokerWord, setJokerWord] = useState("");
     const [isNotepadOpen, setIsNotepadOpen] = useState(true);
+    const [audioSettingsOpen, setAudioSettingsOpen] = useState(false);
 
     const handleUseJokerSubmit = () => {
         onUseJoker({ targetId: jokerTarget, newWord: jokerWord });
@@ -204,6 +207,7 @@ export default function GameScene({
                 >
                     {me?.isVoiceEnabled ? <MicIcon fontSize="small" /> : <MicOffIcon fontSize="small" />}
                 </button>
+                <button onClick={() => setAudioSettingsOpen(true)} className="flex items-center justify-center p-1.5 rounded-full border border-slate-600/80 bg-slate-700/40 text-slate-300 hover:bg-slate-600/60 backdrop-blur-md transition-colors"><SettingsIcon fontSize="small" /></button>
                 <Button variant="outlined" color="inherit" size="small" onClick={onLeaveRoom} className="border-slate-700 text-slate-400 bg-slate-800/80 backdrop-blur-md text-xs py-1 hover:bg-red-500/20 hover:text-red-400">
                     Odadan Ayrıl
                 </Button>
@@ -609,6 +613,7 @@ export default function GameScene({
                     </div>
                 </div>
             )}
+        <AudioSettingsDialog open={audioSettingsOpen} onClose={() => setAudioSettingsOpen(false)} />
         </main>
     );
 }

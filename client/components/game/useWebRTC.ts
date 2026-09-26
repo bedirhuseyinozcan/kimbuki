@@ -20,7 +20,9 @@ export function useWebRTC(socket: Socket | null, myId: string, isVoiceEnabled: b
         }
 
         if (!myStream) {
-            navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+            const savedMic = localStorage.getItem('preferredMic');
+            const constraints = savedMic ? { audio: { deviceId: { exact: savedMic } } } : { audio: true };
+            navigator.mediaDevices.getUserMedia(constraints).then(stream => {
                 setMyStream(stream);
             }).catch(err => {
                 console.error("Microphone access denied", err);
