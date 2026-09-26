@@ -215,7 +215,7 @@ export default function GameScene({
 
             <div className="w-full h-full flex-1 flex flex-col md:flex-row gap-6 relative z-10 mt-12 md:mt-10 px-2 md:px-6 pointer-events-none">
                 
-                <div className={`w-full md:w-1/4 self-start glass p-3 rounded-2xl flex flex-col border border-slate-700/50 pointer-events-auto shadow-2xl bg-slate-900/60 backdrop-blur-lg transition-all duration-300 ${isNotepadOpen ? 'h-[250px] md:h-[400px]' : 'h-auto'}`}>
+                <div className={`w-full md:w-1/4 max-w-[400px] self-start glass p-3 rounded-2xl flex flex-col border border-slate-700/50 pointer-events-auto shadow-2xl bg-slate-900/60 backdrop-blur-lg transition-all duration-300 h-auto max-h-[85vh] overflow-y-auto custom-scrollbar`}>
                     <h3 
                         className="font-bold text-lg flex items-center justify-between gap-2 text-yellow-400 cursor-pointer select-none hover:text-yellow-300"
                         onClick={() => setIsNotepadOpen(!isNotepadOpen)}
@@ -229,7 +229,7 @@ export default function GameScene({
                             value={notepad}
                             onChange={e => setNotepad(e.target.value)}
                             spellCheck="false"
-                            className="flex-1 w-full bg-yellow-900/20 rounded-xl text-slate-200 p-3 mt-2 border border-yellow-500/30 focus:border-yellow-500/60 outline-none resize-none min-h-0 custom-scrollbar"
+                            className="w-full bg-yellow-900/20 rounded-xl text-slate-200 p-3 mt-2 border border-yellow-500/30 focus:border-yellow-500/60 outline-none resize-none h-[150px] md:h-[250px] custom-scrollbar shrink-0"
                         />
                     )}
                     
@@ -383,7 +383,7 @@ export default function GameScene({
 
                 </div>
 
-                <div className="w-full md:w-1/4 flex flex-col gap-3">
+                <div className="w-full md:w-1/4 max-w-[400px] flex flex-col gap-3">
                     {me?.status === 'playing' && gameState.gameState === "PLAYING" && (
                         <div className="glass p-4 rounded-2xl flex flex-col justify-center items-center gap-3 border border-slate-700/50 pointer-events-auto shadow-xl bg-slate-900/60 backdrop-blur-lg">
                             
