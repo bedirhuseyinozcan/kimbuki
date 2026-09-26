@@ -26,6 +26,20 @@ function LiveKitSpeakerSync() {
     return null;
 }
 
+import { useLocalParticipant } from '@livekit/components-react';
+
+function LiveKitMicSync({ isVoiceEnabled }: { isVoiceEnabled: boolean }) {
+    const { localParticipant } = useLocalParticipant();
+    
+    useEffect(() => {
+        if (localParticipant) {
+            localParticipant.setMicrophoneEnabled(isVoiceEnabled).catch(e => console.error("Mic sync error", e));
+        }
+    }, [isVoiceEnabled, localParticipant]);
+    
+    return null;
+}
+
 export default function GamePage() {
     const { code } = useParams();
     const router = useRouter();
@@ -315,6 +329,7 @@ export default function GamePage() {
             {renderGameState()}
             <RoomAudioRenderer />
             <LiveKitSpeakerSync />
+            <LiveKitMicSync isVoiceEnabled={me?.isVoiceEnabled || false} />
         </LiveKitRoom>
     );
 }
