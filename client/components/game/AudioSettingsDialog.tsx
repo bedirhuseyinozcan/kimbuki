@@ -59,7 +59,7 @@ export default function AudioSettingsDialog({ open, onClose }: AudioSettingsDial
     const startTest = async (deviceId: string) => {
         stopTest();
         try {
-            const constraints = { audio: { deviceId: { exact: deviceId }, echoCancellation: false, autoGainControl: false, noiseSuppression: false } };
+            const constraints = { audio: { deviceId: { exact: deviceId }, echoCancellation: true, autoGainControl: true, noiseSuppression: true } };
             const stream = await navigator.mediaDevices.getUserMedia(constraints);
             streamRef.current = stream;
 
