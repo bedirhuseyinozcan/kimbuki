@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -158,7 +158,9 @@ export default function GamePage() {
     const toggleVoice = async (enabled: boolean) => {
         if (enabled) {
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                const savedMic = localStorage.getItem('preferredMic');
+                const constraints = savedMic ? { audio: { deviceId: { exact: savedMic } } } : { audio: true };
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
                 stream.getTracks().forEach(track => track.stop());
                 socket?.emit("game:toggle_voice", { enabled: true });
             } catch (err) {
