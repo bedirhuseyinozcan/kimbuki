@@ -61,7 +61,8 @@ function FirstPersonCamera({ myId, users, radius, onHeadRotation }: any) {
             return;
         }
 
-        const angle = (myIndex / users.length) * (2 * Math.PI) - (Math.PI / 2);
+        const angleOffset = users.length === 3 ? (Math.PI / 2) : -(Math.PI / 2);
+        const angle = (myIndex / users.length) * (2 * Math.PI) + angleOffset;
         
         const headX = PLAYER_CENTER[0] + Math.cos(angle) * radius;
         const headZ = PLAYER_CENTER[2] + Math.sin(angle) * radius;
@@ -142,7 +143,8 @@ function AvatarModel({ url, isWinner, targetRot }: { url: string, isWinner: bool
 
 function PlayerNode({ u, index, totalUsers, isCurrentTurn, isMe, isWinner, activeBubble, gameState, headRotations }: any) {
     const radius = totalUsers > 4 ? PLAYER_CIRCLE_RADIUS_LARGE : PLAYER_CIRCLE_RADIUS_SMALL;
-    const angle = (index / totalUsers) * (2 * Math.PI) - (Math.PI / 2);
+    const angleOffset = totalUsers === 3 ? (Math.PI / 2) : -(Math.PI / 2);
+    const angle = (index / totalUsers) * (2 * Math.PI) + angleOffset;
     const x = Math.cos(angle) * radius;
     const z = Math.sin(angle) * radius;
 
