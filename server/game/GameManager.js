@@ -81,7 +81,13 @@ class GameManager {
         const code = (roomCode || "").toUpperCase();
         let room = this.rooms.get(code);
 
-        if (!room) {
+        if (room) {
+            const isReconnecting = userId ? room.users.some(u => u.dbId === userId) : false;
+            if (room.gameState !== "LOBBY" && !isReconnecting) {
+                cb?.({ ok: false, error: "Oyun zaten başladı! Bu odaya şu an katılamazsınız." });
+                return;
+            }
+        } else {
             room = new Room(code, this.io);
             this.rooms.set(code, room);
         }
