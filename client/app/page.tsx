@@ -1,8 +1,8 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { TextField, Button, Dialog, DialogTitle, DialogContent, AppBar, Toolbar, Typography, Container, Card, CardContent, Tabs, Tab, Link as MuiLink } from "@mui/material";
+import { TextField, Button, Dialog, DialogTitle, DialogContent, AppBar, Toolbar, Typography, Container, Card, CardContent, Tabs, Tab, Link as MuiLink, IconButton, Drawer, List } from "@mui/material";
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import GroupIcon from '@mui/icons-material/Group';
 import LightbulbIcon from '@mui/icons-material/Lightbulb';
@@ -12,6 +12,8 @@ import PersonOutlineIcon from '@mui/icons-material/PersonOutlined';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
 import StorefrontIcon from '@mui/icons-material/Storefront';
+import MenuIcon from '@mui/icons-material/Menu';
+import CloseIcon from '@mui/icons-material/Close';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import { InputAdornment, Avatar } from "@mui/material";
 import { toast } from 'react-toastify';
@@ -40,6 +42,7 @@ export default function Home() {
   const [loginPassword, setLoginPassword] = useState("");
   const [selectedAvatar, setSelectedAvatar] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
   const router = useRouter();
 
@@ -273,6 +276,13 @@ export default function Home() {
                   KİMBUKİ
                 </Typography>
             </div>
+
+            <div className="lg:hidden flex items-center">
+              <IconButton color="inherit" onClick={() => setMobileMenuOpen(true)}>
+                <MenuIcon className="text-white" />
+              </IconButton>
+            </div>
+
             <div className="hidden lg:flex gap-2 xl:gap-4 items-center">
               <Button color="inherit" className="whitespace-nowrap text-slate-300 hover:text-white" onClick={() => scrollToSection('nasil-oynanir')}>Nasıl Oynanır?</Button>
               <Button color="inherit" className="whitespace-nowrap text-slate-300 hover:text-white" onClick={() => scrollToSection('biz-kimiz')}>Biz Kimiz?</Button>
@@ -323,6 +333,50 @@ export default function Home() {
           </Toolbar>
         </Container>
       </AppBar>
+
+      <Drawer anchor="right" open={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} 
+        slotProps={{ paper: { className: "bg-slate-900 text-white w-64 border-l border-slate-700" } }}>
+        <div className="p-4 flex justify-between items-center border-b border-slate-800">
+            <span className="font-black text-xl text-amber-400">Menü</span>
+            <IconButton color="inherit" onClick={() => setMobileMenuOpen(false)}>
+                <CloseIcon />
+            </IconButton>
+        </div>
+        <List className="p-4 flex flex-col gap-4">
+            <Button variant="outlined" className="w-full justify-start text-slate-300 border-slate-700" onClick={() => { scrollToSection('nasil-oynanir'); setMobileMenuOpen(false); }}>Nasıl Oynanır?</Button>
+            <Button variant="outlined" className="w-full justify-start text-slate-300 border-slate-700" onClick={() => { scrollToSection('biz-kimiz'); setMobileMenuOpen(false); }}>Biz Kimiz?</Button>
+            
+            {user && (
+                <>
+                    <Button 
+                        color={user.canClaimDaily ? "success" : "inherit"} 
+                        className={`w-full justify-start font-bold border px-4 py-2 ${user.canClaimDaily ? 'border-green-500/50 bg-green-500/10 text-green-400 animate-pulse' : 'border-slate-500/50 bg-slate-500/10 text-slate-400'}`} 
+                        onClick={() => { setDailyRewardDialogOpen(true); setMobileMenuOpen(false); }}
+                    >
+                        🎁 GÜNLÜK ÖDÜL
+                    </Button>
+                    <Button color="warning" className="w-full justify-start font-bold border border-yellow-500/50 bg-yellow-500/10 px-4 py-2" startIcon={<AttachMoneyIcon />}>
+                        Bakiye: {user.gold || 0}
+                    </Button>
+                    <Button color="inherit" className="w-full justify-start text-cyan-400 border border-slate-700 font-bold py-2" onClick={() => { setShopDialogOpen(true); setMobileMenuOpen(false); }} startIcon={<StorefrontIcon />}>
+                        Mağaza
+                    </Button>
+                    <Button color="inherit" className="w-full justify-start text-amber-400 border border-slate-700 font-bold py-2" onClick={() => { handleOpenLeaderboard(); setMobileMenuOpen(false); }}>
+                        🏆 Liderlik
+                    </Button>
+                    <Button color="inherit" className="w-full justify-start flex items-center gap-2 px-4 py-2 bg-slate-800/80 border border-slate-700" onClick={() => { openProfile(); setMobileMenuOpen(false); }}>
+                        <AccountCircleIcon fontSize="small" className="text-cyan-400" />
+                        <span className="text-cyan-400 font-bold">{user.username}</span>
+                        <span className="text-amber-400 font-bold ml-auto">LVL {user.level || 1}</span>
+                    </Button>
+                </>
+            )}
+
+            <Button variant="contained" className="w-full bg-gradient-to-r from-violet-600 to-cyan-600 font-bold py-3 mt-4" onClick={() => { setPlayDialogOpen(true); setMobileMenuOpen(false); }}>
+                Oyna
+            </Button>
+        </List>
+      </Drawer>
 
       <section className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden">
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-5 pointer-events-none"></div>
