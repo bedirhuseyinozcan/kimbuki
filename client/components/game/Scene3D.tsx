@@ -1,6 +1,7 @@
 import React, { useRef, Suspense } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { OrbitControls, Html, ContactShadows, useGLTF, Clone } from '@react-three/drei';
+import { OrbitControls, Html, ContactShadows, useGLTF } from '@react-three/drei';
+import { SkeletonUtils } from 'three-stdlib';
 import { User, GameState, AVATARS } from './types';
 import * as THREE from 'three';
 import { Avatar as MuiAvatar } from '@mui/material';
@@ -105,6 +106,16 @@ function AvatarModel({ url, isWinner, targetRot }: { url: string, isWinner: bool
     const groupRef = useRef<THREE.Group>(null);
     const headBone = useRef<THREE.Object3D | null>(null);
 
+    const clonedScene = React.useMemo(() => {
+        const clone = SkeletonUtils.clone(scene);
+        clone.traverse((child: any) => {
+            if (child.isMesh || child.isSkinnedMesh) {
+                child.frustumCulled = false;
+            }
+        });
+        return clone;
+    }, [scene]);
+
     React.useEffect(() => {
         if (!groupRef.current) return;
         headBone.current = null;
@@ -116,7 +127,7 @@ function AvatarModel({ url, isWinner, targetRot }: { url: string, isWinner: bool
                 }
             }
         });
-    }, [scene]);
+    }, [clonedScene]);
 
     useFrame((state, delta) => {
         if (targetRot) {
@@ -136,7 +147,7 @@ function AvatarModel({ url, isWinner, targetRot }: { url: string, isWinner: bool
 
     return (
         <group ref={groupRef} position={[0, 0.5, 0]} scale={0.6}>
-            <Clone object={scene} castShadow receiveShadow />
+            <primitive object={clonedScene} castShadow receiveShadow />
         </group>
     );
 }

@@ -48,11 +48,22 @@ PROJE DOSYA VE KLASÖR AĞACI:
             📄 window.svg
             📁 avatars/
                 📄 Cleric.gltf
+                📄 Cleric_Staff_Texture.png
+                📄 Cleric_Texture.png
                 📄 Monk.gltf
+                📄 Monk_Texture.png
                 📄 Ranger.gltf
+                📄 Ranger_Bow_Texture.png
+                📄 Ranger_Texture.png
                 📄 Rogue.gltf
+                📄 Rogue_Dagger_Texture.png
+                📄 Rogue_Texture.png
                 📄 Warrior.gltf
+                📄 Warrior_Sword_Texture.png
+                📄 Warrior_Texture.png
                 📄 Wizard.gltf
+                📄 Wizard_Staff_Texture.png
+                📄 Wizard_Texture.png
             📁 maps/
                 📄 floating_island__low_poly_vr.glb
         📁 utils/
@@ -1527,6 +1538,20 @@ function LiveKitSpeakerSync() {
     return null;
 }
 
+import { useLocalParticipant } from '@livekit/components-react';
+
+function LiveKitMicSync({ isVoiceEnabled }: { isVoiceEnabled: boolean }) {
+    const { localParticipant } = useLocalParticipant();
+    
+    useEffect(() => {
+        if (localParticipant) {
+            localParticipant.setMicrophoneEnabled(isVoiceEnabled).catch(e => console.error("Mic sync error", e));
+        }
+    }, [isVoiceEnabled, localParticipant]);
+    
+    return null;
+}
+
 export default function GamePage() {
     const { code } = useParams();
     const router = useRouter();
@@ -1798,9 +1823,9 @@ export default function GamePage() {
     const roomOptions = {
         audioCaptureDefaults: {
             deviceId: typeof window !== 'undefined' ? (localStorage.getItem('preferredMic') || undefined) : undefined,
-            echoCancellation: false,
-            autoGainControl: false,
-            noiseSuppression: false,
+            echoCancellation: true,
+            autoGainControl: true,
+            noiseSuppression: true,
         }
     };
 
@@ -1816,6 +1841,7 @@ export default function GamePage() {
             {renderGameState()}
             <RoomAudioRenderer />
             <LiveKitSpeakerSync />
+            <LiveKitMicSync isVoiceEnabled={me?.isVoiceEnabled || false} />
         </LiveKitRoom>
     );
 }
@@ -1882,7 +1908,10 @@ export default function AudioSettingsDialog({ open, onClose }: AudioSettingsDial
 
     useEffect(() => {
         if (open) {
-            navigator.mediaDevices.enumerateDevices().then(deviceInfos => {
+            navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+                stream.getTracks().forEach(t => t.stop()); // İzni aldık, akışı kapatabiliriz
+                return navigator.mediaDevices.enumerateDevices();
+            }).then(deviceInfos => {
                 const audioInputs = deviceInfos.filter(d => d.kind === 'audioinput');
                 const audioOutputs = deviceInfos.filter(d => d.kind === 'audiooutput');
                 
@@ -1902,6 +1931,8 @@ export default function AudioSettingsDialog({ open, onClose }: AudioSettingsDial
                 } else if (audioOutputs.length > 0) {
                     setSelectedOutput(audioOutputs[0].deviceId);
                 }
+            }).catch(err => {
+                console.error("Audio permission error in settings:", err);
             });
         } else {
             stopTest();
@@ -1918,7 +1949,7 @@ export default function AudioSettingsDialog({ open, onClose }: AudioSettingsDial
     const startTest = async (deviceId: string) => {
         stopTest();
         try {
-            const constraints = { audio: { deviceId: { exact: deviceId }, echoCancellation: false, autoGainControl: false, noiseSuppression: false } };
+            const constraints = { audio: { deviceId: { exact: deviceId }, echoCancellation: true, autoGainControl: true, noiseSuppression: true } };
             const stream = await navigator.mediaDevices.getUserMedia(constraints);
             streamRef.current = stream;
 
@@ -2434,7 +2465,7 @@ export default function GameScene({
 
             <div className="w-full h-full flex-1 flex flex-col md:flex-row gap-6 relative z-10 mt-12 md:mt-10 px-2 md:px-6 pointer-events-none">
                 
-                <div className={`w-full md:w-1/4 self-start glass p-3 rounded-2xl flex flex-col border border-slate-700/50 pointer-events-auto shadow-2xl bg-slate-900/60 backdrop-blur-lg transition-all duration-300 ${isNotepadOpen ? 'h-[250px] md:h-[400px]' : 'h-auto'}`}>
+                <div className={`w-full md:w-1/4 max-w-[400px] self-start glass p-3 rounded-2xl flex flex-col border border-slate-700/50 pointer-events-auto shadow-2xl bg-slate-900/60 backdrop-blur-lg transition-all duration-300 h-auto max-h-[85vh] overflow-y-auto custom-scrollbar`}>
                     <h3 
                         className="font-bold text-lg flex items-center justify-between gap-2 text-yellow-400 cursor-pointer select-none hover:text-yellow-300"
                         onClick={() => setIsNotepadOpen(!isNotepadOpen)}
@@ -2448,7 +2479,7 @@ export default function GameScene({
                             value={notepad}
                             onChange={e => setNotepad(e.target.value)}
                             spellCheck="false"
-                            className="flex-1 w-full bg-yellow-900/20 rounded-xl text-slate-200 p-3 mt-2 border border-yellow-500/30 focus:border-yellow-500/60 outline-none resize-none min-h-0 custom-scrollbar"
+                            className="w-full bg-yellow-900/20 rounded-xl text-slate-200 p-3 mt-2 border border-yellow-500/30 focus:border-yellow-500/60 outline-none resize-none h-[150px] md:h-[250px] custom-scrollbar shrink-0"
                         />
                     )}
                     
@@ -2602,7 +2633,7 @@ export default function GameScene({
 
                 </div>
 
-                <div className="w-full md:w-1/4 flex flex-col gap-3">
+                <div className="w-full md:w-1/4 max-w-[400px] flex flex-col gap-3">
                     {me?.status === 'playing' && gameState.gameState === "PLAYING" && (
                         <div className="glass p-4 rounded-2xl flex flex-col justify-center items-center gap-3 border border-slate-700/50 pointer-events-auto shadow-xl bg-slate-900/60 backdrop-blur-lg">
                             
@@ -3022,7 +3053,8 @@ DOSYA: client\components\game\Scene3D.tsx
 
 import React, { useRef, Suspense } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { OrbitControls, Html, ContactShadows, useGLTF, Clone } from '@react-three/drei';
+import { OrbitControls, Html, ContactShadows, useGLTF } from '@react-three/drei';
+import { SkeletonUtils } from 'three-stdlib';
 import { User, GameState, AVATARS } from './types';
 import * as THREE from 'three';
 import { Avatar as MuiAvatar } from '@mui/material';
@@ -3083,7 +3115,8 @@ function FirstPersonCamera({ myId, users, radius, onHeadRotation }: any) {
             return;
         }
 
-        const angle = (myIndex / users.length) * (2 * Math.PI) - (Math.PI / 2);
+        const angleOffset = users.length === 3 ? (Math.PI / 2) : -(Math.PI / 2);
+        const angle = (myIndex / users.length) * (2 * Math.PI) + angleOffset;
         
         const headX = PLAYER_CENTER[0] + Math.cos(angle) * radius;
         const headZ = PLAYER_CENTER[2] + Math.sin(angle) * radius;
@@ -3126,6 +3159,16 @@ function AvatarModel({ url, isWinner, targetRot }: { url: string, isWinner: bool
     const groupRef = useRef<THREE.Group>(null);
     const headBone = useRef<THREE.Object3D | null>(null);
 
+    const clonedScene = React.useMemo(() => {
+        const clone = SkeletonUtils.clone(scene);
+        clone.traverse((child: any) => {
+            if (child.isMesh || child.isSkinnedMesh) {
+                child.frustumCulled = false;
+            }
+        });
+        return clone;
+    }, [scene]);
+
     React.useEffect(() => {
         if (!groupRef.current) return;
         headBone.current = null;
@@ -3137,7 +3180,7 @@ function AvatarModel({ url, isWinner, targetRot }: { url: string, isWinner: bool
                 }
             }
         });
-    }, [scene]);
+    }, [clonedScene]);
 
     useFrame((state, delta) => {
         if (targetRot) {
@@ -3157,14 +3200,15 @@ function AvatarModel({ url, isWinner, targetRot }: { url: string, isWinner: bool
 
     return (
         <group ref={groupRef} position={[0, 0.5, 0]} scale={0.6}>
-            <Clone object={scene} castShadow receiveShadow />
+            <primitive object={clonedScene} castShadow receiveShadow />
         </group>
     );
 }
 
 function PlayerNode({ u, index, totalUsers, isCurrentTurn, isMe, isWinner, activeBubble, gameState, headRotations }: any) {
     const radius = totalUsers > 4 ? PLAYER_CIRCLE_RADIUS_LARGE : PLAYER_CIRCLE_RADIUS_SMALL;
-    const angle = (index / totalUsers) * (2 * Math.PI) - (Math.PI / 2);
+    const angleOffset = totalUsers === 3 ? (Math.PI / 2) : -(Math.PI / 2);
+    const angle = (index / totalUsers) * (2 * Math.PI) + angleOffset;
     const x = Math.cos(angle) * radius;
     const z = Math.sin(angle) * radius;
 
@@ -3646,11 +3690,6 @@ class GameManager {
         socket.on("game:head_rotation", (payload) => this.handleHeadRotation(socket, payload));
         socket.on("room:close", () => this.handleCloseRoom(socket));
 
-        // WebRTC Signaling
-        socket.on("webrtc:offer", ({ to, offer }) => this.io.to(to).emit("webrtc:offer", { from: socket.id, offer }));
-        socket.on("webrtc:answer", ({ to, answer }) => this.io.to(to).emit("webrtc:answer", { from: socket.id, answer }));
-        socket.on("webrtc:ice-candidate", ({ to, candidate }) => this.io.to(to).emit("webrtc:ice-candidate", { from: socket.id, candidate }));
-
         socket.on("game:leave", () => this.handleLeave(socket));
         socket.on("disconnect", () => this.handleDisconnect(socket));
     }
@@ -3696,7 +3735,13 @@ class GameManager {
         const code = (roomCode || "").toUpperCase();
         let room = this.rooms.get(code);
 
-        if (!room) {
+        if (room) {
+            const isReconnecting = userId ? room.users.some(u => u.dbId === userId) : false;
+            if (room.gameState !== "LOBBY" && !isReconnecting) {
+                cb?.({ ok: false, error: "Oyun zaten başladı! Bu odaya şu an katılamazsınız." });
+                return;
+            }
+        } else {
             room = new Room(code, this.io);
             this.rooms.set(code, room);
         }
@@ -4254,6 +4299,7 @@ class Room {
             const User = require('../models/User');
             
             let winnerReward = 0; 
+            let bettorReward = 0;
             const rank = this.winners.length; 
             
             if (this.isBettingEnabled) {
@@ -4276,6 +4322,7 @@ class Room {
                 }
                 
                 winnerReward = Math.floor(totalPot * pct);
+                bettorReward = winnerReward;
             }
             
             let xpReward = 30;
@@ -4474,7 +4521,7 @@ class Room {
         }
         
         const remainingMs = this.turnStartTime + (this.turnTime * 1000) - Date.now();
-        this.pausedRemainingMs = remainingMs > 0 ? remainingMs : 0;
+        this.pausedRemainingMs = Math.max(10000, remainingMs);
 
         this.activeQuestion = {
             askerId: userId,
