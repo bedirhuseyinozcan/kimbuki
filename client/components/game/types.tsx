@@ -1,5 +1,5 @@
-﻿import React from 'react';
-import { GiBroadsword, GiWizardStaff, GiDaggers, GiBowArrow, GiHighKick, GiHolySymbol } from 'react-icons/gi';
+import React from 'react';
+import { GiBroadsword, GiWizardStaff, GiDaggers, GiBowArrow, GiHighKick, GiHolySymbol, GiFootprint, GiEyeTarget, GiMagnifyingGlass, GiCrystalBall, GiCrown } from 'react-icons/gi';
 
 export type User = {
     id: string;
@@ -7,6 +7,7 @@ export type User = {
     name: string;
     isHost: boolean;
     avatar: string;
+    reputation?: number;
     status: string;
     targetId: string | null;
     hasSubmittedWord: boolean;
@@ -66,3 +67,14 @@ export const AVATARS = [
     { id: 'Monk', color: "bg-orange-600", icon: <GiHighKick />, label: "Keşiş", model: "Monk.gltf" },
     { id: 'Cleric', color: "bg-yellow-500", icon: <GiHolySymbol />, label: "Şifacı", model: "Cleric.gltf" }
 ];
+
+export const getRankInfo = (reputation: number) => {
+    let title = "Çaylak";
+    let color = "text-amber-600";
+    let icon = <GiFootprint />;
+    if (reputation >= 5000) { title = "Kimbuki Üstadı"; color = "text-yellow-400 font-black drop-shadow-[0_0_8px_rgba(251,191,36,0.8)]"; icon = <GiCrown />; }
+    else if (reputation >= 2500) { title = "Zihin Okuyucu"; color = "text-cyan-300"; icon = <GiCrystalBall />; }
+    else if (reputation >= 1000) { title = "Dedektif"; color = "text-yellow-500"; icon = <GiMagnifyingGlass />; }
+    else if (reputation >= 400) { title = "Gözlemci"; color = "text-slate-300"; icon = <GiEyeTarget />; }
+    return { title, color, icon };
+};

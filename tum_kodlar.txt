@@ -339,7 +339,7 @@ DOSYA: client\next-env.d.ts
 
 /// <reference types="next" />
 /// <reference types="next/image-types/global" />
-import "./.next/types/routes.d.ts";
+import "./.next/dev/types/routes.d.ts";
 
 // NOTE: This file should not be edited
 // see https://nextjs.org/docs/app/api-reference/config/typescript for more information.
@@ -586,11 +586,11 @@ export default function RootLayout({
 DOSYA: client\app\page.tsx
 =========================
 
-﻿"use client";
+"use client";
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { TextField, Button, Dialog, DialogTitle, DialogContent, AppBar, Toolbar, Typography, Container, Card, CardContent, Tabs, Tab, Link as MuiLink } from "@mui/material";
+import { TextField, Button, Dialog, DialogTitle, DialogContent, AppBar, Toolbar, Typography, Container, Card, CardContent, Tabs, Tab, Link as MuiLink, IconButton, Drawer, List } from "@mui/material";
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import GroupIcon from '@mui/icons-material/Group';
 import LightbulbIcon from '@mui/icons-material/Lightbulb';
@@ -600,11 +600,13 @@ import PersonOutlineIcon from '@mui/icons-material/PersonOutlined';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
 import StorefrontIcon from '@mui/icons-material/Storefront';
+import MenuIcon from '@mui/icons-material/Menu';
+import CloseIcon from '@mui/icons-material/Close';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import { InputAdornment, Avatar } from "@mui/material";
 import { toast } from 'react-toastify';
 import Logo from "@/components/Logo";
-import { AVATARS } from "@/components/game/types";
+import { AVATARS, getRankInfo } from "@/components/game/types";
 
 export default function Home() {
   const [roomCode, setRoomCode] = useState("");
@@ -612,7 +614,7 @@ export default function Home() {
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
   const [forgotPasswordDialogOpen, setForgotPasswordDialogOpen] = useState(false);
   
-  const [user, setUser] = useState<{ id: string, username: string, avatar: string, gold: number, unlockedAvatars: string[], level?: number, xp?: number, xpCurrent?: number, xpNext?: number, canClaimDaily?: boolean, loginStreak?: number } | null>(null);
+  const [user, setUser] = useState<{ id: string, username: string, avatar: string, gold: number, unlockedAvatars: string[], rankInfo?: { title: string, reputation: number, nextThreshold: number | null }, canClaimDaily?: boolean, loginStreak?: number } | null>(null);
   
   const [shopDialogOpen, setShopDialogOpen] = useState(false);
   const [dailyRewardDialogOpen, setDailyRewardDialogOpen] = useState(false);
@@ -628,6 +630,7 @@ export default function Home() {
   const [loginPassword, setLoginPassword] = useState("");
   const [selectedAvatar, setSelectedAvatar] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
   const router = useRouter();
 
@@ -658,10 +661,7 @@ export default function Home() {
                 avatar: data.avatar, 
                 gold: data.gold, 
                 unlockedAvatars: data.unlockedAvatars,
-                level: data.level,
-                xp: data.xp,
-                xpCurrent: data.xpCurrent,
-                xpNext: data.xpNext,
+                rankInfo: data.rankInfo,
                 canClaimDaily: data.canClaimDaily,
                 loginStreak: data.loginStreak
             });
@@ -861,6 +861,13 @@ export default function Home() {
                   KİMBUKİ
                 </Typography>
             </div>
+
+            <div className="lg:hidden flex items-center">
+              <IconButton color="inherit" onClick={() => setMobileMenuOpen(true)}>
+                <MenuIcon className="text-white" />
+              </IconButton>
+            </div>
+
             <div className="hidden lg:flex gap-2 xl:gap-4 items-center">
               <Button color="inherit" className="whitespace-nowrap text-slate-300 hover:text-white" onClick={() => scrollToSection('nasil-oynanir')}>Nasıl Oynanır?</Button>
               <Button color="inherit" className="whitespace-nowrap text-slate-300 hover:text-white" onClick={() => scrollToSection('biz-kimiz')}>Biz Kimiz?</Button>
@@ -890,13 +897,15 @@ export default function Home() {
                         </div>
                         <div className="w-full flex flex-col items-stretch">
                             <div className="flex justify-between w-full text-[10px] font-bold text-amber-400 mb-1 px-0.5">
-                                <span className="tracking-widest whitespace-nowrap">LVL {user.level || 1}</span>
-                                <span className="text-slate-400 font-medium tracking-wide whitespace-nowrap">{user.xpCurrent || 0} / {user.xpNext || 200}</span>
+                                <span className={`tracking-widest whitespace-nowrap uppercase flex items-center gap-1 ${getRankInfo(user.rankInfo?.reputation || 0).color}`}>
+                                    {getRankInfo(user.rankInfo?.reputation || 0).icon} {user.rankInfo?.title || 'Çaylak'}
+                                </span>
+                                <span className="text-slate-400 font-medium tracking-wide whitespace-nowrap">{user.rankInfo?.reputation || 0} / {user.rankInfo?.nextThreshold || 'MAX'}</span>
                             </div>
                             <div className="w-full h-1.5 bg-slate-900 rounded-full overflow-hidden shadow-inner border border-slate-700/50">
                                 <div 
                                     className="h-full bg-gradient-to-r from-amber-500 to-yellow-300 rounded-full" 
-                                    style={{ width: `${Math.min(100, ((user.xpCurrent || 0) / (user.xpNext || 200)) * 100)}%` }}
+                                    style={{ width: `${user.rankInfo?.nextThreshold ? Math.min(100, ((user.rankInfo.reputation || 0) / user.rankInfo.nextThreshold) * 100) : 100}%` }}
                                 />
                             </div>
                         </div>
@@ -911,6 +920,52 @@ export default function Home() {
           </Toolbar>
         </Container>
       </AppBar>
+
+      <Drawer anchor="right" open={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} 
+        slotProps={{ paper: { className: "bg-slate-900 text-white w-64 border-l border-slate-700" } }}>
+        <div className="p-4 flex justify-between items-center border-b border-slate-800">
+            <span className="font-black text-xl text-amber-400">Menü</span>
+            <IconButton color="inherit" onClick={() => setMobileMenuOpen(false)}>
+                <CloseIcon />
+            </IconButton>
+        </div>
+        <List className="p-4 flex flex-col gap-4">
+            <Button variant="outlined" className="w-full justify-start text-slate-300 border-slate-700" onClick={() => { scrollToSection('nasil-oynanir'); setMobileMenuOpen(false); }}>Nasıl Oynanır?</Button>
+            <Button variant="outlined" className="w-full justify-start text-slate-300 border-slate-700" onClick={() => { scrollToSection('biz-kimiz'); setMobileMenuOpen(false); }}>Biz Kimiz?</Button>
+            
+            {user && (
+                <>
+                    <Button 
+                        color={user.canClaimDaily ? "success" : "inherit"} 
+                        className={`w-full justify-start font-bold border px-4 py-2 ${user.canClaimDaily ? 'border-green-500/50 bg-green-500/10 text-green-400 animate-pulse' : 'border-slate-500/50 bg-slate-500/10 text-slate-400'}`} 
+                        onClick={() => { setDailyRewardDialogOpen(true); setMobileMenuOpen(false); }}
+                    >
+                        🎁 GÜNLÜK ÖDÜL
+                    </Button>
+                    <Button color="warning" className="w-full justify-start font-bold border border-yellow-500/50 bg-yellow-500/10 px-4 py-2" startIcon={<AttachMoneyIcon />}>
+                        Bakiye: {user.gold || 0}
+                    </Button>
+                    <Button color="inherit" className="w-full justify-start text-cyan-400 border border-slate-700 font-bold py-2" onClick={() => { setShopDialogOpen(true); setMobileMenuOpen(false); }} startIcon={<StorefrontIcon />}>
+                        Mağaza
+                    </Button>
+                    <Button color="inherit" className="w-full justify-start text-amber-400 border border-slate-700 font-bold py-2" onClick={() => { handleOpenLeaderboard(); setMobileMenuOpen(false); }}>
+                        🏆 Liderlik
+                    </Button>
+                    <Button color="inherit" className="w-full justify-start flex items-center gap-2 px-4 py-2 bg-slate-800/80 border border-slate-700" onClick={() => { openProfile(); setMobileMenuOpen(false); }}>
+                        <AccountCircleIcon fontSize="small" className="text-cyan-400" />
+                        <span className="text-cyan-400 font-bold">{user.username}</span>
+                        <span className={`font-bold ml-auto flex items-center gap-1 ${getRankInfo(user.rankInfo?.reputation || 0).color}`}>
+                            {getRankInfo(user.rankInfo?.reputation || 0).icon} {user.rankInfo?.title || 'Çaylak'}
+                        </span>
+                    </Button>
+                </>
+            )}
+
+            <Button variant="contained" className="w-full bg-gradient-to-r from-violet-600 to-cyan-600 font-bold py-3 mt-4" onClick={() => { setPlayDialogOpen(true); setMobileMenuOpen(false); }}>
+                Oyna
+            </Button>
+        </List>
+      </Drawer>
 
       <section className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden">
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-5 pointer-events-none"></div>
@@ -1230,17 +1285,20 @@ export default function Home() {
         <DialogTitle className="text-center font-black text-2xl pt-6 pb-2">Profilim</DialogTitle>
         <DialogContent className="p-6 space-y-5">
             <div className="bg-slate-800/80 border border-slate-700 p-4 rounded-2xl flex flex-col items-center">
-                <span className="text-slate-400 text-sm font-bold mb-1">Mevcut Seviye</span>
-                <span className="text-3xl font-black text-amber-400 mb-2">LVL {user?.level || 1}</span>
+                <span className="text-slate-400 text-sm font-bold mb-1">Mevcut Kademe</span>
+                <span className={`text-4xl font-black mb-2 flex items-center gap-2 ${getRankInfo(user?.rankInfo?.reputation || 0).color}`}>
+                    <span className="text-5xl">{getRankInfo(user?.rankInfo?.reputation || 0).icon}</span>
+                    {getRankInfo(user?.rankInfo?.reputation || 0).title}
+                </span>
                 <div className="w-full flex flex-col items-center">
                     <div className="flex justify-between w-full text-[10px] font-black tracking-widest text-slate-400 mb-1 px-1">
-                        <span>İlerleme</span>
-                        <span>{user?.xpCurrent || 0} / {user?.xpNext || 200} XP</span>
+                        <span>İtibar İlerlemesi</span>
+                        <span>{user?.rankInfo?.reputation || 0} / {user?.rankInfo?.nextThreshold || 'MAX'} İtibar</span>
                     </div>
                     <div className="w-full h-2.5 bg-slate-900 rounded-full overflow-hidden shadow-inner">
                         <div 
                             className="h-full bg-gradient-to-r from-amber-500 to-yellow-300" 
-                            style={{ width: `${Math.min(100, ((user?.xpCurrent || 0) / (user?.xpNext || 200)) * 100)}%` }}
+                            style={{ width: `${user?.rankInfo?.nextThreshold ? Math.min(100, ((user.rankInfo.reputation || 0) / user.rankInfo.nextThreshold) * 100) : 100}%` }}
                         />
                     </div>
                 </div>
@@ -1440,6 +1498,7 @@ export default function Home() {
                 ) : (
                     leaderboard.map((u, index) => {
                         const avMeta = AVATARS.find(a => a.id === u.avatar);
+                        const rankObj = getRankInfo(u.reputation || 0);
                         return (
                             <div key={u._id} className={`flex justify-between items-center p-4 rounded-xl border ${index < 3 ? 'bg-amber-500/10 border-amber-500/30' : 'bg-slate-800 border-slate-700'}`}>
                                 <div className="flex items-center gap-4">
@@ -1449,11 +1508,15 @@ export default function Home() {
                                     <Avatar className={avMeta?.color || 'bg-violet-600'}>
                                         {avMeta?.icon ? <span className="text-xl flex items-center justify-center h-full w-full">{avMeta.icon}</span> : u.username.charAt(0).toUpperCase()}
                                     </Avatar>
-                                    <span className="font-bold text-lg">{u.username}</span>
+                                    <div className="flex flex-col">
+                                        <span className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1 ${rankObj.color}`}>
+                                            {rankObj.icon} {rankObj.title}
+                                        </span>
+                                        <span className="font-bold text-lg leading-tight">{u.username}</span>
+                                    </div>
                                 </div>
-                                <div className="flex items-center gap-1 text-yellow-400 font-bold bg-yellow-400/10 px-3 py-1 rounded-full">
-                                    <AttachMoneyIcon fontSize="small" />
-                                    <span>{u.gold || 0}</span>
+                                <div className="flex items-center gap-1 text-cyan-400 font-bold bg-cyan-400/10 px-3 py-1 rounded-full border border-cyan-400/20">
+                                    <span>🌟 {u.reputation || 0}</span>
                                 </div>
                             </div>
                         );
@@ -2873,11 +2936,11 @@ export default function GameScene({
 DOSYA: client\components\game\Lobby.tsx
 =========================
 
-﻿import { Button, TextField, IconButton, Avatar, Chip, FormControlLabel, Switch } from "@mui/material";
+import { Button, TextField, IconButton, Avatar, Chip, FormControlLabel, Switch } from "@mui/material";
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CancelIcon from '@mui/icons-material/Cancel';
 import LogoutIcon from '@mui/icons-material/Logout';
-import { User, GameState, AVATARS } from "./types";
+import { User, GameState, AVATARS, getRankInfo } from "./types";
 
 interface LobbyProps {
     gameState: GameState;
@@ -2959,7 +3022,12 @@ export default function Lobby({
                                                 u.name.charAt(0).toUpperCase()
                                             )}
                                         </Avatar>
-                                        <span className="font-bold text-lg">{u.name} {u.id === myId ? '(Sen)' : ''}</span>
+                                        <div className="flex flex-col">
+                                            <span className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1 ${getRankInfo(u.reputation || 0).color}`}>
+                                                {getRankInfo(u.reputation || 0).icon} {getRankInfo(u.reputation || 0).title}
+                                            </span>
+                                            <span className="font-bold text-lg leading-tight">{u.name} {u.id === myId ? '(Sen)' : ''}</span>
+                                        </div>
                                         {u.disconnected && <Chip label="Koptu" size="small" color="error" />}
                                         {u.isVoiceEnabled && <span title="Sesli Sohbet Açık" className="text-xl animate-pulse">🎤</span>}
                                     </div>
@@ -3055,7 +3123,7 @@ import React, { useRef, Suspense } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Html, ContactShadows, useGLTF } from '@react-three/drei';
 import { SkeletonUtils } from 'three-stdlib';
-import { User, GameState, AVATARS } from './types';
+import { User, GameState, AVATARS, getRankInfo } from './types';
 import * as THREE from 'three';
 import { Avatar as MuiAvatar } from '@mui/material';
 import HelpIcon from '@mui/icons-material/Help';
@@ -3256,7 +3324,12 @@ function PlayerNode({ u, index, totalUsers, isCurrentTurn, isMe, isWinner, activ
                                 {u.assignedWord}
                             </div>
                         )}
-                        <span className={`mt-2 font-bold text-[11px] bg-black/80 px-2 py-0.5 rounded-full whitespace-nowrap ${u.status === 'spectator' ? 'line-through text-slate-500' : ''} ${u.disconnected ? 'text-red-400' : ''}`}>
+                        <span className={`mt-1 font-bold text-[11px] bg-black/80 px-2.5 py-1 rounded-full whitespace-nowrap shadow-lg flex items-center gap-1.5 ${u.status === 'spectator' ? 'line-through text-slate-500' : 'text-white'} ${u.disconnected ? 'text-red-400' : ''}`}>
+                            <span className={`flex items-center gap-1 ${getRankInfo(u.reputation || 0).color}`}>
+                                <span className="text-[13px]">{getRankInfo(u.reputation || 0).icon}</span>
+                                <span className="text-[9px] uppercase tracking-wider font-black">{getRankInfo(u.reputation || 0).title}</span>
+                            </span>
+                            <span className="text-slate-500 mx-0.5">|</span>
                             {u.name} {u.disconnected && '(Koptu)'}
                         </span>
                         {u.status !== 'spectator' && !isWinner && (
@@ -3434,8 +3507,8 @@ export default function WordSelection({
 DOSYA: client\components\game\types.tsx
 =========================
 
-﻿import React from 'react';
-import { GiBroadsword, GiWizardStaff, GiDaggers, GiBowArrow, GiHighKick, GiHolySymbol } from 'react-icons/gi';
+import React from 'react';
+import { GiBroadsword, GiWizardStaff, GiDaggers, GiBowArrow, GiHighKick, GiHolySymbol, GiFootprint, GiEyeTarget, GiMagnifyingGlass, GiCrystalBall, GiCrown } from 'react-icons/gi';
 
 export type User = {
     id: string;
@@ -3443,6 +3516,7 @@ export type User = {
     name: string;
     isHost: boolean;
     avatar: string;
+    reputation?: number;
     status: string;
     targetId: string | null;
     hasSubmittedWord: boolean;
@@ -3502,6 +3576,17 @@ export const AVATARS = [
     { id: 'Monk', color: "bg-orange-600", icon: <GiHighKick />, label: "Keşiş", model: "Monk.gltf" },
     { id: 'Cleric', color: "bg-yellow-500", icon: <GiHolySymbol />, label: "Şifacı", model: "Cleric.gltf" }
 ];
+
+export const getRankInfo = (reputation: number) => {
+    let title = "Çaylak";
+    let color = "text-amber-600";
+    let icon = <GiFootprint />;
+    if (reputation >= 5000) { title = "Kimbuki Üstadı"; color = "text-yellow-400 font-black drop-shadow-[0_0_8px_rgba(251,191,36,0.8)]"; icon = <GiCrown />; }
+    else if (reputation >= 2500) { title = "Zihin Okuyucu"; color = "text-cyan-300"; icon = <GiCrystalBall />; }
+    else if (reputation >= 1000) { title = "Dedektif"; color = "text-yellow-500"; icon = <GiMagnifyingGlass />; }
+    else if (reputation >= 400) { title = "Gözlemci"; color = "text-slate-300"; icon = <GiEyeTarget />; }
+    return { title, color, icon };
+};
 
 
 =========================
@@ -3720,36 +3805,62 @@ class GameManager {
         }
     }
 
-    handleCreateRoom(socket, name, userId, avatar, cb) {
-        const code = Math.random().toString(36).slice(2, 8).toUpperCase();
-        const room = new Room(code, this.io);
-        this.rooms.set(code, room);
+    async handleCreateRoom(socket, name, userId, avatar, cb) {
+        try {
+            const code = Math.random().toString(36).slice(2, 8).toUpperCase();
+            const room = new Room(code, this.io);
+            this.rooms.set(code, room);
 
-        socket.join(code);
-        room.addUser(socket.id, name, userId, avatar);
+            socket.join(code);
+            
+            let reputation = 0;
+            if (userId) {
+                const User = require('../models/User');
+                const userDoc = await User.findById(userId);
+                if (userDoc) reputation = userDoc.reputation || 0;
+            }
 
-        cb?.({ ok: true, roomCode: code });
+            room.addUser(socket.id, name, userId, avatar, reputation);
+
+            cb?.({ ok: true, roomCode: code });
+        } catch (err) {
+            console.error("Create room error:", err);
+            cb?.({ ok: false, error: "Sunucu hatası" });
+        }
     }
 
-    handleJoinRoom(socket, roomCode, name, userId, avatar, cb) {
-        const code = (roomCode || "").toUpperCase();
-        let room = this.rooms.get(code);
+    async handleJoinRoom(socket, roomCode, name, userId, avatar, cb) {
+        try {
+            const code = (roomCode || "").toUpperCase();
+            let room = this.rooms.get(code);
 
-        if (room) {
-            const isReconnecting = userId ? room.users.some(u => u.dbId === userId) : false;
-            if (room.gameState !== "LOBBY" && !isReconnecting) {
-                cb?.({ ok: false, error: "Oyun zaten başladı! Bu odaya şu an katılamazsınız." });
-                return;
+            if (room) {
+                const isReconnecting = userId ? room.users.some(u => u.dbId === userId) : false;
+                if (room.gameState !== "LOBBY" && !isReconnecting) {
+                    cb?.({ ok: false, error: "Oyun zaten başladı! Bu odaya şu an katılamazsınız." });
+                    return;
+                }
+            } else {
+                room = new Room(code, this.io);
+                this.rooms.set(code, room);
             }
-        } else {
-            room = new Room(code, this.io);
-            this.rooms.set(code, room);
+
+            socket.join(code);
+            
+            let reputation = 0;
+            if (userId) {
+                const User = require('../models/User');
+                const userDoc = await User.findById(userId);
+                if (userDoc) reputation = userDoc.reputation || 0;
+            }
+
+            room.addUser(socket.id, name, userId, avatar, reputation);
+
+            cb?.({ ok: true });
+        } catch (err) {
+            console.error("Join room error:", err);
+            cb?.({ ok: false, error: "Sunucu hatası" });
         }
-
-        socket.join(code);
-        room.addUser(socket.id, name, userId, avatar);
-
-        cb?.({ ok: true });
     }
 
     handleUpdateAvatar(socket, avatarIndex) {
@@ -3892,7 +4003,7 @@ class Room {
         this.winners = []; 
     }
 
-    addUser(socketId, name, dbId, avatar) {
+    addUser(socketId, name, dbId, avatar, reputation = 0) {
         if (dbId) {
             const existingUser = this.users.find(u => u.dbId === dbId);
             if (existingUser) {
@@ -3903,6 +4014,7 @@ class Room {
                 }
                 existingUser.id = socketId;
                 existingUser.disconnected = false;
+                existingUser.reputation = reputation;
                 
                 this.users.forEach(u => {
                     if (u.targetId === oldId) u.targetId = socketId;
@@ -3928,6 +4040,7 @@ class Room {
             name,
             isHost,
             avatar: avatar || 'default-violet',
+            reputation: reputation,
             targetId: null,
             assignedWord: null,
             status: 'playing',
@@ -4325,14 +4438,13 @@ class Room {
                 bettorReward = winnerReward;
             }
             
-            let xpReward = 30;
-            if (rank === 1) xpReward = 150;
-            else if (rank === 2) xpReward = 100;
-            else if (rank === 3) xpReward = 75;
-            else if (rank === 4) xpReward = 50;
+            let repReward = 5;
+            if (rank === 1) repReward = 50;
+            else if (rank === 2) repReward = 20;
+            else if (rank === 3) repReward = 10;
             
             if (user.dbId) {
-                User.findByIdAndUpdate(user.dbId, { $inc: { gold: winnerReward, xp: xpReward } })
+                User.findByIdAndUpdate(user.dbId, { $inc: { gold: winnerReward, reputation: repReward } })
                     .catch(err => console.error("Reward update error:", err));
             }
 
@@ -4340,7 +4452,7 @@ class Room {
             if (this.isBettingEnabled) {
                 winMsg = `${user.name} doğru tahmin etti! (${rank}. oldu) ve ${winnerReward} Altın kazandı! Kelimesi: ${user.assignedWord}`;
             } else {
-                winMsg = `${user.name} doğru tahmin etti! (${rank}. oldu) ve ${xpReward} XP kazandı! Kelimesi: ${user.assignedWord}`;
+                winMsg = `${user.name} doğru tahmin etti! (${rank}. oldu) ve ${repReward} İtibar kazandı! Kelimesi: ${user.assignedWord}`;
             }
             this.chatHistory.push({ system: true, message: winMsg, timestamp: Date.now() });
             this.roundLogs.push(winMsg);
@@ -4352,7 +4464,7 @@ class Room {
                 for (let uid of bettors) {
                     const bettorUser = this.users.find(u => u.id === uid);
                     if (bettorUser && bettorUser.dbId) {
-                        User.findByIdAndUpdate(bettorUser.dbId, { $inc: { gold: bettorReward, xp: 50 } })
+                        User.findByIdAndUpdate(bettorUser.dbId, { $inc: { gold: bettorReward, reputation: 5 } })
                             .catch(err => console.error("Gold update error:", err));
                         bettorNames.push(bettorUser.name);
                     }
@@ -4620,8 +4732,8 @@ class Room {
         const User = require('../models/User');
         for (let u of this.users) {
             if (u.dbId && !this.winners.includes(u.id)) {
-                User.findByIdAndUpdate(u.dbId, { $inc: { xp: 20 } })
-                    .catch(err => console.error("XP update error:", err));
+                User.findByIdAndUpdate(u.dbId, { $inc: { reputation: 5 } })
+                    .catch(err => console.error("Reputation update error:", err));
             }
         }
         
@@ -4635,6 +4747,7 @@ class Room {
                 name: u.name,
                 isHost: u.isHost,
                 avatar: u.avatar,
+                reputation: u.reputation || 0,
                 status: u.status,
                 targetId: u.targetId,
                 hasSubmittedWord: u.hasSubmittedWord,
@@ -4729,11 +4842,8 @@ const userSchema = new mongoose.Schema({
         type: Number,
         default: 0
     },
-    level: {
-        type: Number,
-        default: 1
-    },
-    xp: {
+
+    reputation: {
         type: Number,
         default: 0
     },
@@ -4771,22 +4881,25 @@ const authMiddleware = (req, res, next) => {
     }
 };
 
-function calculateLevelAndXP(totalXp) {
-    let level = 1;
-    let xpNeededForNext = 200;
-    let xpForCurrentLevel = 0;
+function getRankInfo(reputation) {
+    let title = "Çaylak";
+    let nextThreshold = 400;
     
-    while (totalXp >= xpForCurrentLevel + xpNeededForNext) {
-        xpForCurrentLevel += xpNeededForNext;
-        level++;
-        xpNeededForNext += 100;
+    if (reputation >= 5000) {
+        title = "Kimbuki Üstadı";
+        nextThreshold = null;
+    } else if (reputation >= 2500) {
+        title = "Zihin Okuyucu";
+        nextThreshold = 5000;
+    } else if (reputation >= 1000) {
+        title = "Dedektif";
+        nextThreshold = 2500;
+    } else if (reputation >= 400) {
+        title = "Gözlemci";
+        nextThreshold = 1000;
     }
     
-    return {
-        level,
-        xpInCurrentLevel: totalXp - xpForCurrentLevel,
-        xpNeededForNext
-    };
+    return { title, reputation, nextThreshold };
 }
 
 router.post("/register", async (req, res) => {
@@ -4847,10 +4960,7 @@ router.post("/register", async (req, res) => {
                 avatar: user.avatar,
                 gold: user.gold,
                 unlockedAvatars: user.unlockedAvatars,
-level: calculateLevelAndXP(user.xp || 0).level,
-xp: user.xp || 0,
-xpCurrent: calculateLevelAndXP(user.xp || 0).xpInCurrentLevel,
-xpNext: calculateLevelAndXP(user.xp || 0).xpNeededForNext
+rankInfo: getRankInfo(user.reputation || 0)
             }
         });
     } catch (error) {
@@ -4894,10 +5004,7 @@ router.post("/login", async (req, res) => {
                 avatar: user.avatar,
                 gold: user.gold,
                 unlockedAvatars: user.unlockedAvatars,
-level: calculateLevelAndXP(user.xp || 0).level,
-xp: user.xp || 0,
-xpCurrent: calculateLevelAndXP(user.xp || 0).xpInCurrentLevel,
-xpNext: calculateLevelAndXP(user.xp || 0).xpNeededForNext
+rankInfo: getRankInfo(user.reputation || 0)
             }
         });
     } catch (error) {
@@ -4943,10 +5050,7 @@ router.get("/me", authMiddleware, async (req, res) => {
             avatar: user.avatar,
             gold: user.gold,
             unlockedAvatars: user.unlockedAvatars,
-level: calculateLevelAndXP(user.xp || 0).level,
-xp: user.xp || 0,
-xpCurrent: calculateLevelAndXP(user.xp || 0).xpInCurrentLevel,
-xpNext: calculateLevelAndXP(user.xp || 0).xpNeededForNext,
+rankInfo: getRankInfo(user.reputation || 0),
             canClaimDaily,
             loginStreak: streak
         });
@@ -5019,10 +5123,7 @@ router.put("/profile", authMiddleware, async (req, res) => {
             avatar: user.avatar,
             gold: user.gold,
             unlockedAvatars: user.unlockedAvatars,
-level: calculateLevelAndXP(user.xp || 0).level,
-xp: user.xp || 0,
-xpCurrent: calculateLevelAndXP(user.xp || 0).xpInCurrentLevel,
-xpNext: calculateLevelAndXP(user.xp || 0).xpNeededForNext
+rankInfo: getRankInfo(user.reputation || 0)
         });
     } catch (error) {
         res.status(500).json({ error: "Sunucu hatası" });
@@ -5123,7 +5224,7 @@ router.get("/live", (req, res) => {
 
 router.get("/leaderboard", async (req, res) => {
     try {
-        const topUsers = await User.find({}, "username gold avatar").sort({ gold: -1 }).limit(10).lean();
+        const topUsers = await User.find({}, "username gold reputation avatar").sort({ reputation: -1, gold: -1 }).limit(10).lean();
         res.json(topUsers);
     } catch (err) {
         res.status(500).json({ error: "Sunucu hatasi" });

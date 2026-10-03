@@ -66,36 +66,62 @@ class GameManager {
         }
     }
 
-    handleCreateRoom(socket, name, userId, avatar, cb) {
-        const code = Math.random().toString(36).slice(2, 8).toUpperCase();
-        const room = new Room(code, this.io);
-        this.rooms.set(code, room);
+    async handleCreateRoom(socket, name, userId, avatar, cb) {
+        try {
+            const code = Math.random().toString(36).slice(2, 8).toUpperCase();
+            const room = new Room(code, this.io);
+            this.rooms.set(code, room);
 
-        socket.join(code);
-        room.addUser(socket.id, name, userId, avatar);
+            socket.join(code);
+            
+            let reputation = 0;
+            if (userId) {
+                const User = require('../models/User');
+                const userDoc = await User.findById(userId);
+                if (userDoc) reputation = userDoc.reputation || 0;
+            }
 
-        cb?.({ ok: true, roomCode: code });
+            room.addUser(socket.id, name, userId, avatar, reputation);
+
+            cb?.({ ok: true, roomCode: code });
+        } catch (err) {
+            console.error("Create room error:", err);
+            cb?.({ ok: false, error: "Sunucu hatası" });
+        }
     }
 
-    handleJoinRoom(socket, roomCode, name, userId, avatar, cb) {
-        const code = (roomCode || "").toUpperCase();
-        let room = this.rooms.get(code);
+    async handleJoinRoom(socket, roomCode, name, userId, avatar, cb) {
+        try {
+            const code = (roomCode || "").toUpperCase();
+            let room = this.rooms.get(code);
 
-        if (room) {
-            const isReconnecting = userId ? room.users.some(u => u.dbId === userId) : false;
-            if (room.gameState !== "LOBBY" && !isReconnecting) {
-                cb?.({ ok: false, error: "Oyun zaten başladı! Bu odaya şu an katılamazsınız." });
-                return;
+            if (room) {
+                const isReconnecting = userId ? room.users.some(u => u.dbId === userId) : false;
+                if (room.gameState !== "LOBBY" && !isReconnecting) {
+                    cb?.({ ok: false, error: "Oyun zaten başladı! Bu odaya şu an katılamazsınız." });
+                    return;
+                }
+            } else {
+                room = new Room(code, this.io);
+                this.rooms.set(code, room);
             }
-        } else {
-            room = new Room(code, this.io);
-            this.rooms.set(code, room);
+
+            socket.join(code);
+            
+            let reputation = 0;
+            if (userId) {
+                const User = require('../models/User');
+                const userDoc = await User.findById(userId);
+                if (userDoc) reputation = userDoc.reputation || 0;
+            }
+
+            room.addUser(socket.id, name, userId, avatar, reputation);
+
+            cb?.({ ok: true });
+        } catch (err) {
+            console.error("Join room error:", err);
+            cb?.({ ok: false, error: "Sunucu hatası" });
         }
-
-        socket.join(code);
-        room.addUser(socket.id, name, userId, avatar);
-
-        cb?.({ ok: true });
     }
 
     handleUpdateAvatar(socket, avatarIndex) {

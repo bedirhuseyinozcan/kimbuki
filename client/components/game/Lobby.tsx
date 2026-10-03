@@ -1,8 +1,8 @@
-﻿import { Button, TextField, IconButton, Avatar, Chip, FormControlLabel, Switch } from "@mui/material";
+import { Button, TextField, IconButton, Avatar, Chip, FormControlLabel, Switch } from "@mui/material";
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CancelIcon from '@mui/icons-material/Cancel';
 import LogoutIcon from '@mui/icons-material/Logout';
-import { User, GameState, AVATARS } from "./types";
+import { User, GameState, AVATARS, getRankInfo } from "./types";
 
 interface LobbyProps {
     gameState: GameState;
@@ -84,7 +84,12 @@ export default function Lobby({
                                                 u.name.charAt(0).toUpperCase()
                                             )}
                                         </Avatar>
-                                        <span className="font-bold text-lg">{u.name} {u.id === myId ? '(Sen)' : ''}</span>
+                                        <div className="flex flex-col">
+                                            <span className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1 ${getRankInfo(u.reputation || 0).color}`}>
+                                                {getRankInfo(u.reputation || 0).icon} {getRankInfo(u.reputation || 0).title}
+                                            </span>
+                                            <span className="font-bold text-lg leading-tight">{u.name} {u.id === myId ? '(Sen)' : ''}</span>
+                                        </div>
                                         {u.disconnected && <Chip label="Koptu" size="small" color="error" />}
                                         {u.isVoiceEnabled && <span title="Sesli Sohbet Açık" className="text-xl animate-pulse">🎤</span>}
                                     </div>
