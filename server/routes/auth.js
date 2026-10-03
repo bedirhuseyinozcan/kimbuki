@@ -19,22 +19,25 @@ const authMiddleware = (req, res, next) => {
     }
 };
 
-function calculateLevelAndXP(totalXp) {
-    let level = 1;
-    let xpNeededForNext = 200;
-    let xpForCurrentLevel = 0;
+function getRankInfo(reputation) {
+    let title = "Çaylak";
+    let nextThreshold = 400;
     
-    while (totalXp >= xpForCurrentLevel + xpNeededForNext) {
-        xpForCurrentLevel += xpNeededForNext;
-        level++;
-        xpNeededForNext += 100;
+    if (reputation >= 5000) {
+        title = "Kimbuki Üstadı";
+        nextThreshold = null;
+    } else if (reputation >= 2500) {
+        title = "Zihin Okuyucu";
+        nextThreshold = 5000;
+    } else if (reputation >= 1000) {
+        title = "Dedektif";
+        nextThreshold = 2500;
+    } else if (reputation >= 400) {
+        title = "Gözlemci";
+        nextThreshold = 1000;
     }
     
-    return {
-        level,
-        xpInCurrentLevel: totalXp - xpForCurrentLevel,
-        xpNeededForNext
-    };
+    return { title, reputation, nextThreshold };
 }
 
 router.post("/register", async (req, res) => {
@@ -95,10 +98,7 @@ router.post("/register", async (req, res) => {
                 avatar: user.avatar,
                 gold: user.gold,
                 unlockedAvatars: user.unlockedAvatars,
-level: calculateLevelAndXP(user.xp || 0).level,
-xp: user.xp || 0,
-xpCurrent: calculateLevelAndXP(user.xp || 0).xpInCurrentLevel,
-xpNext: calculateLevelAndXP(user.xp || 0).xpNeededForNext
+rankInfo: getRankInfo(user.reputation || 0)
             }
         });
     } catch (error) {
@@ -142,10 +142,7 @@ router.post("/login", async (req, res) => {
                 avatar: user.avatar,
                 gold: user.gold,
                 unlockedAvatars: user.unlockedAvatars,
-level: calculateLevelAndXP(user.xp || 0).level,
-xp: user.xp || 0,
-xpCurrent: calculateLevelAndXP(user.xp || 0).xpInCurrentLevel,
-xpNext: calculateLevelAndXP(user.xp || 0).xpNeededForNext
+rankInfo: getRankInfo(user.reputation || 0)
             }
         });
     } catch (error) {
@@ -191,10 +188,7 @@ router.get("/me", authMiddleware, async (req, res) => {
             avatar: user.avatar,
             gold: user.gold,
             unlockedAvatars: user.unlockedAvatars,
-level: calculateLevelAndXP(user.xp || 0).level,
-xp: user.xp || 0,
-xpCurrent: calculateLevelAndXP(user.xp || 0).xpInCurrentLevel,
-xpNext: calculateLevelAndXP(user.xp || 0).xpNeededForNext,
+rankInfo: getRankInfo(user.reputation || 0),
             canClaimDaily,
             loginStreak: streak
         });
@@ -267,10 +261,7 @@ router.put("/profile", authMiddleware, async (req, res) => {
             avatar: user.avatar,
             gold: user.gold,
             unlockedAvatars: user.unlockedAvatars,
-level: calculateLevelAndXP(user.xp || 0).level,
-xp: user.xp || 0,
-xpCurrent: calculateLevelAndXP(user.xp || 0).xpInCurrentLevel,
-xpNext: calculateLevelAndXP(user.xp || 0).xpNeededForNext
+rankInfo: getRankInfo(user.reputation || 0)
         });
     } catch (error) {
         res.status(500).json({ error: "Sunucu hatası" });

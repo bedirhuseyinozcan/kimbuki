@@ -2,7 +2,7 @@ import React, { useRef, Suspense } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Html, ContactShadows, useGLTF } from '@react-three/drei';
 import { SkeletonUtils } from 'three-stdlib';
-import { User, GameState, AVATARS } from './types';
+import { User, GameState, AVATARS, getRankInfo } from './types';
 import * as THREE from 'three';
 import { Avatar as MuiAvatar } from '@mui/material';
 import HelpIcon from '@mui/icons-material/Help';
@@ -203,7 +203,12 @@ function PlayerNode({ u, index, totalUsers, isCurrentTurn, isMe, isWinner, activ
                                 {u.assignedWord}
                             </div>
                         )}
-                        <span className={`mt-2 font-bold text-[11px] bg-black/80 px-2 py-0.5 rounded-full whitespace-nowrap ${u.status === 'spectator' ? 'line-through text-slate-500' : ''} ${u.disconnected ? 'text-red-400' : ''}`}>
+                        <span className={`mt-1 font-bold text-[11px] bg-black/80 px-2.5 py-1 rounded-full whitespace-nowrap shadow-lg flex items-center gap-1.5 ${u.status === 'spectator' ? 'line-through text-slate-500' : 'text-white'} ${u.disconnected ? 'text-red-400' : ''}`}>
+                            <span className={`flex items-center gap-1 ${getRankInfo(u.reputation || 0).color}`}>
+                                <span className="text-[13px]">{getRankInfo(u.reputation || 0).icon}</span>
+                                <span className="text-[9px] uppercase tracking-wider font-black">{getRankInfo(u.reputation || 0).title}</span>
+                            </span>
+                            <span className="text-slate-500 mx-0.5">|</span>
                             {u.name} {u.disconnected && '(Koptu)'}
                         </span>
                         {u.status !== 'spectator' && !isWinner && (

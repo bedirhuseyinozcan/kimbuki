@@ -18,7 +18,7 @@ class Room {
         this.winners = []; 
     }
 
-    addUser(socketId, name, dbId, avatar) {
+    addUser(socketId, name, dbId, avatar, reputation = 0) {
         if (dbId) {
             const existingUser = this.users.find(u => u.dbId === dbId);
             if (existingUser) {
@@ -29,6 +29,7 @@ class Room {
                 }
                 existingUser.id = socketId;
                 existingUser.disconnected = false;
+                existingUser.reputation = reputation;
                 
                 this.users.forEach(u => {
                     if (u.targetId === oldId) u.targetId = socketId;
@@ -54,6 +55,7 @@ class Room {
             name,
             isHost,
             avatar: avatar || 'default-violet',
+            reputation: reputation,
             targetId: null,
             assignedWord: null,
             status: 'playing',
@@ -451,14 +453,13 @@ class Room {
                 bettorReward = winnerReward;
             }
             
-            let xpReward = 30;
-            if (rank === 1) xpReward = 150;
-            else if (rank === 2) xpReward = 100;
-            else if (rank === 3) xpReward = 75;
-            else if (rank === 4) xpReward = 50;
+            let repReward = 5;
+            if (rank === 1) repReward = 50;
+            else if (rank === 2) repReward = 20;
+            else if (rank === 3) repReward = 10;
             
             if (user.dbId) {
-                User.findByIdAndUpdate(user.dbId, { $inc: { gold: winnerReward, xp: xpReward } })
+                User.findByIdAndUpdate(user.dbId, { $inc: { gold: winnerReward, reputation: repReward } })
                     .catch(err => console.error("Reward update error:", err));
             }
 
@@ -466,7 +467,7 @@ class Room {
             if (this.isBettingEnabled) {
                 winMsg = `${user.name} doğru tahmin etti! (${rank}. oldu) ve ${winnerReward} Altın kazandı! Kelimesi: ${user.assignedWord}`;
             } else {
-                winMsg = `${user.name} doğru tahmin etti! (${rank}. oldu) ve ${xpReward} XP kazandı! Kelimesi: ${user.assignedWord}`;
+                winMsg = `${user.name} doğru tahmin etti! (${rank}. oldu) ve ${repReward} İtibar kazandı! Kelimesi: ${user.assignedWord}`;
             }
             this.chatHistory.push({ system: true, message: winMsg, timestamp: Date.now() });
             this.roundLogs.push(winMsg);
@@ -478,7 +479,7 @@ class Room {
                 for (let uid of bettors) {
                     const bettorUser = this.users.find(u => u.id === uid);
                     if (bettorUser && bettorUser.dbId) {
-                        User.findByIdAndUpdate(bettorUser.dbId, { $inc: { gold: bettorReward, xp: 50 } })
+                        User.findByIdAndUpdate(bettorUser.dbId, { $inc: { gold: bettorReward, reputation: 5 } })
                             .catch(err => console.error("Gold update error:", err));
                         bettorNames.push(bettorUser.name);
                     }
@@ -746,8 +747,8 @@ class Room {
         const User = require('../models/User');
         for (let u of this.users) {
             if (u.dbId && !this.winners.includes(u.id)) {
-                User.findByIdAndUpdate(u.dbId, { $inc: { xp: 20 } })
-                    .catch(err => console.error("XP update error:", err));
+                User.findByIdAndUpdate(u.dbId, { $inc: { reputation: 5 } })
+                    .catch(err => console.error("Reputation update error:", err));
             }
         }
         
@@ -761,6 +762,7 @@ class Room {
                 name: u.name,
                 isHost: u.isHost,
                 avatar: u.avatar,
+                reputation: u.reputation || 0,
                 status: u.status,
                 targetId: u.targetId,
                 hasSubmittedWord: u.hasSubmittedWord,

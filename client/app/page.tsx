@@ -18,7 +18,7 @@ import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import { InputAdornment, Avatar } from "@mui/material";
 import { toast } from 'react-toastify';
 import Logo from "@/components/Logo";
-import { AVATARS } from "@/components/game/types";
+import { AVATARS, getRankInfo } from "@/components/game/types";
 
 export default function Home() {
   const [roomCode, setRoomCode] = useState("");
@@ -26,7 +26,7 @@ export default function Home() {
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
   const [forgotPasswordDialogOpen, setForgotPasswordDialogOpen] = useState(false);
   
-  const [user, setUser] = useState<{ id: string, username: string, avatar: string, gold: number, unlockedAvatars: string[], level?: number, xp?: number, xpCurrent?: number, xpNext?: number, canClaimDaily?: boolean, loginStreak?: number } | null>(null);
+  const [user, setUser] = useState<{ id: string, username: string, avatar: string, gold: number, unlockedAvatars: string[], rankInfo?: { title: string, reputation: number, nextThreshold: number | null }, canClaimDaily?: boolean, loginStreak?: number } | null>(null);
   
   const [shopDialogOpen, setShopDialogOpen] = useState(false);
   const [dailyRewardDialogOpen, setDailyRewardDialogOpen] = useState(false);
@@ -73,10 +73,7 @@ export default function Home() {
                 avatar: data.avatar, 
                 gold: data.gold, 
                 unlockedAvatars: data.unlockedAvatars,
-                level: data.level,
-                xp: data.xp,
-                xpCurrent: data.xpCurrent,
-                xpNext: data.xpNext,
+                rankInfo: data.rankInfo,
                 canClaimDaily: data.canClaimDaily,
                 loginStreak: data.loginStreak
             });
@@ -312,13 +309,15 @@ export default function Home() {
                         </div>
                         <div className="w-full flex flex-col items-stretch">
                             <div className="flex justify-between w-full text-[10px] font-bold text-amber-400 mb-1 px-0.5">
-                                <span className="tracking-widest whitespace-nowrap">LVL {user.level || 1}</span>
-                                <span className="text-slate-400 font-medium tracking-wide whitespace-nowrap">{user.xpCurrent || 0} / {user.xpNext || 200}</span>
+                                <span className={`tracking-widest whitespace-nowrap uppercase flex items-center gap-1 ${getRankInfo(user.rankInfo?.reputation || 0).color}`}>
+                                    {getRankInfo(user.rankInfo?.reputation || 0).icon} {user.rankInfo?.title || 'Çaylak'}
+                                </span>
+                                <span className="text-slate-400 font-medium tracking-wide whitespace-nowrap">{user.rankInfo?.reputation || 0} / {user.rankInfo?.nextThreshold || 'MAX'}</span>
                             </div>
                             <div className="w-full h-1.5 bg-slate-900 rounded-full overflow-hidden shadow-inner border border-slate-700/50">
                                 <div 
                                     className="h-full bg-gradient-to-r from-amber-500 to-yellow-300 rounded-full" 
-                                    style={{ width: `${Math.min(100, ((user.xpCurrent || 0) / (user.xpNext || 200)) * 100)}%` }}
+                                    style={{ width: `${user.rankInfo?.nextThreshold ? Math.min(100, ((user.rankInfo.reputation || 0) / user.rankInfo.nextThreshold) * 100) : 100}%` }}
                                 />
                             </div>
                         </div>
@@ -367,7 +366,9 @@ export default function Home() {
                     <Button color="inherit" className="w-full justify-start flex items-center gap-2 px-4 py-2 bg-slate-800/80 border border-slate-700" onClick={() => { openProfile(); setMobileMenuOpen(false); }}>
                         <AccountCircleIcon fontSize="small" className="text-cyan-400" />
                         <span className="text-cyan-400 font-bold">{user.username}</span>
-                        <span className="text-amber-400 font-bold ml-auto">LVL {user.level || 1}</span>
+                        <span className={`font-bold ml-auto flex items-center gap-1 ${getRankInfo(user.rankInfo?.reputation || 0).color}`}>
+                            {getRankInfo(user.rankInfo?.reputation || 0).icon} {user.rankInfo?.title || 'Çaylak'}
+                        </span>
                     </Button>
                 </>
             )}
@@ -696,17 +697,20 @@ export default function Home() {
         <DialogTitle className="text-center font-black text-2xl pt-6 pb-2">Profilim</DialogTitle>
         <DialogContent className="p-6 space-y-5">
             <div className="bg-slate-800/80 border border-slate-700 p-4 rounded-2xl flex flex-col items-center">
-                <span className="text-slate-400 text-sm font-bold mb-1">Mevcut Seviye</span>
-                <span className="text-3xl font-black text-amber-400 mb-2">LVL {user?.level || 1}</span>
+                <span className="text-slate-400 text-sm font-bold mb-1">Mevcut Kademe</span>
+                <span className={`text-4xl font-black mb-2 flex items-center gap-2 ${getRankInfo(user?.rankInfo?.reputation || 0).color}`}>
+                    <span className="text-5xl">{getRankInfo(user?.rankInfo?.reputation || 0).icon}</span>
+                    {getRankInfo(user?.rankInfo?.reputation || 0).title}
+                </span>
                 <div className="w-full flex flex-col items-center">
                     <div className="flex justify-between w-full text-[10px] font-black tracking-widest text-slate-400 mb-1 px-1">
-                        <span>İlerleme</span>
-                        <span>{user?.xpCurrent || 0} / {user?.xpNext || 200} XP</span>
+                        <span>İtibar İlerlemesi</span>
+                        <span>{user?.rankInfo?.reputation || 0} / {user?.rankInfo?.nextThreshold || 'MAX'} İtibar</span>
                     </div>
                     <div className="w-full h-2.5 bg-slate-900 rounded-full overflow-hidden shadow-inner">
                         <div 
                             className="h-full bg-gradient-to-r from-amber-500 to-yellow-300" 
-                            style={{ width: `${Math.min(100, ((user?.xpCurrent || 0) / (user?.xpNext || 200)) * 100)}%` }}
+                            style={{ width: `${user?.rankInfo?.nextThreshold ? Math.min(100, ((user.rankInfo.reputation || 0) / user.rankInfo.nextThreshold) * 100) : 100}%` }}
                         />
                     </div>
                 </div>
@@ -906,6 +910,7 @@ export default function Home() {
                 ) : (
                     leaderboard.map((u, index) => {
                         const avMeta = AVATARS.find(a => a.id === u.avatar);
+                        const rankObj = getRankInfo(u.reputation || 0);
                         return (
                             <div key={u._id} className={`flex justify-between items-center p-4 rounded-xl border ${index < 3 ? 'bg-amber-500/10 border-amber-500/30' : 'bg-slate-800 border-slate-700'}`}>
                                 <div className="flex items-center gap-4">
@@ -915,11 +920,15 @@ export default function Home() {
                                     <Avatar className={avMeta?.color || 'bg-violet-600'}>
                                         {avMeta?.icon ? <span className="text-xl flex items-center justify-center h-full w-full">{avMeta.icon}</span> : u.username.charAt(0).toUpperCase()}
                                     </Avatar>
-                                    <span className="font-bold text-lg">{u.username}</span>
+                                    <div className="flex flex-col">
+                                        <span className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1 ${rankObj.color}`}>
+                                            {rankObj.icon} {rankObj.title}
+                                        </span>
+                                        <span className="font-bold text-lg leading-tight">{u.username}</span>
+                                    </div>
                                 </div>
-                                <div className="flex items-center gap-1 text-yellow-400 font-bold bg-yellow-400/10 px-3 py-1 rounded-full">
-                                    <AttachMoneyIcon fontSize="small" />
-                                    <span>{u.gold || 0}</span>
+                                <div className="flex items-center gap-1 text-cyan-400 font-bold bg-cyan-400/10 px-3 py-1 rounded-full border border-cyan-400/20">
+                                    <span>🌟 {u.reputation || 0}</span>
                                 </div>
                             </div>
                         );
