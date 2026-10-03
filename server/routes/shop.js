@@ -53,6 +53,14 @@ router.post("/buy", authMiddleware, async (req, res) => {
 
         user.gold -= avatarToBuy.price;
         user.unlockedAvatars.push(avatarId);
+        
+        if (user.quests && user.quests.active) {
+            user.quests.active.forEach(q => {
+                if (q.type === 'buy_avatar' && !q.isClaimed && q.progress < q.target) q.progress++;
+            });
+            user.markModified('quests');
+        }
+        
         await user.save();
 
         res.json({

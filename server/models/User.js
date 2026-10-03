@@ -43,6 +43,19 @@ const userSchema = new mongoose.Schema({
         type: Number,
         default: 0
     },
+    quests: {
+        active: [{
+            id: String,
+            type: { type: String },
+            target: Number,
+            progress: { type: Number, default: 0 },
+            rewardGold: { type: Number, default: 0 },
+            rewardRep: { type: Number, default: 0 },
+            title: String,
+            isClaimed: { type: Boolean, default: false }
+        }],
+        lastResetDate: { type: String, default: null }
+    },
     createdAt: {
         type: Date,
         default: Date.now
