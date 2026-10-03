@@ -459,8 +459,20 @@ class Room {
             else if (rank === 3) repReward = 10;
             
             if (user.dbId) {
-                User.findByIdAndUpdate(user.dbId, { $inc: { gold: winnerReward, reputation: repReward } })
-                    .catch(err => console.error("Reward update error:", err));
+                User.findById(user.dbId).then(userDb => {
+                    if (userDb) {
+                        userDb.gold += winnerReward;
+                        userDb.reputation += repReward;
+                        if (userDb.quests && userDb.quests.active) {
+                            userDb.quests.active.forEach(q => {
+                                if (q.type === 'win' && !q.isClaimed && q.progress < q.target) q.progress++;
+                                if (q.type === 'play' && !q.isClaimed && q.progress < q.target) q.progress++;
+                            });
+                            userDb.markModified('quests');
+                        }
+                        return userDb.save();
+                    }
+                }).catch(err => console.error("Reward update error:", err));
             }
 
             let winMsg = "";
@@ -479,8 +491,19 @@ class Room {
                 for (let uid of bettors) {
                     const bettorUser = this.users.find(u => u.id === uid);
                     if (bettorUser && bettorUser.dbId) {
-                        User.findByIdAndUpdate(bettorUser.dbId, { $inc: { gold: bettorReward, reputation: 5 } })
-                            .catch(err => console.error("Gold update error:", err));
+                        User.findById(bettorUser.dbId).then(userDb => {
+                            if (userDb) {
+                                userDb.gold += bettorReward;
+                                userDb.reputation += 5;
+                                if (userDb.quests && userDb.quests.active) {
+                                    userDb.quests.active.forEach(q => {
+                                        if (q.type === 'bet_win' && !q.isClaimed && q.progress < q.target) q.progress++;
+                                    });
+                                    userDb.markModified('quests');
+                                }
+                                return userDb.save();
+                            }
+                        }).catch(err => console.error("Bettor update error:", err));
                         bettorNames.push(bettorUser.name);
                     }
                 }
@@ -618,6 +641,19 @@ class Room {
                 break;
         }
         
+        if (user.dbId) {
+            const User = require('../models/User');
+            User.findById(user.dbId).then(userDb => {
+                if (userDb && userDb.quests && userDb.quests.active) {
+                    userDb.quests.active.forEach(q => {
+                        if (q.type === 'use_joker' && !q.isClaimed && q.progress < q.target) q.progress++;
+                    });
+                    userDb.markModified('quests');
+                    return userDb.save();
+                }
+            }).catch(err => console.error("Joker quest update error:", err));
+        }
+
         this.broadcastState();
     }
 
@@ -747,8 +783,18 @@ class Room {
         const User = require('../models/User');
         for (let u of this.users) {
             if (u.dbId && !this.winners.includes(u.id)) {
-                User.findByIdAndUpdate(u.dbId, { $inc: { reputation: 5 } })
-                    .catch(err => console.error("Reputation update error:", err));
+                User.findById(u.dbId).then(userDb => {
+                    if (userDb) {
+                        userDb.reputation += 5;
+                        if (userDb.quests && userDb.quests.active) {
+                            userDb.quests.active.forEach(q => {
+                                if (q.type === 'play' && !q.isClaimed && q.progress < q.target) q.progress++;
+                            });
+                            userDb.markModified('quests');
+                        }
+                        return userDb.save();
+                    }
+                }).catch(err => console.error("Reputation update error:", err));
             }
         }
         

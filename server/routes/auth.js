@@ -40,6 +40,30 @@ function getRankInfo(reputation) {
     return { title, reputation, nextThreshold };
 }
 
+const QUEST_POOL = [
+    { id: "play_1", type: "play", target: 1, rewardGold: 50, rewardRep: 5, title: "Isınma Turu: 1 Oyun Oyna" },
+    { id: "play_3", type: "play", target: 3, rewardGold: 100, rewardRep: 10, title: "Günde 3 Oyun Oyna" },
+    { id: "play_5", type: "play", target: 5, rewardGold: 200, rewardRep: 15, title: "Maraton: 5 Oyun Oyna" },
+    { id: "play_10", type: "play", target: 10, rewardGold: 500, rewardRep: 30, title: "Bağımlı: 10 Oyun Oyna" },
+    
+    { id: "win_1", type: "win", target: 1, rewardGold: 150, rewardRep: 20, title: "Zihin Okuyucu: 1 Oyun Kazan" },
+    { id: "win_3", type: "win", target: 3, rewardGold: 400, rewardRep: 50, title: "Şampiyon: 3 Oyun Kazan" },
+    { id: "win_5", type: "win", target: 5, rewardGold: 800, rewardRep: 100, title: "Efsanevi: 5 Oyun Kazan" },
+    
+    { id: "buy_1", type: "buy_avatar", target: 1, rewardGold: 50, rewardRep: 30, title: "Moda İkonu: Mağazadan 1 Karakter Al" },
+    
+    { id: "bet_1", type: "bet_win", target: 1, rewardGold: 100, rewardRep: 15, title: "Kumarbaz: 1 Kere Bahis Tuttur" },
+    { id: "bet_3", type: "bet_win", target: 3, rewardGold: 350, rewardRep: 40, title: "Kahin: 3 Kere Bahis Tuttur" },
+
+    { id: "joker_1", type: "use_joker", target: 1, rewardGold: 80, rewardRep: 10, title: "Kaos: 1 Kere Joker Kullan" },
+    { id: "joker_3", type: "use_joker", target: 3, rewardGold: 250, rewardRep: 25, title: "Trol: 3 Kere Joker Kullan" }
+];
+
+function generateDailyQuests() {
+    const shuffled = [...QUEST_POOL].sort(() => 0.5 - Math.random());
+    return shuffled.slice(0, 3).map(q => ({ ...q, progress: 0, isClaimed: false }));
+}
+
 router.post("/register", async (req, res) => {
     try {
         const { username, email, password } = req.body;
@@ -162,7 +186,6 @@ router.get("/me", authMiddleware, async (req, res) => {
         if (!user.unlockedAvatars.includes('Warrior')) {
             user.unlockedAvatars.push('Warrior');
             if (user.avatar.startsWith('default-')) user.avatar = 'Warrior';
-            await user.save();
         }
 
         let canClaimDaily = false;
@@ -181,6 +204,22 @@ router.get("/me", authMiddleware, async (req, res) => {
             }
         }
 
+        const todayStr = new Date().toDateString();
+        let questsUpdated = false;
+        
+        if (!user.quests) {
+            user.quests = {};
+        }
+
+        if (user.quests.lastResetDate !== todayStr) {
+            user.quests.active = generateDailyQuests();
+            user.quests.lastResetDate = todayStr;
+            user.markModified('quests');
+            questsUpdated = true;
+        }
+
+        if (questsUpdated || canClaimDaily) await user.save();
+
         res.json({
             id: user._id,
             username: user.username,
@@ -188,11 +227,13 @@ router.get("/me", authMiddleware, async (req, res) => {
             avatar: user.avatar,
             gold: user.gold,
             unlockedAvatars: user.unlockedAvatars,
-rankInfo: getRankInfo(user.reputation || 0),
+            rankInfo: getRankInfo(user.reputation || 0),
+            quests: user.quests?.active || [],
             canClaimDaily,
             loginStreak: streak
         });
     } catch (error) {
+        console.error("GET /me error:", error);
         res.status(500).json({ error: "Sunucu hatası" });
     }
 });
@@ -262,6 +303,36 @@ router.put("/profile", authMiddleware, async (req, res) => {
             gold: user.gold,
             unlockedAvatars: user.unlockedAvatars,
 rankInfo: getRankInfo(user.reputation || 0)
+        });
+    } catch (error) {
+        res.status(500).json({ error: "Sunucu hatası" });
+    }
+});
+
+router.post("/claim-quest", authMiddleware, async (req, res) => {
+    try {
+        const { questId } = req.body;
+        const user = await User.findById(req.user.id);
+        
+        if (!user || !user.quests || !user.quests.active) return res.status(400).json({ error: "Görev bulunamadı." });
+        
+        const quest = user.quests.active.find(q => q.id === questId);
+        if (!quest) return res.status(400).json({ error: "Görev bulunamadı." });
+        if (quest.isClaimed) return res.status(400).json({ error: "Bu ödülü zaten aldın." });
+        if (quest.progress < quest.target) return res.status(400).json({ error: "Görev henüz tamamlanmadı." });
+
+        quest.isClaimed = true;
+        user.gold += quest.rewardGold;
+        user.reputation += quest.rewardRep;
+        
+        user.markModified('quests');
+        await user.save();
+
+        res.json({
+            success: true,
+            gold: user.gold,
+            rankInfo: getRankInfo(user.reputation),
+            quests: user.quests.active
         });
     } catch (error) {
         res.status(500).json({ error: "Sunucu hatası" });

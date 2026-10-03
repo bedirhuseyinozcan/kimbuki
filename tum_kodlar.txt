@@ -614,7 +614,30 @@ export default function Home() {
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
   const [forgotPasswordDialogOpen, setForgotPasswordDialogOpen] = useState(false);
   
-  const [user, setUser] = useState<{ id: string, username: string, avatar: string, gold: number, unlockedAvatars: string[], rankInfo?: { title: string, reputation: number, nextThreshold: number | null }, canClaimDaily?: boolean, loginStreak?: number } | null>(null);
+  const [user, setUser] = useState<{ id: string, username: string, avatar: string, gold: number, unlockedAvatars: string[], rankInfo?: { title: string, reputation: number, nextThreshold: number | null }, quests?: any[], canClaimDaily?: boolean, loginStreak?: number } | null>(null);
+  
+  const [questsDialogOpen, setQuestsDialogOpen] = useState(false);
+
+  const handleClaimQuest = async (questId: string) => {
+      const token = localStorage.getItem("gameToken");
+      if (!token) return;
+      try {
+          const res = await fetch(`${process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:4000"}/api/auth/claim-quest`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+              body: JSON.stringify({ questId })
+          });
+          const data = await res.json();
+          if (res.ok) {
+              toast.success("Ödül alındı! 🎉");
+              setUser(prev => prev ? { ...prev, gold: data.gold, rankInfo: data.rankInfo, quests: data.quests } : prev);
+          } else {
+              toast.error(data.error);
+          }
+      } catch (e) {
+          toast.error("Bağlantı hatası!");
+      }
+  };
   
   const [shopDialogOpen, setShopDialogOpen] = useState(false);
   const [dailyRewardDialogOpen, setDailyRewardDialogOpen] = useState(false);
@@ -647,35 +670,40 @@ export default function Home() {
       .then(data => setLiveStats(data))
       .catch(() => {});
 
-    const token = localStorage.getItem("gameToken");
-    if (token) {
-      fetch(`${process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:4000"}/api/auth/me`, {
-        headers: { "Authorization": `Bearer ${token}` }
-      })
-        .then(res => res.json())
-        .then(data => {
-          if (data.id) {
-            setUser({ 
-                id: data.id, 
-                username: data.username, 
-                avatar: data.avatar, 
-                gold: data.gold, 
-                unlockedAvatars: data.unlockedAvatars,
-                rankInfo: data.rankInfo,
-                canClaimDaily: data.canClaimDaily,
-                loginStreak: data.loginStreak
-            });
-          } else {
-            localStorage.removeItem("gameToken");
-          }
-        })
-        .catch(() => localStorage.removeItem("gameToken"));
-    }
-
     fetch(`${process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:4000"}/api/shop/items`)
       .then(res => res.json())
       .then(data => setShopItems(data))
       .catch(() => {});
+  }, []);
+
+  const fetchMe = (token: string) => {
+    fetch(`${process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:4000"}/api/auth/me`, {
+      headers: { "Authorization": `Bearer ${token}` }
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.id) {
+          setUser({ 
+              id: data.id, 
+              username: data.username, 
+              avatar: data.avatar, 
+              gold: data.gold, 
+              unlockedAvatars: data.unlockedAvatars,
+              rankInfo: data.rankInfo,
+              quests: data.quests,
+              canClaimDaily: data.canClaimDaily,
+              loginStreak: data.loginStreak
+          });
+        } else {
+          localStorage.removeItem("gameToken");
+        }
+      })
+      .catch(() => localStorage.removeItem("gameToken"));
+  };
+
+  useEffect(() => {
+    const token = localStorage.getItem("gameToken");
+    if (token) fetchMe(token);
   }, []);
 
   const handleOpenLeaderboard = () => {
@@ -730,8 +758,8 @@ export default function Home() {
       const data = await res.json();
       
       if (data.token) {
-        setUser(data.user);
         localStorage.setItem("gameToken", data.token);
+        fetchMe(data.token);
         setLoginName("");
         setLoginEmail("");
         setLoginPassword("");
@@ -886,6 +914,9 @@ export default function Home() {
                     </Button>
                     <Button color="inherit" className="whitespace-nowrap text-cyan-400 hover:text-cyan-300 font-bold" onClick={() => setShopDialogOpen(true)} startIcon={<StorefrontIcon />}>
                         Mağaza
+                    </Button>
+                    <Button color="inherit" className="whitespace-nowrap text-green-400 hover:text-green-300 font-bold" onClick={() => setQuestsDialogOpen(true)}>
+                        📜 Görevler
                     </Button>
                     <Button color="inherit" className="whitespace-nowrap text-amber-400 hover:text-amber-300 font-bold" onClick={handleOpenLeaderboard}>
                         🏆 Liderlik
@@ -1531,6 +1562,47 @@ export default function Home() {
             >
                 Kapat
             </Button>
+        </DialogContent>
+      </Dialog>
+      <Dialog 
+        open={questsDialogOpen} 
+        onClose={() => setQuestsDialogOpen(false)}
+        maxWidth="sm" fullWidth
+        slotProps={{ paper: { className: "bg-slate-900 text-white rounded-[1.5rem] border border-slate-700 shadow-2xl shadow-green-500/10" } }}
+      >
+        <DialogTitle className="text-center font-black text-2xl pt-6 pb-2 text-green-400">
+            📜 Günlük Görevler
+        </DialogTitle>
+        <DialogContent className="p-6">
+            <div className="space-y-4">
+                {user?.quests?.map((quest: any) => {
+                    const isCompleted = quest.progress >= quest.target;
+                    return (
+                        <div key={quest.id} className={`p-4 rounded-xl border flex flex-col sm:flex-row gap-4 justify-between items-center ${quest.isClaimed ? 'bg-slate-800/50 border-slate-700 opacity-60' : (isCompleted ? 'bg-green-900/20 border-green-500/50' : 'bg-slate-800 border-slate-700')}`}>
+                            <div className="flex-1 w-full text-center sm:text-left">
+                                <p className={`font-bold text-lg ${isCompleted && !quest.isClaimed ? 'text-green-400' : 'text-slate-200'}`}>{quest.title}</p>
+                                <p className="text-sm text-yellow-400 font-bold mb-2">Ödül: {quest.rewardGold} Altın & {quest.rewardRep} İtibar</p>
+                                <div className="w-full h-2 bg-slate-900 rounded-full overflow-hidden border border-slate-700">
+                                    <div 
+                                        className={`h-full ${isCompleted ? 'bg-green-500' : 'bg-cyan-500'}`} 
+                                        style={{ width: `${Math.min(100, (quest.progress / quest.target) * 100)}%` }}
+                                    />
+                                </div>
+                                <p className="text-xs text-slate-400 mt-1 text-right">{Math.min(quest.progress, quest.target)} / {quest.target}</p>
+                            </div>
+                            <Button 
+                                variant="contained" 
+                                disabled={!isCompleted || quest.isClaimed}
+                                onClick={() => handleClaimQuest(quest.id)}
+                                className={`whitespace-nowrap font-bold rounded-xl ${quest.isClaimed ? 'bg-slate-700 text-slate-500' : (isCompleted ? 'bg-green-500 hover:bg-green-400 text-white shadow-lg shadow-green-500/30' : 'bg-slate-700 text-slate-400')}`}
+                            >
+                                {quest.isClaimed ? 'Alındı' : (isCompleted ? 'Ödülü Al' : 'Devam Ediyor')}
+                            </Button>
+                        </div>
+                    );
+                })}
+                {!user?.quests?.length && <p className="text-center text-slate-400 py-4">Görevler yükleniyor...</p>}
+            </div>
         </DialogContent>
       </Dialog>
 
@@ -4444,8 +4516,20 @@ class Room {
             else if (rank === 3) repReward = 10;
             
             if (user.dbId) {
-                User.findByIdAndUpdate(user.dbId, { $inc: { gold: winnerReward, reputation: repReward } })
-                    .catch(err => console.error("Reward update error:", err));
+                User.findById(user.dbId).then(userDb => {
+                    if (userDb) {
+                        userDb.gold += winnerReward;
+                        userDb.reputation += repReward;
+                        if (userDb.quests && userDb.quests.active) {
+                            userDb.quests.active.forEach(q => {
+                                if (q.type === 'win' && !q.isClaimed && q.progress < q.target) q.progress++;
+                                if (q.type === 'play' && !q.isClaimed && q.progress < q.target) q.progress++;
+                            });
+                            userDb.markModified('quests');
+                        }
+                        return userDb.save();
+                    }
+                }).catch(err => console.error("Reward update error:", err));
             }
 
             let winMsg = "";
@@ -4464,8 +4548,19 @@ class Room {
                 for (let uid of bettors) {
                     const bettorUser = this.users.find(u => u.id === uid);
                     if (bettorUser && bettorUser.dbId) {
-                        User.findByIdAndUpdate(bettorUser.dbId, { $inc: { gold: bettorReward, reputation: 5 } })
-                            .catch(err => console.error("Gold update error:", err));
+                        User.findById(bettorUser.dbId).then(userDb => {
+                            if (userDb) {
+                                userDb.gold += bettorReward;
+                                userDb.reputation += 5;
+                                if (userDb.quests && userDb.quests.active) {
+                                    userDb.quests.active.forEach(q => {
+                                        if (q.type === 'bet_win' && !q.isClaimed && q.progress < q.target) q.progress++;
+                                    });
+                                    userDb.markModified('quests');
+                                }
+                                return userDb.save();
+                            }
+                        }).catch(err => console.error("Bettor update error:", err));
                         bettorNames.push(bettorUser.name);
                     }
                 }
@@ -4603,6 +4698,19 @@ class Room {
                 break;
         }
         
+        if (user.dbId) {
+            const User = require('../models/User');
+            User.findById(user.dbId).then(userDb => {
+                if (userDb && userDb.quests && userDb.quests.active) {
+                    userDb.quests.active.forEach(q => {
+                        if (q.type === 'use_joker' && !q.isClaimed && q.progress < q.target) q.progress++;
+                    });
+                    userDb.markModified('quests');
+                    return userDb.save();
+                }
+            }).catch(err => console.error("Joker quest update error:", err));
+        }
+
         this.broadcastState();
     }
 
@@ -4732,8 +4840,18 @@ class Room {
         const User = require('../models/User');
         for (let u of this.users) {
             if (u.dbId && !this.winners.includes(u.id)) {
-                User.findByIdAndUpdate(u.dbId, { $inc: { reputation: 5 } })
-                    .catch(err => console.error("Reputation update error:", err));
+                User.findById(u.dbId).then(userDb => {
+                    if (userDb) {
+                        userDb.reputation += 5;
+                        if (userDb.quests && userDb.quests.active) {
+                            userDb.quests.active.forEach(q => {
+                                if (q.type === 'play' && !q.isClaimed && q.progress < q.target) q.progress++;
+                            });
+                            userDb.markModified('quests');
+                        }
+                        return userDb.save();
+                    }
+                }).catch(err => console.error("Reputation update error:", err));
             }
         }
         
@@ -4847,6 +4965,19 @@ const userSchema = new mongoose.Schema({
         type: Number,
         default: 0
     },
+    quests: {
+        active: [{
+            id: String,
+            type: { type: String },
+            target: Number,
+            progress: { type: Number, default: 0 },
+            rewardGold: { type: Number, default: 0 },
+            rewardRep: { type: Number, default: 0 },
+            title: String,
+            isClaimed: { type: Boolean, default: false }
+        }],
+        lastResetDate: { type: String, default: null }
+    },
     createdAt: {
         type: Date,
         default: Date.now
@@ -4900,6 +5031,30 @@ function getRankInfo(reputation) {
     }
     
     return { title, reputation, nextThreshold };
+}
+
+const QUEST_POOL = [
+    { id: "play_1", type: "play", target: 1, rewardGold: 50, rewardRep: 5, title: "Isınma Turu: 1 Oyun Oyna" },
+    { id: "play_3", type: "play", target: 3, rewardGold: 100, rewardRep: 10, title: "Günde 3 Oyun Oyna" },
+    { id: "play_5", type: "play", target: 5, rewardGold: 200, rewardRep: 15, title: "Maraton: 5 Oyun Oyna" },
+    { id: "play_10", type: "play", target: 10, rewardGold: 500, rewardRep: 30, title: "Bağımlı: 10 Oyun Oyna" },
+    
+    { id: "win_1", type: "win", target: 1, rewardGold: 150, rewardRep: 20, title: "Zihin Okuyucu: 1 Oyun Kazan" },
+    { id: "win_3", type: "win", target: 3, rewardGold: 400, rewardRep: 50, title: "Şampiyon: 3 Oyun Kazan" },
+    { id: "win_5", type: "win", target: 5, rewardGold: 800, rewardRep: 100, title: "Efsanevi: 5 Oyun Kazan" },
+    
+    { id: "buy_1", type: "buy_avatar", target: 1, rewardGold: 50, rewardRep: 30, title: "Moda İkonu: Mağazadan 1 Karakter Al" },
+    
+    { id: "bet_1", type: "bet_win", target: 1, rewardGold: 100, rewardRep: 15, title: "Kumarbaz: 1 Kere Bahis Tuttur" },
+    { id: "bet_3", type: "bet_win", target: 3, rewardGold: 350, rewardRep: 40, title: "Kahin: 3 Kere Bahis Tuttur" },
+
+    { id: "joker_1", type: "use_joker", target: 1, rewardGold: 80, rewardRep: 10, title: "Kaos: 1 Kere Joker Kullan" },
+    { id: "joker_3", type: "use_joker", target: 3, rewardGold: 250, rewardRep: 25, title: "Trol: 3 Kere Joker Kullan" }
+];
+
+function generateDailyQuests() {
+    const shuffled = [...QUEST_POOL].sort(() => 0.5 - Math.random());
+    return shuffled.slice(0, 3).map(q => ({ ...q, progress: 0, isClaimed: false }));
 }
 
 router.post("/register", async (req, res) => {
@@ -5024,7 +5179,6 @@ router.get("/me", authMiddleware, async (req, res) => {
         if (!user.unlockedAvatars.includes('Warrior')) {
             user.unlockedAvatars.push('Warrior');
             if (user.avatar.startsWith('default-')) user.avatar = 'Warrior';
-            await user.save();
         }
 
         let canClaimDaily = false;
@@ -5043,6 +5197,22 @@ router.get("/me", authMiddleware, async (req, res) => {
             }
         }
 
+        const todayStr = new Date().toDateString();
+        let questsUpdated = false;
+        
+        if (!user.quests) {
+            user.quests = {};
+        }
+
+        if (user.quests.lastResetDate !== todayStr) {
+            user.quests.active = generateDailyQuests();
+            user.quests.lastResetDate = todayStr;
+            user.markModified('quests');
+            questsUpdated = true;
+        }
+
+        if (questsUpdated || canClaimDaily) await user.save();
+
         res.json({
             id: user._id,
             username: user.username,
@@ -5050,11 +5220,13 @@ router.get("/me", authMiddleware, async (req, res) => {
             avatar: user.avatar,
             gold: user.gold,
             unlockedAvatars: user.unlockedAvatars,
-rankInfo: getRankInfo(user.reputation || 0),
+            rankInfo: getRankInfo(user.reputation || 0),
+            quests: user.quests?.active || [],
             canClaimDaily,
             loginStreak: streak
         });
     } catch (error) {
+        console.error("GET /me error:", error);
         res.status(500).json({ error: "Sunucu hatası" });
     }
 });
@@ -5130,6 +5302,36 @@ rankInfo: getRankInfo(user.reputation || 0)
     }
 });
 
+router.post("/claim-quest", authMiddleware, async (req, res) => {
+    try {
+        const { questId } = req.body;
+        const user = await User.findById(req.user.id);
+        
+        if (!user || !user.quests || !user.quests.active) return res.status(400).json({ error: "Görev bulunamadı." });
+        
+        const quest = user.quests.active.find(q => q.id === questId);
+        if (!quest) return res.status(400).json({ error: "Görev bulunamadı." });
+        if (quest.isClaimed) return res.status(400).json({ error: "Bu ödülü zaten aldın." });
+        if (quest.progress < quest.target) return res.status(400).json({ error: "Görev henüz tamamlanmadı." });
+
+        quest.isClaimed = true;
+        user.gold += quest.rewardGold;
+        user.reputation += quest.rewardRep;
+        
+        user.markModified('quests');
+        await user.save();
+
+        res.json({
+            success: true,
+            gold: user.gold,
+            rankInfo: getRankInfo(user.reputation),
+            quests: user.quests.active
+        });
+    } catch (error) {
+        res.status(500).json({ error: "Sunucu hatası" });
+    }
+});
+
 module.exports = router;
 
 
@@ -5192,6 +5394,14 @@ router.post("/buy", authMiddleware, async (req, res) => {
 
         user.gold -= avatarToBuy.price;
         user.unlockedAvatars.push(avatarId);
+        
+        if (user.quests && user.quests.active) {
+            user.quests.active.forEach(q => {
+                if (q.type === 'buy_avatar' && !q.isClaimed && q.progress < q.target) q.progress++;
+            });
+            user.markModified('quests');
+        }
+        
         await user.save();
 
         res.json({

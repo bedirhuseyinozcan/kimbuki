@@ -26,7 +26,30 @@ export default function Home() {
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
   const [forgotPasswordDialogOpen, setForgotPasswordDialogOpen] = useState(false);
   
-  const [user, setUser] = useState<{ id: string, username: string, avatar: string, gold: number, unlockedAvatars: string[], rankInfo?: { title: string, reputation: number, nextThreshold: number | null }, canClaimDaily?: boolean, loginStreak?: number } | null>(null);
+  const [user, setUser] = useState<{ id: string, username: string, avatar: string, gold: number, unlockedAvatars: string[], rankInfo?: { title: string, reputation: number, nextThreshold: number | null }, quests?: any[], canClaimDaily?: boolean, loginStreak?: number } | null>(null);
+  
+  const [questsDialogOpen, setQuestsDialogOpen] = useState(false);
+
+  const handleClaimQuest = async (questId: string) => {
+      const token = localStorage.getItem("gameToken");
+      if (!token) return;
+      try {
+          const res = await fetch(`${process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:4000"}/api/auth/claim-quest`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+              body: JSON.stringify({ questId })
+          });
+          const data = await res.json();
+          if (res.ok) {
+              toast.success("Ödül alındı! 🎉");
+              setUser(prev => prev ? { ...prev, gold: data.gold, rankInfo: data.rankInfo, quests: data.quests } : prev);
+          } else {
+              toast.error(data.error);
+          }
+      } catch (e) {
+          toast.error("Bağlantı hatası!");
+      }
+  };
   
   const [shopDialogOpen, setShopDialogOpen] = useState(false);
   const [dailyRewardDialogOpen, setDailyRewardDialogOpen] = useState(false);
@@ -59,35 +82,40 @@ export default function Home() {
       .then(data => setLiveStats(data))
       .catch(() => {});
 
-    const token = localStorage.getItem("gameToken");
-    if (token) {
-      fetch(`${process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:4000"}/api/auth/me`, {
-        headers: { "Authorization": `Bearer ${token}` }
-      })
-        .then(res => res.json())
-        .then(data => {
-          if (data.id) {
-            setUser({ 
-                id: data.id, 
-                username: data.username, 
-                avatar: data.avatar, 
-                gold: data.gold, 
-                unlockedAvatars: data.unlockedAvatars,
-                rankInfo: data.rankInfo,
-                canClaimDaily: data.canClaimDaily,
-                loginStreak: data.loginStreak
-            });
-          } else {
-            localStorage.removeItem("gameToken");
-          }
-        })
-        .catch(() => localStorage.removeItem("gameToken"));
-    }
-
     fetch(`${process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:4000"}/api/shop/items`)
       .then(res => res.json())
       .then(data => setShopItems(data))
       .catch(() => {});
+  }, []);
+
+  const fetchMe = (token: string) => {
+    fetch(`${process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:4000"}/api/auth/me`, {
+      headers: { "Authorization": `Bearer ${token}` }
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.id) {
+          setUser({ 
+              id: data.id, 
+              username: data.username, 
+              avatar: data.avatar, 
+              gold: data.gold, 
+              unlockedAvatars: data.unlockedAvatars,
+              rankInfo: data.rankInfo,
+              quests: data.quests,
+              canClaimDaily: data.canClaimDaily,
+              loginStreak: data.loginStreak
+          });
+        } else {
+          localStorage.removeItem("gameToken");
+        }
+      })
+      .catch(() => localStorage.removeItem("gameToken"));
+  };
+
+  useEffect(() => {
+    const token = localStorage.getItem("gameToken");
+    if (token) fetchMe(token);
   }, []);
 
   const handleOpenLeaderboard = () => {
@@ -142,8 +170,8 @@ export default function Home() {
       const data = await res.json();
       
       if (data.token) {
-        setUser(data.user);
         localStorage.setItem("gameToken", data.token);
+        fetchMe(data.token);
         setLoginName("");
         setLoginEmail("");
         setLoginPassword("");
@@ -298,6 +326,9 @@ export default function Home() {
                     </Button>
                     <Button color="inherit" className="whitespace-nowrap text-cyan-400 hover:text-cyan-300 font-bold" onClick={() => setShopDialogOpen(true)} startIcon={<StorefrontIcon />}>
                         Mağaza
+                    </Button>
+                    <Button color="inherit" className="whitespace-nowrap text-green-400 hover:text-green-300 font-bold" onClick={() => setQuestsDialogOpen(true)}>
+                        📜 Görevler
                     </Button>
                     <Button color="inherit" className="whitespace-nowrap text-amber-400 hover:text-amber-300 font-bold" onClick={handleOpenLeaderboard}>
                         🏆 Liderlik
@@ -943,6 +974,47 @@ export default function Home() {
             >
                 Kapat
             </Button>
+        </DialogContent>
+      </Dialog>
+      <Dialog 
+        open={questsDialogOpen} 
+        onClose={() => setQuestsDialogOpen(false)}
+        maxWidth="sm" fullWidth
+        slotProps={{ paper: { className: "bg-slate-900 text-white rounded-[1.5rem] border border-slate-700 shadow-2xl shadow-green-500/10" } }}
+      >
+        <DialogTitle className="text-center font-black text-2xl pt-6 pb-2 text-green-400">
+            📜 Günlük Görevler
+        </DialogTitle>
+        <DialogContent className="p-6">
+            <div className="space-y-4">
+                {user?.quests?.map((quest: any) => {
+                    const isCompleted = quest.progress >= quest.target;
+                    return (
+                        <div key={quest.id} className={`p-4 rounded-xl border flex flex-col sm:flex-row gap-4 justify-between items-center ${quest.isClaimed ? 'bg-slate-800/50 border-slate-700 opacity-60' : (isCompleted ? 'bg-green-900/20 border-green-500/50' : 'bg-slate-800 border-slate-700')}`}>
+                            <div className="flex-1 w-full text-center sm:text-left">
+                                <p className={`font-bold text-lg ${isCompleted && !quest.isClaimed ? 'text-green-400' : 'text-slate-200'}`}>{quest.title}</p>
+                                <p className="text-sm text-yellow-400 font-bold mb-2">Ödül: {quest.rewardGold} Altın & {quest.rewardRep} İtibar</p>
+                                <div className="w-full h-2 bg-slate-900 rounded-full overflow-hidden border border-slate-700">
+                                    <div 
+                                        className={`h-full ${isCompleted ? 'bg-green-500' : 'bg-cyan-500'}`} 
+                                        style={{ width: `${Math.min(100, (quest.progress / quest.target) * 100)}%` }}
+                                    />
+                                </div>
+                                <p className="text-xs text-slate-400 mt-1 text-right">{Math.min(quest.progress, quest.target)} / {quest.target}</p>
+                            </div>
+                            <Button 
+                                variant="contained" 
+                                disabled={!isCompleted || quest.isClaimed}
+                                onClick={() => handleClaimQuest(quest.id)}
+                                className={`whitespace-nowrap font-bold rounded-xl ${quest.isClaimed ? 'bg-slate-700 text-slate-500' : (isCompleted ? 'bg-green-500 hover:bg-green-400 text-white shadow-lg shadow-green-500/30' : 'bg-slate-700 text-slate-400')}`}
+                            >
+                                {quest.isClaimed ? 'Alındı' : (isCompleted ? 'Ödülü Al' : 'Devam Ediyor')}
+                            </Button>
+                        </div>
+                    );
+                })}
+                {!user?.quests?.length && <p className="text-center text-slate-400 py-4">Görevler yükleniyor...</p>}
+            </div>
         </DialogContent>
       </Dialog>
 
