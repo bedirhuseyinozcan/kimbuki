@@ -23,33 +23,42 @@ function FirstPersonCamera({ myId, users, radius, onHeadRotation }: any) {
     const currentLook = useRef({ yaw: 0, pitch: 0 });
     const lastTargetLook = useRef({ yaw: 0, pitch: 0 });
 
+    const lastPos = useRef({ x: 0, y: 0 });
+
     React.useEffect(() => {
-        const handleDown = (e: MouseEvent) => { 
-            if(e.button === 0 && (e.target as HTMLElement).tagName.toUpperCase() === 'CANVAS') {
+        const handleDown = (e: PointerEvent) => { 
+            if(e.isPrimary && (e.target as HTMLElement).tagName.toUpperCase() === 'CANVAS') {
                 isDragging.current = true; 
+                lastPos.current = { x: e.screenX, y: e.screenY };
             }
         };
-        const handleUp = (e: MouseEvent) => { if(e.button === 0) isDragging.current = false; };
-        const handleMove = (e: MouseEvent) => {
-            if (isDragging.current) {
+        const handleUp = (e: PointerEvent) => { if(e.isPrimary) isDragging.current = false; };
+        const handleMove = (e: PointerEvent) => {
+            if (isDragging.current && e.isPrimary) {
                 const maxYaw = Math.PI / 2.5; 
                 const maxPitch = Math.PI / 4; 
                 
-                const deltaYaw = -(e.movementX / window.innerWidth) * Math.PI * 1.5;
-                const deltaPitch = -(e.movementY / window.innerHeight) * Math.PI * 1.5;
+                const deltaX = e.screenX - lastPos.current.x;
+                const deltaY = e.screenY - lastPos.current.y;
+                lastPos.current = { x: e.screenX, y: e.screenY };
+
+                const deltaYaw = -(deltaX / window.innerWidth) * Math.PI * 1.5;
+                const deltaPitch = -(deltaY / window.innerHeight) * Math.PI * 1.5;
                 
                 lastTargetLook.current.yaw = Math.max(-maxYaw, Math.min(maxYaw, lastTargetLook.current.yaw + deltaYaw));
                 lastTargetLook.current.pitch = Math.max(-maxPitch, Math.min(maxPitch, lastTargetLook.current.pitch + deltaPitch));
             }
         };
 
-        window.addEventListener('mousedown', handleDown);
-        window.addEventListener('mouseup', handleUp);
-        window.addEventListener('mousemove', handleMove);
+        window.addEventListener('pointerdown', handleDown as EventListener);
+        window.addEventListener('pointerup', handleUp as EventListener);
+        window.addEventListener('pointercancel', handleUp as EventListener);
+        window.addEventListener('pointermove', handleMove as EventListener);
         return () => {
-            window.removeEventListener('mousedown', handleDown);
-            window.removeEventListener('mouseup', handleUp);
-            window.removeEventListener('mousemove', handleMove);
+            window.removeEventListener('pointerdown', handleDown as EventListener);
+            window.removeEventListener('pointerup', handleUp as EventListener);
+            window.removeEventListener('pointercancel', handleUp as EventListener);
+            window.removeEventListener('pointermove', handleMove as EventListener);
         }
     }, []);
 
