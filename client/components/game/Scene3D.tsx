@@ -11,7 +11,7 @@ const PLAYER_CENTER = [2, 0, -1];
 const MAP_CONFIGS: { [key: string]: { position: [number, number, number], scale: number } } = {
     "floating_island__low_poly_vr.glb": { position: [0, -1.70, 0], scale: 0.5 },
     "snow.glb": { position: [2, -0.1, -1], scale: 1.5 }, 
-    "desert.glb": { position: [2, -0.1, -1], scale: 1.5 }
+    "desert.glb": { position: [4.0, 4.5, -1], scale: 7.5 }
 };
 const PLAYER_CIRCLE_RADIUS_SMALL = 3.5;
 const PLAYER_CIRCLE_RADIUS_LARGE = 4.5;
