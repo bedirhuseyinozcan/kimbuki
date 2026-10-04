@@ -10,7 +10,7 @@ interface LobbyProps {
     code: string;
     inviteUrl: string;
     myId: string;
-    onStart: (settings: { category: string, bettingEnabled: boolean, jokersEnabled: boolean, betAmount: number, theme: "day"|"night" }) => void;
+    onStart: (settings: { category: string, bettingEnabled: boolean, jokersEnabled: boolean, betAmount: number, theme: "day"|"night", map: string }) => void;
     onCloseRoom: () => void;
     onLeaveRoom: () => void;
     onCopyLink: () => void;
@@ -25,7 +25,9 @@ export default function Lobby({
     const [category, setCategory] = useState("Karışık");
     const [bettingEnabled, setBettingEnabled] = useState(false);
     const [betAmount, setBetAmount] = useState(50);
-    const [jokersEnabled, setJokersEnabled] = useState(true); const [theme, setTheme] = useState<"day" | "night">("day");
+    const [jokersEnabled, setJokersEnabled] = useState(true); 
+    const [theme, setTheme] = useState<"day" | "night">("day");
+    const [map, setMap] = useState("floating_island__low_poly_vr.glb");
 
     return (
         <main className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center p-4 relative">
@@ -149,6 +151,20 @@ export default function Lobby({
                                         className="text-slate-200"
                                     />
                                     <div className="flex flex-col gap-2 border-t border-slate-700 pt-4">
+                                        <p className="text-sm text-slate-400 font-bold mb-1">🌍 Harita Seçimi</p>
+                                        <Select
+                                            value={map}
+                                            onChange={(e) => setMap(e.target.value)}
+                                            variant="outlined"
+                                            size="small"
+                                            fullWidth
+                                            sx={{ color: 'white', '.MuiOutlinedInput-notchedOutline': { borderColor: '#475569' }, mb: 2 }}
+                                        >
+                                            <MenuItem value="floating_island__low_poly_vr.glb">🏝️ Uçan Ada</MenuItem>
+                                            <MenuItem value="snow.glb">❄️ Karlı Zirve</MenuItem>
+                                            <MenuItem value="desert.glb">🏜️ Kurak Çöl</MenuItem>
+                                        </Select>
+
                                         <p className="text-sm text-slate-400 font-bold mb-1">🗺️ Harita Teması</p>
                                         <Select
                                             value={theme}
@@ -157,13 +173,13 @@ export default function Lobby({
                                             size="small"
                                             sx={{ color: 'white', '.MuiOutlinedInput-notchedOutline': { borderColor: '#475569' } }}
                                         >
-                                            <MenuItem value="day">☀️ Gündüz (Aydınlık Orman)</MenuItem>
-                                            <MenuItem value="night">🌙 Gece (Karanlık Orman)</MenuItem>
+                                            <MenuItem value="day">☀️ Gündüz (Aydınlık)</MenuItem>
+                                            <MenuItem value="night">🌙 Gece (Karanlık)</MenuItem>
                                         </Select>
                                     </div>
                                 </div>
                             </div>
-                            <Button variant="contained" color="secondary" size="large" fullWidth onClick={() => onStart({ category, bettingEnabled, jokersEnabled, betAmount, theme })} className="py-3 text-lg font-bold rounded-xl bg-gradient-to-r from-violet-600 to-cyan-600">
+                            <Button variant="contained" color="secondary" size="large" fullWidth onClick={() => onStart({ category, bettingEnabled, jokersEnabled, betAmount, theme, map })} className="py-3 text-lg font-bold rounded-xl bg-gradient-to-r from-violet-600 to-cyan-600">
                                 OYUNU BAŞLAT
                             </Button>
                         </div>

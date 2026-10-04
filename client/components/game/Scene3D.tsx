@@ -8,9 +8,11 @@ import { Avatar as MuiAvatar } from '@mui/material';
 import HelpIcon from '@mui/icons-material/Help';
 
 const PLAYER_CENTER = [2, 0, -1]; 
-const MAP_POSITION = [0, -1.70, 0]; 
-const MAP_SCALE = 0.5;
-
+const MAP_CONFIGS: { [key: string]: { position: [number, number, number], scale: number } } = {
+    "floating_island__low_poly_vr.glb": { position: [0, -1.70, 0], scale: 0.5 },
+    "snow.glb": { position: [2, -0.1, -1], scale: 1.5 }, 
+    "desert.glb": { position: [2, -0.1, -1], scale: 1.5 }
+};
 const PLAYER_CIRCLE_RADIUS_SMALL = 3.5;
 const PLAYER_CIRCLE_RADIUS_LARGE = 4.5;
 // -----------------------------------
@@ -236,8 +238,10 @@ function PlayerNode({ u, index, totalUsers, isCurrentTurn, isMe, isWinner, activ
 
 function MapModel({ url }: { url: string }) {
     const { scene } = useGLTF(`/maps/${url}`);
+    const config = MAP_CONFIGS[url] || { position: [0, 0, 0], scale: 1 };
+    
     return (
-        <group position={MAP_POSITION as [number, number, number]} scale={MAP_SCALE}>
+        <group position={config.position} scale={config.scale}>
             <primitive object={scene} castShadow receiveShadow />
         </group>
     );
@@ -261,7 +265,7 @@ export default function Scene3D({ gameState, myId, activeBubbles, headRotations,
                         <meshStandardMaterial color='#334155' roughness={0.7} />
                     </mesh>
                 }>
-                <MapModel url="floating_island__low_poly_vr.glb" />
+                <MapModel url={gameState?.map || "floating_island__low_poly_vr.glb"} />
             </Suspense>
 
             <group position={PLAYER_CENTER as [number, number, number]}>
