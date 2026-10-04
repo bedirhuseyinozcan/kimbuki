@@ -38,6 +38,7 @@ export type GameState = {
     betAmount?: number;
     isJokersEnabled?: boolean;
     theme?: "day" | "night";
+    map?: string;
     activeQuestion?: {
         askerId: string;
         question: string;
