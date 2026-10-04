@@ -67,8 +67,32 @@ export default function GameScene({
     const [jokerDialogOpen, setJokerDialogOpen] = useState(false);
     const [jokerTarget, setJokerTarget] = useState("");
     const [jokerWord, setJokerWord] = useState("");
-    const [isNotepadOpen, setIsNotepadOpen] = useState(true);
+    const [isNotepadOpen, setIsNotepadOpen] = useState(false);
+    const [isChatOpen, setIsChatOpen] = useState(false);
+    const [isActionsOpen, setIsActionsOpen] = useState(false);
     const [audioSettingsOpen, setAudioSettingsOpen] = useState(false);
+
+    useEffect(() => {
+        if (typeof window !== "undefined" && window.innerWidth > 768) {
+            setIsNotepadOpen(true);
+            setIsChatOpen(true);
+            setIsActionsOpen(true);
+        }
+    }, []);
+
+    const handleToggle = (panel: 'notepad' | 'chat' | 'actions') => {
+        const isMobile = typeof window !== "undefined" && window.innerWidth <= 768;
+        if (panel === 'notepad') {
+            setIsNotepadOpen(prev => !prev);
+            if (isMobile && !isNotepadOpen) { setIsChatOpen(false); setIsActionsOpen(false); }
+        } else if (panel === 'chat') {
+            setIsChatOpen(prev => !prev);
+            if (isMobile && !isChatOpen) { setIsNotepadOpen(false); setIsActionsOpen(false); }
+        } else if (panel === 'actions') {
+            setIsActionsOpen(prev => !prev);
+            if (isMobile && !isActionsOpen) { setIsNotepadOpen(false); setIsChatOpen(false); }
+        }
+    };
 
     const handleUseJokerSubmit = () => {
         onUseJoker({ targetId: jokerTarget, newWord: jokerWord });
@@ -188,37 +212,52 @@ export default function GameScene({
                 </div>
             </div>
 
-            <div className="absolute top-4 left-4 z-20 flex flex-col gap-2 pointer-events-auto">
-                <div className="flex gap-2">
-                    {gameState.category && (
-                        <Chip label={`Kategori: ${gameState.category}`} color="secondary" className="font-bold border border-slate-700 bg-slate-800/80 backdrop-blur-md" />
-                    )}
-                    {gameState.isBettingEnabled && (
-                        <Chip label={`💰 BAHİSLİ OYUN: Kazanana ${(gameState.betAmount || 50) * 2} Altın`} className="font-bold border border-yellow-500/50 bg-yellow-900/80 text-yellow-400 backdrop-blur-md" />
-                    )}
+            <div className="absolute top-4 inset-x-2 md:inset-x-4 z-20 pointer-events-none flex justify-between items-start gap-2">
+                <div className="flex flex-col gap-2 pointer-events-auto items-start shrink min-w-0">
+                    <div className="md:hidden flex items-center gap-2 bg-slate-900/80 backdrop-blur-md border border-slate-700/50 rounded-full pr-4 p-1 shadow-2xl max-w-full">
+                        <div className={`shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-lg font-black ${isMyTurn ? 'bg-green-500 text-white animate-pulse shadow-[0_0_15px_rgba(34,197,94,0.5)]' : 'bg-slate-800 text-slate-300 border-2 border-slate-600'}`}>
+                            {timeLeft}
+                        </div>
+                        <div className="flex flex-col min-w-0">
+                            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-none">Sıra Kimde</span>
+                            <span className={`text-sm font-black leading-tight truncate ${isMyTurn ? 'text-green-400' : 'text-slate-200'}`}>
+                                {isMyTurn ? "SENİN SIRAN!" : `${currentTurnUser?.name}`}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                        {gameState.category && (
+                            <Chip label={`Kategori: ${gameState.category}`} color="secondary" className="font-bold border border-slate-700 bg-slate-800/80 backdrop-blur-md max-w-full" />
+                        )}
+                        {gameState.isBettingEnabled && (
+                            <Chip label={`💰 BAHİSLİ OYUN`} className="font-bold border border-yellow-500/50 bg-yellow-900/80 text-yellow-400 backdrop-blur-md" />
+                        )}
+                    </div>
                 </div>
 
-            </div>
-
-            <div className="absolute top-4 right-4 z-20 pointer-events-auto flex gap-3 items-center">
-                <button 
-                    onClick={() => onToggleVoice(!me?.isVoiceEnabled)}
-                    className={`flex items-center justify-center p-1.5 rounded-full border backdrop-blur-md transition-colors ${me?.isVoiceEnabled ? 'border-green-500/80 bg-green-500/40 text-white hover:bg-green-500/60' : 'border-red-500/80 bg-red-500/40 text-white hover:bg-red-500/60'}`}
-                >
-                    {me?.isVoiceEnabled ? <MicIcon fontSize="small" /> : <MicOffIcon fontSize="small" />}
-                </button>
-                <button onClick={() => setAudioSettingsOpen(true)} className="flex items-center justify-center p-1.5 rounded-full border border-slate-600/80 bg-slate-700/40 text-slate-300 hover:bg-slate-600/60 backdrop-blur-md transition-colors"><SettingsIcon fontSize="small" /></button>
-                <Button variant="outlined" color="inherit" size="small" onClick={onLeaveRoom} className="border-slate-700 text-slate-400 bg-slate-800/80 backdrop-blur-md text-xs py-1 hover:bg-red-500/20 hover:text-red-400">
-                    Odadan Ayrıl
-                </Button>
-            </div>
-
-            <div className="w-full h-full flex-1 flex flex-col md:flex-row gap-6 relative z-10 mt-12 md:mt-10 px-2 md:px-6 pointer-events-none">
                 
-                <div className={`w-full md:w-1/4 max-w-[400px] self-start glass p-3 rounded-2xl flex flex-col border border-slate-700/50 pointer-events-auto shadow-2xl bg-slate-900/60 backdrop-blur-lg transition-all duration-300 h-auto max-h-[85vh] overflow-y-auto custom-scrollbar`}>
+                <div className="flex gap-1 md:gap-3 items-center pointer-events-auto shrink-0">
+                    <button 
+                        onClick={() => onToggleVoice(!me?.isVoiceEnabled)}
+                        className={`flex items-center justify-center p-1.5 rounded-full border backdrop-blur-md transition-colors ${me?.isVoiceEnabled ? 'border-green-500/80 bg-green-500/40 text-white hover:bg-green-500/60' : 'border-red-500/80 bg-red-500/40 text-white hover:bg-red-500/60'}`}
+                    >
+                        {me?.isVoiceEnabled ? <MicIcon fontSize="small" /> : <MicOffIcon fontSize="small" />}
+                    </button>
+                    <button onClick={() => setAudioSettingsOpen(true)} className="flex items-center justify-center p-1.5 rounded-full border border-slate-600/80 bg-slate-700/40 text-slate-300 hover:bg-slate-600/60 backdrop-blur-md transition-colors"><SettingsIcon fontSize="small" /></button>
+                    <Button variant="outlined" color="inherit" size="small" onClick={onLeaveRoom} className="border-slate-700 text-slate-400 bg-slate-800/80 backdrop-blur-md text-[10px] md:text-xs py-1 px-2 md:px-3 hover:bg-red-500/20 hover:text-red-400 min-w-0">
+                        <span className="hidden md:inline">Odadan Ayrıl</span>
+                        <span className="md:hidden">Ayrıl</span>
+                    </Button>
+                </div>
+            </div>
+
+            <div className="w-full h-full flex-1 relative z-10 mt-12 md:mt-10 px-2 pb-2 md:px-6 md:pb-0 pointer-events-none flex flex-col justify-end gap-2 md:flex-row md:gap-6">
+                
+                <div className="order-2 md:order-1 w-full md:w-1/4 md:max-w-[400px] md:self-start glass p-3 rounded-2xl flex flex-col border border-slate-700/50 pointer-events-auto shadow-2xl bg-slate-900/60 backdrop-blur-lg transition-all duration-300 h-auto max-h-[85vh] overflow-y-auto custom-scrollbar">
                     <h3 
                         className="font-bold text-lg flex items-center justify-between gap-2 text-yellow-400 cursor-pointer select-none hover:text-yellow-300"
-                        onClick={() => setIsNotepadOpen(!isNotepadOpen)}
+                        onClick={() => handleToggle('notepad')}
                     >
                         <span className="flex items-center gap-2">📝 Not Defterim</span>
                         <span className="text-sm bg-slate-800/80 px-2 py-1 rounded-lg">{isNotepadOpen ? '▲ Gizle' : '▼ Aç'}</span>
@@ -276,63 +315,9 @@ export default function GameScene({
                     )}
                 </div>
 
-                <div className="flex-1 flex flex-col relative justify-between">
-                    
-                    <AnimatePresence>
-                        {gameState.activeQuestion && (
-                            <motion.div 
-                                initial={{ opacity: 0, scale: 0.8, y: "-50%", x: "-50%" }}
-                                animate={{ opacity: 1, scale: 1, y: "-50%", x: "-50%" }}
-                                exit={{ opacity: 0, scale: 0.8, y: "-50%", x: "-50%" }}
-                                className="absolute top-1/2 left-1/2 z-50 glass p-6 rounded-3xl border border-slate-600 shadow-[0_0_50px_rgba(0,0,0,0.8)] text-center w-[95%] max-w-lg backdrop-blur-2xl bg-slate-900/90 pointer-events-auto"
-                            >
-                                <div className="absolute -top-4 -right-4 bg-red-500 text-white font-black rounded-full w-12 h-12 flex items-center justify-center border-4 border-slate-900 shadow-xl animate-pulse">
-                                    {questionTimeLeft}s
-                                </div>
-                                <h4 className="text-lg font-bold mb-2 text-cyan-400">
-                                    {gameState.users.find((u:User) => u.id === gameState.activeQuestion!.askerId)?.name} soruyor:
-                                </h4>
-                                <p className="text-3xl font-black mb-8 leading-tight break-words break-all">"{gameState.activeQuestion.question}"</p>
-                                
-                                {gameState.activeQuestion.askerId !== myId && me?.status === 'playing' ? (
-                                    <div className="flex justify-center gap-4">
-                                        <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-                                            <Button variant={gameState.activeQuestion.votes[myId] === 'yes' ? 'contained' : (gameState.activeQuestion.votes[myId] ? 'outlined' : 'contained')} color="success" size="medium" onClick={() => onSubmitVote("yes")} className="text-xl py-3 px-6 rounded-xl font-black">Evet 👍</Button>
-                                        </motion.div>
-                                        <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-                                            <Button variant={gameState.activeQuestion.votes[myId] === 'no' ? 'contained' : (gameState.activeQuestion.votes[myId] ? 'outlined' : 'contained')} color="error" size="medium" onClick={() => onSubmitVote("no")} className="text-xl py-3 px-6 rounded-xl font-black">Hayır 👎</Button>
-                                        </motion.div>
-                                        <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-                                            <Button variant={gameState.activeQuestion.votes[myId] === 'sometimes' ? 'contained' : (gameState.activeQuestion.votes[myId] ? 'outlined' : 'contained')} color="warning" size="medium" onClick={() => onSubmitVote("sometimes")} className="text-xl py-3 px-6 rounded-xl font-black">Bazen 🤔</Button>
-                                        </motion.div>
-                                    </div>
-                                ) : (
-                                    <p className="text-slate-400 animate-pulse text-lg mb-4">Diğer oyuncuların oylaması bekleniyor...</p>
-                                )}
-                                
-                                <div className="mt-6 pt-4 border-t border-slate-700 flex flex-wrap justify-center gap-3">
-                                    <AnimatePresence>
-                                        {Object.entries(gameState.activeQuestion.votes).map(([voterId, vote]) => (
-                                            <motion.div
-                                                key={voterId}
-                                                initial={{ opacity: 0, y: 20, scale: 0 }}
-                                                animate={{ opacity: 1, y: 0, scale: 1 }}
-                                            >
-                                                <Chip 
-                                                    label={`${gameState.users.find((u:User) => u.id === voterId)?.name}: ${vote === 'yes' ? '👍' : vote === 'no' ? '👎' : '🤔'}`} 
-                                                    color={vote === 'yes' ? "success" : vote === 'no' ? "error" : "warning"}
-                                                    variant="outlined"
-                                                    className="font-bold bg-slate-900"
-                                                />
-                                            </motion.div>
-                                        ))}
-                                    </AnimatePresence>
-                                </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
+                <div className="order-3 md:order-2 w-full md:flex-1 md:w-auto flex flex-col pointer-events-none z-20 md:justify-between">
 
-                    <div className="flex justify-between items-center bg-slate-900/70 backdrop-blur-md border border-slate-700/50 p-4 rounded-2xl relative z-10 pointer-events-auto shadow-2xl">
+                    <div className="hidden md:flex justify-between items-center bg-slate-900/80 backdrop-blur-md border border-slate-700/50 p-4 rounded-2xl relative z-10 pointer-events-auto shadow-2xl">
                         <div>
                             <p className="text-xs text-slate-400 uppercase tracking-widest">Sıra Kimde</p>
                             <p className={`text-xl font-bold ${isMyTurn ? 'text-green-400 animate-pulse' : 'text-white'}`}>
@@ -345,135 +330,147 @@ export default function GameScene({
                     </div>
 
                    
-                    <div className="flex-1" />
+                    <div className="hidden md:block flex-1" />
 
                  
-                    <div className="bg-slate-900/80 backdrop-blur-md border border-slate-700/50 rounded-2xl h-40 focus-within:h-72 transition-all duration-300 flex flex-col z-10 relative pointer-events-auto shadow-2xl">
-                        <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar pointer-events-auto">
-                            {gameState.chatHistory.map((msg: any, i: number) => (
-                                <div key={i} className={`text-sm ${msg.system ? 'text-cyan-400 text-center italic my-2' : ''}`}>
-                                    {!msg.system && <strong className="text-violet-400">{msg.name}: </strong>}
-                                    <span className={`break-words break-all ${msg.system ? 'font-bold' : 'text-slate-200'}`}>{msg.message}</span>
-                                </div>
-                            ))}
-                            <div ref={chatEndRef} />
+                    <div className="bg-slate-900/80 backdrop-blur-md border border-slate-700/50 rounded-2xl transition-all duration-300 flex flex-col z-10 relative pointer-events-auto shadow-2xl">
+                        <div 
+                            className="p-3 flex justify-between items-center cursor-pointer border-b border-slate-700/50"
+                            onClick={() => handleToggle('chat')}
+                        >
+                            <span className="font-bold text-sm text-violet-400 flex items-center gap-2">💬 Sohbet</span>
+                            <span className="text-xs bg-slate-800 px-2 py-1 rounded-lg text-slate-300">{isChatOpen ? '▼ Gizle' : '▲ Aç'}</span>
                         </div>
-                        <form onSubmit={handleChat} className="p-2 border-t border-slate-700 flex gap-2 pointer-events-auto">
-                            <TextField 
-                                fullWidth 
-                                size="small"
-                                slotProps={{ htmlInput: { maxLength: 120 } }}
-                                placeholder={me?.status === 'playing' ? "Soru sor veya cevapla..." : "İzleyici sohbeti..."}
-                                value={chatInput}
-                                onChange={e => setChatInput(e.target.value)}
-                                sx={{
-                                    input: { color: 'white' },
-                                    '& .MuiOutlinedInput-root': {
-                                        '& fieldset': { borderColor: '#475569' },
-                                        '&:hover fieldset': { borderColor: '#94a3b8' },
-                                        '&.Mui-focused fieldset': { borderColor: '#06b6d4' }
-                                    }
-                                }}
-                            />
-                            <IconButton type="submit" color="primary" className="bg-violet-600 hover:bg-violet-500 text-white rounded-lg px-4">
-                                <SendIcon />
-                            </IconButton>
-                        </form>
+
+                        <div className={`group ${isChatOpen ? 'flex flex-col' : 'hidden'}`}>
+                            <div className="h-40 group-focus-within:h-64 md:group-focus-within:h-72 transition-all duration-300 ease-in-out overflow-y-auto p-4 space-y-2 custom-scrollbar pointer-events-auto">
+                                {gameState.chatHistory.map((msg: any, i: number) => (
+                                    <div key={i} className={`text-sm ${msg.system ? 'text-cyan-400 text-center italic my-2' : ''}`}>
+                                        {!msg.system && <strong className="text-violet-400">{msg.name}: </strong>}
+                                        <span className={`break-words break-all ${msg.system ? 'font-bold' : 'text-slate-200'}`}>{msg.message}</span>
+                                    </div>
+                                ))}
+                                <div ref={chatEndRef} />
+                            </div>
+                            <form onSubmit={handleChat} className="p-2 border-t border-slate-700 flex gap-2 pointer-events-auto">
+                                <TextField 
+                                    fullWidth 
+                                    size="small"
+                                    slotProps={{ htmlInput: { maxLength: 120 } }}
+                                    placeholder={me?.status === 'playing' ? "Soru sor veya cevapla..." : "İzleyici sohbeti..."}
+                                    value={chatInput}
+                                    onChange={e => setChatInput(e.target.value)}
+                                    sx={{ input: { color: 'white' }, '& .MuiOutlinedInput-root': { '& fieldset': { borderColor: '#475569' }, '&:hover fieldset': { borderColor: '#94a3b8' }, '&.Mui-focused fieldset': { borderColor: '#06b6d4' } } }}
+                                />
+                                <IconButton type="submit" color="primary" className="bg-violet-600 hover:bg-violet-500 text-white rounded-lg px-4">
+                                    <SendIcon />
+                                </IconButton>
+                            </form>
+                        </div>
                     </div>
 
                 </div>
 
-                <div className="w-full md:w-1/4 max-w-[400px] flex flex-col gap-3">
+                <div className="order-1 md:order-3 w-full md:w-1/4 md:max-w-[400px] flex flex-col gap-3 pointer-events-auto z-40">
                     {me?.status === 'playing' && gameState.gameState === "PLAYING" && (
-                        <div className="glass p-4 rounded-2xl flex flex-col justify-center items-center gap-3 border border-slate-700/50 pointer-events-auto shadow-xl bg-slate-900/60 backdrop-blur-lg">
+                        <div className="glass rounded-2xl flex flex-col border border-slate-700/50 shadow-xl bg-slate-900/60 backdrop-blur-lg overflow-hidden transition-all duration-300">
                             
-                            {me?.hintStr && (
-                                <div className="w-full bg-slate-800/80 rounded-xl p-3 text-center border border-slate-600 mb-2 shadow-inner">
-                                    <p className="text-xs text-slate-400 uppercase font-bold mb-1">KELİMEN</p>
-                                    <p className="text-2xl font-black tracking-[0.3em] text-cyan-400 drop-shadow-md whitespace-pre-wrap">
-                                        {me.hintStr.split('').map(c => c === ' ' ? '   ' : c).join(' ')}
-                                    </p>
-                                </div>
-                            )}
+                            <div 
+                                className="p-3 md:hidden flex justify-between items-center cursor-pointer border-b border-slate-700/50 bg-slate-800/80"
+                                onClick={() => handleToggle('actions')}
+                            >
+                                <span className="font-bold text-sm text-green-400 flex items-center gap-2">⚡ Aksiyonlar</span>
+                                <span className="text-xs bg-slate-700 px-2 py-1 rounded-lg text-slate-300">{isActionsOpen ? '▼ Gizle' : '▲ Aç'}</span>
+                            </div>
 
-                            <motion.div whileHover={{ scale: isMyTurn ? 1.05 : 1 }} whileTap={{ scale: isMyTurn ? 0.95 : 1 }} className="w-full">
-                                <Button 
-                                    variant="contained" 
-                                    color="info" 
-                                    size="medium" 
-                                    fullWidth 
-                                    startIcon={<QuestionAnswerIcon />}
-                                    onClick={() => setQuestionDialogOpen(true)}
-                                    disabled={!isMyTurn || ((me?.questionsAskedThisTurn ?? 0) >= 1 && (me?.extraQuestions ?? 0) <= 0) || !!gameState.activeQuestion}
-                                    className={`py-3 rounded-xl border-2 font-bold ${isMyTurn && !gameState.activeQuestion ? 'bg-cyan-600 shadow-lg shadow-cyan-500/30' : 'opacity-50'}`}
-                                >
-                                    Soru Sor & Oylat
-                                </Button>
-                            </motion.div>
+                            <div className={`p-4 flex-col justify-center items-center gap-3 ${isActionsOpen ? 'flex' : 'hidden md:flex'}`}>
+                                {me?.hintStr && (
+                                    <div className="w-full bg-slate-800/80 rounded-xl p-3 text-center border border-slate-600 mb-2 shadow-inner">
+                                        <p className="text-xs text-slate-400 uppercase font-bold mb-1">KELİMEN</p>
+                                        <p className="text-2xl font-black tracking-[0.3em] text-cyan-400 drop-shadow-md whitespace-pre-wrap">
+                                            {me.hintStr.split('').map(c => c === ' ' ? '   ' : c).join(' ')}
+                                        </p>
+                                    </div>
+                                )}
 
-                            <div className="w-full h-px bg-slate-700 my-2"></div>
-
-                            <motion.div whileHover={{ scale: isMyTurn ? 1.05 : 1 }} whileTap={{ scale: isMyTurn ? 0.95 : 1 }} className="w-full">
-                                <Button 
-                                    variant="contained" 
-                                    color="success" 
-                                    size="medium" 
-                                    fullWidth 
-                                    onClick={() => setGuessDialogOpen(true)}
-                                    disabled={!isMyTurn}
-                                    className={`py-3 rounded-xl text-lg font-bold shadow-lg shadow-green-500/20 ${!isMyTurn ? 'opacity-50' : ''}`}
-                                >
-                                    TAHMİN ET
-                                </Button>
-                            </motion.div>
-
-                            <motion.div whileHover={{ scale: isMyTurn ? 1.05 : 1 }} whileTap={{ scale: isMyTurn ? 0.95 : 1 }} className="w-full">
-                                <Button 
-                                    variant="outlined" 
-                                    color="warning" 
-                                    size="medium" 
-                                    fullWidth 
-                                    startIcon={<SkipNextIcon />}
-                                    onClick={handleSkip}
-                                    disabled={!isMyTurn}
-                                    className={`py-3 rounded-xl border-2 ${isMyTurn ? 'hover:bg-warning-main/10' : 'opacity-50'}`}
-                                >
-                                    Turu Geç
-                                </Button>
-                            </motion.div>
-
-                            {me?.joker !== undefined && me?.joker !== null && !me?.hasUsedJoker && (
-                                <motion.div whileHover={{ scale: isMyTurn ? 1.05 : 1 }} whileTap={{ scale: isMyTurn ? 0.95 : 1 }} className="w-full mt-2">
+                                <motion.div whileHover={{ scale: isMyTurn ? 1.05 : 1 }} whileTap={{ scale: isMyTurn ? 0.95 : 1 }} className="w-full">
                                     <Button 
                                         variant="contained" 
-                                        color="secondary" 
+                                        color="info" 
                                         size="medium" 
                                         fullWidth 
-                                        onClick={() => setJokerDialogOpen(true)}
-                                        disabled={!isMyTurn}
-                                        className={`py-3 rounded-xl border-2 font-bold ${isMyTurn ? 'bg-fuchsia-600 shadow-[0_0_15px_rgba(192,38,211,0.5)]' : 'opacity-50'}`}
+                                        startIcon={<QuestionAnswerIcon />}
+                                        onClick={() => setQuestionDialogOpen(true)}
+                                        disabled={!isMyTurn || ((me?.questionsAskedThisTurn ?? 0) >= 1 && (me?.extraQuestions ?? 0) <= 0) || !!gameState.activeQuestion}
+                                        className={`py-3 rounded-xl border-2 font-bold ${isMyTurn && !gameState.activeQuestion ? 'bg-cyan-600 shadow-lg shadow-cyan-500/30' : 'opacity-50'}`}
                                     >
-                                        🃏 Joker Kullan
+                                        Soru Sor & Oylat
                                     </Button>
                                 </motion.div>
-                            )}
 
-                            {gameState.isBettingEnabled && (
-                                <motion.div whileHover={{ scale: !gameState.hasObjectionUsed ? 1.05 : 1 }} whileTap={{ scale: !gameState.hasObjectionUsed ? 0.95 : 1 }} className="w-full mt-4">
+                                <div className="w-full h-px bg-slate-700 my-2"></div>
+
+                                <motion.div whileHover={{ scale: isMyTurn ? 1.05 : 1 }} whileTap={{ scale: isMyTurn ? 0.95 : 1 }} className="w-full">
+                                    <Button 
+                                        variant="contained" 
+                                        color="success" 
+                                        size="medium" 
+                                        fullWidth 
+                                        onClick={() => setGuessDialogOpen(true)}
+                                        disabled={!isMyTurn}
+                                        className={`py-3 rounded-xl text-lg font-bold shadow-lg shadow-green-500/20 ${!isMyTurn ? 'opacity-50' : ''}`}
+                                    >
+                                        TAHMİN ET
+                                    </Button>
+                                </motion.div>
+
+                                <motion.div whileHover={{ scale: isMyTurn ? 1.05 : 1 }} whileTap={{ scale: isMyTurn ? 0.95 : 1 }} className="w-full">
                                     <Button 
                                         variant="outlined" 
-                                        color="error" 
+                                        color="warning" 
                                         size="medium" 
                                         fullWidth 
-                                        onClick={onStartObjection}
-                                        disabled={gameState.hasObjectionUsed}
-                                        className={`py-2 rounded-xl border-2 font-bold ${!gameState.hasObjectionUsed ? 'border-red-500/80 text-red-400 shadow-[0_0_15px_rgba(239,68,68,0.2)] hover:bg-red-500/20' : 'opacity-50'}`}
+                                        startIcon={<SkipNextIcon />}
+                                        onClick={handleSkip}
+                                        disabled={!isMyTurn}
+                                        className={`py-3 rounded-xl border-2 ${isMyTurn ? 'hover:bg-warning-main/10' : 'opacity-50'}`}
                                     >
-                                        🚨 ŞİKEYE İTİRAZ ET {gameState.hasObjectionUsed && '(Kullanıldı)'}
+                                        Turu Geç
                                     </Button>
                                 </motion.div>
-                            )}
 
+                                {me?.joker !== undefined && me?.joker !== null && !me?.hasUsedJoker && (
+                                    <motion.div whileHover={{ scale: isMyTurn ? 1.05 : 1 }} whileTap={{ scale: isMyTurn ? 0.95 : 1 }} className="w-full mt-2">
+                                        <Button 
+                                            variant="contained" 
+                                            color="secondary" 
+                                            size="medium" 
+                                            fullWidth 
+                                            onClick={() => setJokerDialogOpen(true)}
+                                            disabled={!isMyTurn}
+                                            className={`py-3 rounded-xl border-2 font-bold ${isMyTurn ? 'bg-fuchsia-600 shadow-[0_0_15px_rgba(192,38,211,0.5)]' : 'opacity-50'}`}
+                                        >
+                                            🃏 Joker Kullan
+                                        </Button>
+                                    </motion.div>
+                                )}
+
+                                {gameState.isBettingEnabled && (
+                                    <motion.div whileHover={{ scale: !gameState.hasObjectionUsed ? 1.05 : 1 }} whileTap={{ scale: !gameState.hasObjectionUsed ? 0.95 : 1 }} className="w-full mt-4">
+                                        <Button 
+                                            variant="outlined" 
+                                            color="error" 
+                                            size="medium" 
+                                            fullWidth 
+                                            onClick={onStartObjection}
+                                            disabled={gameState.hasObjectionUsed}
+                                            className={`py-2 rounded-xl border-2 font-bold ${!gameState.hasObjectionUsed ? 'border-red-500/80 text-red-400 shadow-[0_0_15px_rgba(239,68,68,0.2)] hover:bg-red-500/20' : 'opacity-50'}`}
+                                        >
+                                            🚨 ŞİKEYE İTİRAZ ET {gameState.hasObjectionUsed && '(Kullanıldı)'}
+                                        </Button>
+                                    </motion.div>
+                                )}
+                            </div>
                         </div>
                     )}
                 </div>
@@ -614,6 +611,60 @@ export default function GameScene({
                 </div>
             )}
         <AudioSettingsDialog open={audioSettingsOpen} onClose={() => setAudioSettingsOpen(false)} />
+        
+            <AnimatePresence>
+                {gameState.activeQuestion && (
+                    <motion.div 
+                        initial={{ opacity: 0, scale: 0.8, y: "-50%", x: "-50%" }}
+                        animate={{ opacity: 1, scale: 1, y: "-50%", x: "-50%" }}
+                        exit={{ opacity: 0, scale: 0.8, y: "-50%", x: "-50%" }}
+                        className="absolute top-1/2 left-1/2 z-[100] glass p-6 rounded-3xl border border-slate-600 shadow-[0_0_50px_rgba(0,0,0,0.8)] text-center w-[95%] max-w-lg backdrop-blur-2xl bg-slate-900/90 pointer-events-auto"
+                    >
+                        <div className="absolute -top-4 -right-4 bg-red-500 text-white font-black rounded-full w-12 h-12 flex items-center justify-center border-4 border-slate-900 shadow-xl animate-pulse">
+                            {questionTimeLeft}s
+                        </div>
+                        <h4 className="text-lg font-bold mb-2 text-cyan-400">
+                            {gameState.users.find((u:User) => u.id === gameState.activeQuestion!.askerId)?.name} soruyor:
+                        </h4>
+                        <p className="text-3xl font-black mb-8 leading-tight break-words break-all">"{gameState.activeQuestion.question}"</p>
+                        
+                        {gameState.activeQuestion.askerId !== myId && me?.status === 'playing' ? (
+                            <div className="flex justify-center gap-4">
+                                <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                                    <Button variant={gameState.activeQuestion.votes[myId] === 'yes' ? 'contained' : (gameState.activeQuestion.votes[myId] ? 'outlined' : 'contained')} color="success" size="medium" onClick={() => onSubmitVote("yes")} className="text-xl py-3 px-6 rounded-xl font-black">Evet 👍</Button>
+                                </motion.div>
+                                <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                                    <Button variant={gameState.activeQuestion.votes[myId] === 'no' ? 'contained' : (gameState.activeQuestion.votes[myId] ? 'outlined' : 'contained')} color="error" size="medium" onClick={() => onSubmitVote("no")} className="text-xl py-3 px-6 rounded-xl font-black">Hayır 👎</Button>
+                                </motion.div>
+                                <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                                    <Button variant={gameState.activeQuestion.votes[myId] === 'sometimes' ? 'contained' : (gameState.activeQuestion.votes[myId] ? 'outlined' : 'contained')} color="warning" size="medium" onClick={() => onSubmitVote("sometimes")} className="text-xl py-3 px-6 rounded-xl font-black">Bazen 🤔</Button>
+                                </motion.div>
+                            </div>
+                        ) : (
+                            <p className="text-slate-400 animate-pulse text-lg mb-4">Diğer oyuncuların oylaması bekleniyor...</p>
+                        )}
+                        
+                        <div className="mt-6 pt-4 border-t border-slate-700 flex flex-wrap justify-center gap-3">
+                            <AnimatePresence>
+                                {Object.entries(gameState.activeQuestion.votes).map(([voterId, vote]) => (
+                                    <motion.div
+                                        key={voterId}
+                                        initial={{ opacity: 0, y: 20, scale: 0 }}
+                                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                                    >
+                                        <Chip 
+                                            label={`${gameState.users.find((u:User) => u.id === voterId)?.name}: ${vote === 'yes' ? '👍' : vote === 'no' ? '👎' : '🤔'}`} 
+                                            color={vote === 'yes' ? "success" : vote === 'no' ? "error" : "warning"}
+                                            variant="outlined"
+                                            className="font-bold bg-slate-900"
+                                        />
+                                    </motion.div>
+                                ))}
+                            </AnimatePresence>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </main>
     );
 }
