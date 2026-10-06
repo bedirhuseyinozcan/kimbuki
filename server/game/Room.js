@@ -18,7 +18,7 @@ class Room {
         this.winners = []; 
     }
 
-    addUser(socketId, name, dbId, avatar, pedestal = 'default_stone', reputation = 0) {
+    addUser(socketId, name, dbId, avatar, pedestal = 'default_stone', reputation = 0, nameColor = 'text-white', title = '') {
         if (dbId) {
             const existingUser = this.users.find(u => u.dbId === dbId);
             if (existingUser) {
@@ -32,6 +32,8 @@ class Room {
                 existingUser.reputation = reputation;
                 existingUser.avatar = avatar || existingUser.avatar;
                 existingUser.pedestal = pedestal || existingUser.pedestal;
+                existingUser.nameColor = nameColor || existingUser.nameColor;
+                existingUser.title = (title !== undefined) ? title : existingUser.title;
                 
                 this.users.forEach(u => {
                     if (u.targetId === oldId) u.targetId = socketId;
@@ -56,8 +58,10 @@ class Room {
             dbId: dbId,
             name,
             isHost,
-            avatar: avatar || 'default-violet',
-            pedestal: pedestal || 'default_stone', // YENİ
+            avatar: avatar || 'Warrior',
+            pedestal: pedestal || 'default_stone',
+            nameColor: nameColor || 'text-white',
+            title: title || '',
             reputation: reputation,
             targetId: null,
             assignedWord: null,
@@ -393,6 +397,7 @@ class Room {
         this.chatHistory.push({
             userId: user.id,
             name: user.name,
+            nameColor: user.nameColor,
             message: message,
             timestamp: Date.now()
         });
@@ -812,7 +817,9 @@ class Room {
                 name: u.name,
                 isHost: u.isHost,
                 avatar: u.avatar,
-                pedestal: u.pedestal, // YENİ
+                pedestal: u.pedestal,
+                nameColor: u.nameColor,
+                title: u.title,
                 reputation: u.reputation || 0,
                 status: u.status,
                 targetId: u.targetId,

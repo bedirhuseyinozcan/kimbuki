@@ -8,6 +8,8 @@ export type User = {
     isHost: boolean;
     avatar: string;
     pedestal?: string;
+    nameColor?: string;
+    title?: string;
     reputation?: number;
     status: string;
     targetId: string | null;
@@ -56,12 +58,6 @@ export type GameState = {
 };
 
 export const AVATARS = [
-    { id: 'default-violet', color: "bg-violet-600" },
-    { id: 'default-red', color: "bg-red-500" },
-    { id: 'default-blue', color: "bg-blue-500" },
-    { id: 'default-green', color: "bg-green-500" },
-    { id: 'default-yellow', color: "bg-yellow-500" },
-    { id: 'default-pink', color: "bg-pink-500" },
     { id: 'Warrior', color: "bg-red-600", icon: <GiBroadsword />, label: "Savaşçı", model: "Warrior.gltf" },
     { id: 'Wizard', color: "bg-blue-600", icon: <GiWizardStaff />, label: "Büyücü", model: "Wizard.gltf" },
     { id: 'Rogue', color: "bg-purple-600", icon: <GiDaggers />, label: "Suikastçi", model: "Rogue.gltf" },
@@ -87,4 +83,18 @@ export const PEDESTALS = [
     { id: 'lava_ring', label: 'Lav Halkası' },
     { id: 'ice_block', label: 'Buz Kütlesi' },
     { id: 'cloud_base', label: 'Uçan Bulut' },
+];
+
+export const NAME_COLORS = [
+    { id: 'text-white', label: 'Standart Beyaz', className: 'text-white' },
+    { id: 'color_neon_pink', label: 'Neon Pembe', className: 'text-pink-400 drop-shadow-[0_0_8px_rgba(244,114,182,0.8)]' },
+    { id: 'color_electric_blue', label: 'Elektrik Mavisi', className: 'text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]' },
+    { id: 'color_gold', label: 'Saf Altın', className: 'text-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.8)]' }
+];
+
+export const TITLES = [
+    { id: '', label: 'Ünvansız' },
+    { id: 'title_rich', label: '👑 Zengin' },
+    { id: 'title_troll', label: '🤡 Trol' },
+    { id: 'title_collector', label: '💎 Koleksiyoncu' }
 ];

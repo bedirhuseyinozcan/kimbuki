@@ -10,7 +10,7 @@ router.get("/live", (req, res) => {
 
 router.get("/leaderboard", async (req, res) => {
     try {
-        const topUsers = await User.find({}, "username gold reputation avatar").sort({ reputation: -1, gold: -1 }).limit(10).lean();
+        const topUsers = await User.find({}, "username gold reputation avatar nameColor title").sort({ reputation: -1, gold: -1 }).limit(10).lean();
         res.json(topUsers);
     } catch (err) {
         res.status(500).json({ error: "Sunucu hatasi" });

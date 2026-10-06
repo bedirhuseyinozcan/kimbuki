@@ -34,7 +34,19 @@ const PREMIUM_PEDESTALS = [
     { id: 'cloud_base', price: 1000, label: 'Uçan Bulut', icon: '☁️', type: 'pedestal' }
 ];
 
-const ALL_ITEMS = [...PREMIUM_AVATARS, ...PREMIUM_PEDESTALS];
+const PREMIUM_COLORS = [
+    { id: 'color_neon_pink', price: 1000, label: 'Neon Pembe', icon: '🎀', type: 'color' },
+    { id: 'color_electric_blue', price: 1000, label: 'Elektrik Mavisi', icon: '⚡', type: 'color' },
+    { id: 'color_gold', price: 2000, label: 'Saf Altın', icon: '✨', type: 'color' }
+];
+
+const PREMIUM_TITLES = [
+    { id: 'title_rich', price: 5000, label: 'Ünvan: Zengin', icon: '👑', type: 'title' },
+    { id: 'title_troll', price: 1500, label: 'Ünvan: Trol', icon: '🤡', type: 'title' },
+    { id: 'title_collector', price: 2500, label: 'Ünvan: Koleksiyoncu', icon: '💎', type: 'title' }
+];
+
+const ALL_ITEMS = [...PREMIUM_AVATARS, ...PREMIUM_PEDESTALS, ...PREMIUM_COLORS, ...PREMIUM_TITLES];
 
 router.get("/items", (req, res) => {
     res.json(ALL_ITEMS);
@@ -52,14 +64,25 @@ router.post("/buy", authMiddleware, async (req, res) => {
         const user = await User.findById(req.user.id);
         if (!user) return res.status(404).json({ error: "Kullanıcı bulunamadı." });
 
-        const isAvatar = itemToBuy.type === 'avatar';
-        let collection = isAvatar ? user.unlockedAvatars : user.unlockedPedestals;
+        if (!user.unlockedAvatars) user.unlockedAvatars = ['Warrior'];
+        if (!user.unlockedPedestals) user.unlockedPedestals = ['default_stone'];
+        if (!user.unlockedNameColors) user.unlockedNameColors = ['text-white'];
+        if (!user.unlockedTitles) user.unlockedTitles = [];
 
-        if (!isAvatar && !collection.includes('default_stone')) {
+        let collection;
+        if (itemToBuy.type === 'avatar') collection = user.unlockedAvatars;
+        else if (itemToBuy.type === 'pedestal') collection = user.unlockedPedestals;
+        else if (itemToBuy.type === 'color') collection = user.unlockedNameColors;
+        else if (itemToBuy.type === 'title') collection = user.unlockedTitles;
+
+        if (itemToBuy.type === 'pedestal' && !collection.includes('default_stone')) {
             collection.push('default_stone');
         }
-        if (isAvatar && !collection.includes('Warrior')) {
+        if (itemToBuy.type === 'avatar' && !collection.includes('Warrior')) {
             collection.push('Warrior');
+        }
+        if (itemToBuy.type === 'color' && !collection.includes('text-white')) {
+            collection.push('text-white');
         }
 
         if (collection.includes(itemId)) {
@@ -80,13 +103,20 @@ router.post("/buy", authMiddleware, async (req, res) => {
             user.markModified('quests');
         }
         
+        user.markModified('unlockedAvatars');
+        user.markModified('unlockedPedestals');
+        user.markModified('unlockedNameColors');
+        user.markModified('unlockedTitles');
+
         await user.save();
 
         res.json({
             message: "Satın alma başarılı!",
             gold: user.gold,
             unlockedAvatars: user.unlockedAvatars,
-            unlockedPedestals: user.unlockedPedestals
+            unlockedPedestals: user.unlockedPedestals,
+            unlockedNameColors: user.unlockedNameColors,
+            unlockedTitles: user.unlockedTitles
         });
     } catch (error) {
         console.error("Shop buy error:", error);
