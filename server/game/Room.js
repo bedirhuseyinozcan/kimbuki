@@ -453,7 +453,7 @@ class Room {
                 }
                 
                 winnerReward = Math.floor(totalPot * pct);
-                bettorReward = winnerReward;
+                bettorReward = Math.max(1, Math.floor(winnerReward / 2));
             }
             
             let repReward = 5;
@@ -461,28 +461,23 @@ class Room {
             else if (rank === 2) repReward = 20;
             else if (rank === 3) repReward = 10;
             
-            if (user.dbId) {
-                User.findById(user.dbId).then(userDb => {
-                    if (userDb) {
-                        userDb.gold += winnerReward;
-                        userDb.reputation += repReward;
-                        if (userDb.quests && userDb.quests.active) {
-                            userDb.quests.active.forEach(q => {
-                                if (q.type === 'win' && !q.isClaimed && q.progress < q.target) q.progress++;
-                                if (q.type === 'play' && !q.isClaimed && q.progress < q.target) q.progress++;
-                            });
-                            userDb.markModified('quests');
-                        }
-                        return userDb.save();
-                    }
-                }).catch(err => console.error("Reward update error:", err));
-            }
+            let playerRewards = {};
+            const addReward = (dbId, gold, rep, type) => {
+                if (!dbId) return;
+                if (!playerRewards[dbId]) playerRewards[dbId] = { gold: 0, rep: 0, winCount: 0, playCount: 0, betWinCount: 0 };
+                playerRewards[dbId].gold += gold;
+                playerRewards[dbId].rep += rep;
+                if (type === 'win') { playerRewards[dbId].winCount++; playerRewards[dbId].playCount++; }
+                if (type === 'bet_win') { playerRewards[dbId].betWinCount++; }
+            };
+
+            addReward(user.dbId, winnerReward, repReward, 'win');
 
             let winMsg = "";
             if (this.isBettingEnabled) {
-                winMsg = `${user.name} doğru tahmin etti! (${rank}. oldu) ve ${winnerReward} Altın kazandı! Kelimesi: ${user.assignedWord}`;
+                winMsg = `🏆 ${user.name} doğru tahmin etti! (${rank}. oldu) -> Oyun kazancı: ${winnerReward} Altın. (Kelimesi: ${user.assignedWord})`;
             } else {
-                winMsg = `${user.name} doğru tahmin etti! (${rank}. oldu) ve ${repReward} İtibar kazandı! Kelimesi: ${user.assignedWord}`;
+                winMsg = `🏆 ${user.name} doğru tahmin etti! (${rank}. oldu) -> Oyun kazancı: ${repReward} İtibar. (Kelimesi: ${user.assignedWord})`;
             }
             this.chatHistory.push({ system: true, message: winMsg, timestamp: Date.now() });
             this.roundLogs.push(winMsg);
@@ -493,29 +488,35 @@ class Room {
                 
                 for (let uid of bettors) {
                     const bettorUser = this.users.find(u => u.id === uid);
-                    if (bettorUser && bettorUser.dbId) {
-                        User.findById(bettorUser.dbId).then(userDb => {
-                            if (userDb) {
-                                userDb.gold += bettorReward;
-                                userDb.reputation += 5;
-                                if (userDb.quests && userDb.quests.active) {
-                                    userDb.quests.active.forEach(q => {
-                                        if (q.type === 'bet_win' && !q.isClaimed && q.progress < q.target) q.progress++;
-                                    });
-                                    userDb.markModified('quests');
-                                }
-                                return userDb.save();
-                            }
-                        }).catch(err => console.error("Bettor update error:", err));
+                    if (bettorUser) {
+                        addReward(bettorUser.dbId, bettorReward, 5, 'bet_win');
                         bettorNames.push(bettorUser.name);
                     }
                 }
                 
                 if (bettorNames.length > 0) {
-                    const betMsg = `🎲 ${user.name} üzerine bahis oynayan ${bettorNames.join(', ')} ekstra ${bettorReward} Altın daha kazandı!`;
+                    const betMsg = `🎲 Bahis Kazananları (${user.name} üzerine oynayanlar): ${bettorNames.join(', ')} -> Bahis kazancı: Ekstra ${bettorReward} Altın!`;
                     this.chatHistory.push({ system: true, message: betMsg, timestamp: Date.now() });
                     this.roundLogs.push(betMsg);
                 }
+            }
+
+            for (const [dbId, rewards] of Object.entries(playerRewards)) {
+                User.findById(dbId).then(userDb => {
+                    if (userDb) {
+                        userDb.gold += rewards.gold;
+                        userDb.reputation += rewards.rep;
+                        if (userDb.quests && userDb.quests.active) {
+                            userDb.quests.active.forEach(q => {
+                                if (q.type === 'win' && !q.isClaimed && q.progress < q.target) q.progress += rewards.winCount;
+                                if (q.type === 'play' && !q.isClaimed && q.progress < q.target) q.progress += rewards.playCount;
+                                if (q.type === 'bet_win' && !q.isClaimed && q.progress < q.target) q.progress += rewards.betWinCount;
+                            });
+                            userDb.markModified('quests');
+                        }
+                        return userDb.save();
+                    }
+                }).catch(err => console.error("Aggregated reward update error:", err));
             }
 
             const playingUsers = this.users.filter(u => u.status === 'playing');
