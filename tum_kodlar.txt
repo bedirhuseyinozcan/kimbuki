@@ -608,7 +608,7 @@ import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import { InputAdornment, Avatar } from "@mui/material";
 import { toast } from 'react-toastify';
 import Logo from "@/components/Logo";
-import { AVATARS, getRankInfo } from "@/components/game/types";
+import { AVATARS, PEDESTALS, getRankInfo } from "@/components/game/types";
 
 export default function Home() {
   const [roomCode, setRoomCode] = useState("");
@@ -616,7 +616,7 @@ export default function Home() {
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
   const [forgotPasswordDialogOpen, setForgotPasswordDialogOpen] = useState(false);
   
-  const [user, setUser] = useState<{ id: string, username: string, avatar: string, gold: number, unlockedAvatars: string[], rankInfo?: { title: string, reputation: number, nextThreshold: number | null }, quests?: any[], canClaimDaily?: boolean, loginStreak?: number } | null>(null);
+  const [user, setUser] = useState<{ id: string, username: string, avatar: string, pedestal?: string, gold: number, unlockedAvatars: string[], unlockedPedestals?: string[], rankInfo?: { title: string, reputation: number, nextThreshold: number | null }, quests?: any[], canClaimDaily?: boolean, loginStreak?: number } | null>(null);
   
   const [questsDialogOpen, setQuestsDialogOpen] = useState(false);
 
@@ -654,6 +654,7 @@ export default function Home() {
   const [loginName, setLoginName] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [selectedAvatar, setSelectedAvatar] = useState("");
+  const [selectedPedestal, setSelectedPedestal] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
@@ -689,8 +690,10 @@ export default function Home() {
               id: data.id, 
               username: data.username, 
               avatar: data.avatar, 
+              pedestal: data.pedestal,
               gold: data.gold, 
               unlockedAvatars: data.unlockedAvatars,
+              unlockedPedestals: data.unlockedPedestals || ['default_stone'],
               rankInfo: data.rankInfo,
               quests: data.quests,
               canClaimDaily: data.canClaimDaily,
@@ -785,7 +788,7 @@ export default function Home() {
                   "Content-Type": "application/json",
                   "Authorization": `Bearer ${token}`
               },
-              body: JSON.stringify({ username: loginName, avatar: selectedAvatar })
+              body: JSON.stringify({ username: loginName, avatar: selectedAvatar, pedestal: selectedPedestal })
           });
           const data = await res.json();
           if (data.id) {
@@ -806,7 +809,7 @@ export default function Home() {
       setProfileDialogOpen(false);
   };
 
-  const handleBuyAvatar = async (avatarId: string) => {
+  const handleBuyItem = async (itemId: string) => {
     const token = localStorage.getItem("gameToken");
     if (!token) return toast.error("Giriş yapmanız gerekiyor.");
     
@@ -817,13 +820,13 @@ export default function Home() {
               "Content-Type": "application/json",
               "Authorization": `Bearer ${token}`
           },
-          body: JSON.stringify({ avatarId })
+          body: JSON.stringify({ itemId })
       });
       const data = await res.json();
       if (res.ok) {
           toast.success(data.message);
           if (user) {
-              setUser({ ...user, gold: data.gold, unlockedAvatars: data.unlockedAvatars });
+              setUser({ ...user, gold: data.gold, unlockedAvatars: data.unlockedAvatars, unlockedPedestals: data.unlockedPedestals });
           }
       } else {
           toast.error(data.error);
@@ -836,6 +839,7 @@ export default function Home() {
   const openProfile = () => {
       setLoginName(user?.username || "");
       setSelectedAvatar(user?.avatar || "Warrior");
+      setSelectedPedestal(user?.pedestal || "default_stone");
       setProfileDialogOpen(true);
   };
 
@@ -1372,6 +1376,26 @@ export default function Home() {
                 </div>
             </div>
 
+            <div>
+                <p className="text-slate-400 text-sm mb-3">Platformunu Seç:</p>
+                <div className="flex flex-wrap gap-3 max-h-[150px] overflow-y-auto custom-scrollbar p-1">
+                    {user?.unlockedPedestals?.map(pedId => {
+                        const ped = PEDESTALS.find(p => p.id === pedId);
+                        if (!ped) return null;
+                        return (
+                            <div 
+                                key={ped.id} 
+                                onClick={() => setSelectedPedestal(ped.id)}
+                                className={`w-auto px-4 h-12 rounded-lg cursor-pointer flex justify-center items-center transition-all bg-slate-700
+                                    ${selectedPedestal === ped.id ? 'ring-2 ring-cyan-400 scale-105 shadow-lg' : 'opacity-60 hover:opacity-100'}`}
+                            >
+                                <span className="font-bold text-sm text-white">{ped.label}</span>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+
             <Button
                 variant="contained"
                 fullWidth
@@ -1474,17 +1498,13 @@ export default function Home() {
             <p className="text-sm text-yellow-500 mt-1 font-bold">Mevcut Altının: {user?.gold || 0}</p>
         </DialogTitle>
         <DialogContent className="p-6">
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {shopItems.map((item) => {
+            <h3 className="text-xl font-bold mb-4 text-cyan-400 border-b border-slate-700 pb-2">Karakterler</h3>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
+                {shopItems.filter(i => i.type === 'avatar' || !i.type).map((item) => {
                     const isUnlocked = user?.unlockedAvatars?.includes(item.id);
-                    const avMeta = AVATARS.find(a => a.id === item.id);
                     return (
                         <div key={item.id} className="bg-slate-800/80 p-4 rounded-2xl border border-slate-700 flex flex-col items-center text-center">
-                            {avMeta?.icon ? (
-                                <span className="text-5xl mb-2 flex justify-center items-center h-[60px] w-[60px]">{avMeta.icon}</span>
-                            ) : (
-                                <span className="text-5xl mb-2 flex justify-center items-center h-[60px] w-[60px]">{item.icon}</span>
-                            )}
+                            <span className="text-5xl mb-2 flex justify-center items-center h-[60px] w-[60px]">{item.icon}</span>
                             <span className="font-bold text-slate-200">{item.label}</span>
                             <div className="mt-3 w-full">
                                 {isUnlocked ? (
@@ -1494,7 +1514,36 @@ export default function Home() {
                                 ) : (
                                     <Button 
                                         fullWidth size="small" variant="contained" color="warning"
-                                        onClick={() => handleBuyAvatar(item.id)}
+                                        onClick={() => handleBuyItem(item.id)}
+                                        className="font-bold rounded-lg shadow-lg"
+                                        startIcon={<AttachMoneyIcon fontSize="small" />}
+                                    >
+                                        {item.price}
+                                    </Button>
+                                )}
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+
+            <h3 className="text-xl font-bold mb-4 text-amber-400 border-b border-slate-700 pb-2">Zeminler (Platform)</h3>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {shopItems.filter(i => i.type === 'pedestal').map((item) => {
+                    const isUnlocked = user?.unlockedPedestals?.includes(item.id);
+                    return (
+                        <div key={item.id} className="bg-slate-800/80 p-4 rounded-2xl border border-slate-700 flex flex-col items-center text-center">
+                            <span className="text-5xl mb-2 flex justify-center items-center h-[60px] w-[60px]">{item.icon}</span>
+                            <span className="font-bold text-slate-200">{item.label}</span>
+                            <div className="mt-3 w-full">
+                                {isUnlocked ? (
+                                    <Button disabled fullWidth size="small" variant="contained" className="bg-slate-700 text-slate-400 !cursor-not-allowed rounded-lg">
+                                        Alındı
+                                    </Button>
+                                ) : (
+                                    <Button 
+                                        fullWidth size="small" variant="contained" color="warning"
+                                        onClick={() => handleBuyItem(item.id)}
                                         className="font-bold rounded-lg shadow-lg"
                                         startIcon={<AttachMoneyIcon fontSize="small" />}
                                     >
@@ -1763,7 +1812,7 @@ export default function GamePage() {
         const s = io(process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:4000");
         setSocket(s);
 
-        s.emit("room:join", { roomCode: code, name: user.username, userId: user.id, avatar: user.avatar }, (res: any) => {
+        s.emit("room:join", { roomCode: code, name: user.username, userId: user.id, avatar: user.avatar, pedestal: user.pedestal }, (res: any) => {
             if (!res.ok) {
                 toast.error("Hata: " + res.error);
                 router.push("/");
@@ -3273,7 +3322,7 @@ const PLAYER_CENTER = [2, 0, -1];
 const MAP_CONFIGS: { [key: string]: { position: [number, number, number], scale: number } } = {
     "floating_island__low_poly_vr.glb": { position: [0, -1.70, 0], scale: 0.5 },
     "snow.glb": { position: [2, -0.1, -1], scale: 1.5 }, 
-    "desert.glb": { position: [2, -0.1, -1], scale: 1.5 }
+    "desert.glb": { position: [4.0, 4.5, -1], scale: 7.5 }
 };
 const PLAYER_CIRCLE_RADIUS_SMALL = 3.5;
 const PLAYER_CIRCLE_RADIUS_LARGE = 4.5;
@@ -3425,6 +3474,56 @@ function AvatarModel({ url, isWinner, targetRot }: { url: string, isWinner: bool
     );
 }
 
+function PedestalNode({ type }: { type: string }) {
+    switch (type) {
+        case 'gold_pedestal':
+            return (
+                <mesh position={[0, 0.25, 0]} castShadow receiveShadow>
+                    <cylinderGeometry args={[0.8, 0.9, 0.5, 32]} />
+                    <meshStandardMaterial color="#fbbf24" roughness={0.3} metalness={0.8} />
+                </mesh>
+            );
+        case 'lava_ring':
+            return (
+                <group position={[0, 0.25, 0]}>
+                    {/* Siyah Yanık Zemin */}
+                    <mesh castShadow receiveShadow>
+                        <cylinderGeometry args={[0.7, 0.8, 0.4, 16]} />
+                        <meshStandardMaterial color="#1c1917" roughness={0.9} />
+                    </mesh>
+                    {/* Parlayan Lav Halkası */}
+                    <mesh position={[0, 0.2, 0]} rotation={[Math.PI / 2, 0, 0]}>
+                        <torusGeometry args={[0.65, 0.12, 16, 32]} />
+                        <meshStandardMaterial color="#ef4444" emissive="#dc2626" emissiveIntensity={2} toneMapped={false} />
+                    </mesh>
+                </group>
+            );
+        case 'ice_block':
+            return (
+                <mesh position={[0, 0.25, 0]} castShadow receiveShadow>
+                    <boxGeometry args={[1.5, 0.5, 1.5]} />
+                    <meshPhysicalMaterial color="#bae6fd" transmission={0.9} opacity={1} transparent roughness={0.1} thickness={0.5} />
+                </mesh>
+            );
+        case 'cloud_base':
+            return (
+                <group position={[0, 0.25, 0]}>
+                    <mesh position={[0, 0, 0]} castShadow receiveShadow><sphereGeometry args={[0.6, 16, 16]} /><meshStandardMaterial color="#ffffff" roughness={1} /></mesh>
+                    <mesh position={[0.4, -0.1, 0.3]} castShadow receiveShadow><sphereGeometry args={[0.5, 16, 16]} /><meshStandardMaterial color="#ffffff" roughness={1} /></mesh>
+                    <mesh position={[-0.4, -0.1, 0.3]} castShadow receiveShadow><sphereGeometry args={[0.5, 16, 16]} /><meshStandardMaterial color="#ffffff" roughness={1} /></mesh>
+                    <mesh position={[0.2, -0.1, -0.4]} castShadow receiveShadow><sphereGeometry args={[0.45, 16, 16]} /><meshStandardMaterial color="#ffffff" roughness={1} /></mesh>
+                </group>
+            );
+        default: // default_stone
+            return (
+                <mesh position={[0, 0.25, 0]} castShadow receiveShadow>
+                    <cylinderGeometry args={[0.7, 0.75, 0.5, 8]} />
+                    <meshStandardMaterial color="#475569" roughness={0.9} metalness={0.1} />
+                </mesh>
+            );
+    }
+}
+
 function PlayerNode({ u, index, totalUsers, isCurrentTurn, isMe, isWinner, activeBubble, gameState, headRotations }: any) {
     const radius = totalUsers > 4 ? PLAYER_CIRCLE_RADIUS_LARGE : PLAYER_CIRCLE_RADIUS_SMALL;
     const angleOffset = totalUsers === 3 ? (Math.PI / 2) : -(Math.PI / 2);
@@ -3441,10 +3540,8 @@ function PlayerNode({ u, index, totalUsers, isCurrentTurn, isMe, isWinner, activ
     return (
         <group ref={groupRef} position={[x, 0, z]} rotation={[0, -angle - Math.PI / 2, 0]}>
             
-            <mesh position={[0, 0.25, 0]} castShadow receiveShadow>
-                <cylinderGeometry args={[0.7, 0.75, 0.5, 8]} />
-                <meshStandardMaterial color="#475569" roughness={0.9} metalness={0.1} />
-            </mesh>
+            {/* YENİ PLATFORM ÇAĞRISI BURADA */}
+            <PedestalNode type={u.pedestal || 'default_stone'} />
 
             {!isMe && (
                 <group ref={bodyRef}>
@@ -3670,6 +3767,7 @@ export type User = {
     name: string;
     isHost: boolean;
     avatar: string;
+    pedestal?: string;
     reputation?: number;
     status: string;
     targetId: string | null;
@@ -3742,6 +3840,14 @@ export const getRankInfo = (reputation: number) => {
     else if (reputation >= 400) { title = "Gözlemci"; color = "text-slate-300"; icon = <GiEyeTarget />; }
     return { title, color, icon };
 };
+
+export const PEDESTALS = [
+    { id: 'default_stone', label: 'Taş Zemin' },
+    { id: 'gold_pedestal', label: 'Altın Kaide' },
+    { id: 'lava_ring', label: 'Lav Halkası' },
+    { id: 'ice_block', label: 'Buz Kütlesi' },
+    { id: 'cloud_base', label: 'Uçan Bulut' },
+];
 
 
 =========================
@@ -3903,8 +4009,8 @@ class GameManager {
     handleConnection(socket) {
         console.log("New client connected:", socket.id);
 
-        socket.on("room:create", ({ name, userId, avatar }, cb) => this.handleCreateRoom(socket, name, userId, avatar, cb));
-        socket.on("room:join", ({ roomCode, name, userId, avatar }, cb) => this.handleJoinRoom(socket, roomCode, name, userId, avatar, cb));
+        socket.on("room:create", ({ name, userId, avatar, pedestal }, cb) => this.handleCreateRoom(socket, name, userId, avatar, pedestal, cb));
+        socket.on("room:join", ({ roomCode, name, userId, avatar, pedestal }, cb) => this.handleJoinRoom(socket, roomCode, name, userId, avatar, pedestal, cb));
         socket.on("game:update_avatar", ({ avatarIndex }) => this.handleUpdateAvatar(socket, avatarIndex));
         socket.on("game:start", (settings = {}) => this.handleStartGame(socket, settings));
         socket.on("game:place_bet", ({ targetId }) => this.handlePlaceBet(socket, targetId));
@@ -3960,7 +4066,7 @@ class GameManager {
         }
     }
 
-    async handleCreateRoom(socket, name, userId, avatar, cb) {
+    async handleCreateRoom(socket, name, userId, avatar, pedestal, cb) {
         try {
             const code = Math.random().toString(36).slice(2, 8).toUpperCase();
             const room = new Room(code, this.io);
@@ -3975,7 +4081,7 @@ class GameManager {
                 if (userDoc) reputation = userDoc.reputation || 0;
             }
 
-            room.addUser(socket.id, name, userId, avatar, reputation);
+            room.addUser(socket.id, name, userId, avatar, pedestal, reputation);
 
             cb?.({ ok: true, roomCode: code });
         } catch (err) {
@@ -3984,7 +4090,7 @@ class GameManager {
         }
     }
 
-    async handleJoinRoom(socket, roomCode, name, userId, avatar, cb) {
+    async handleJoinRoom(socket, roomCode, name, userId, avatar, pedestal, cb) {
         try {
             const code = (roomCode || "").toUpperCase();
             let room = this.rooms.get(code);
@@ -4009,7 +4115,7 @@ class GameManager {
                 if (userDoc) reputation = userDoc.reputation || 0;
             }
 
-            room.addUser(socket.id, name, userId, avatar, reputation);
+            room.addUser(socket.id, name, userId, avatar, pedestal, reputation);
 
             cb?.({ ok: true });
         } catch (err) {
@@ -4158,7 +4264,7 @@ class Room {
         this.winners = []; 
     }
 
-    addUser(socketId, name, dbId, avatar, reputation = 0) {
+    addUser(socketId, name, dbId, avatar, pedestal = 'default_stone', reputation = 0) {
         if (dbId) {
             const existingUser = this.users.find(u => u.dbId === dbId);
             if (existingUser) {
@@ -4170,6 +4276,8 @@ class Room {
                 existingUser.id = socketId;
                 existingUser.disconnected = false;
                 existingUser.reputation = reputation;
+                existingUser.avatar = avatar || existingUser.avatar;
+                existingUser.pedestal = pedestal || existingUser.pedestal;
                 
                 this.users.forEach(u => {
                     if (u.targetId === oldId) u.targetId = socketId;
@@ -4195,6 +4303,7 @@ class Room {
             name,
             isHost,
             avatar: avatar || 'default-violet',
+            pedestal: pedestal || 'default_stone', // YENİ
             reputation: reputation,
             targetId: null,
             assignedWord: null,
@@ -4948,6 +5057,7 @@ class Room {
                 name: u.name,
                 isHost: u.isHost,
                 avatar: u.avatar,
+                pedestal: u.pedestal, // YENİ
                 reputation: u.reputation || 0,
                 status: u.status,
                 targetId: u.targetId,
@@ -5035,6 +5145,16 @@ const userSchema = new mongoose.Schema({
         type: [String],
         default: ['Warrior']
     },
+    // ---- YENİ EKLENEN KISIM ----
+    pedestal: {
+        type: String,
+        default: 'default_stone'
+    },
+    unlockedPedestals: {
+        type: [String],
+        default: ['default_stone']
+    },
+    // ----------------------------
     lastLoginDate: {
         type: Date,
         default: null
@@ -5182,8 +5302,10 @@ router.post("/register", async (req, res) => {
             email,
             password: hashedPassword,
             avatar: "default-violet",
+            pedestal: "default_stone",
             gold: 0,
-            unlockedAvatars: ["default-violet", "default-red", "default-blue", "default-green", "default-yellow", "default-pink"]
+            unlockedAvatars: ["default-violet", "default-red", "default-blue", "default-green", "default-yellow", "default-pink"],
+            unlockedPedestals: ["default_stone"]
         });
         await user.save();
 
@@ -5224,12 +5346,20 @@ router.post("/login", async (req, res) => {
             return res.status(400).json({ error: "Hatalı şifre." });
         }
 
+        let isModified = false;
         if (!user.unlockedAvatars) user.unlockedAvatars = [];
         if (!user.unlockedAvatars.includes('Warrior')) {
             user.unlockedAvatars.push('Warrior');
             if (user.avatar.startsWith('default-')) user.avatar = 'Warrior';
-            await user.save();
+            isModified = true;
         }
+        if (!user.unlockedPedestals) user.unlockedPedestals = [];
+        if (!user.unlockedPedestals.includes('default_stone')) {
+            user.unlockedPedestals.push('default_stone');
+            if (!user.pedestal) user.pedestal = 'default_stone';
+            isModified = true;
+        }
+        if (isModified) await user.save();
 
         const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: "30d" });
 
@@ -5240,9 +5370,11 @@ router.post("/login", async (req, res) => {
                 username: user.username, 
                 email: user.email, 
                 avatar: user.avatar,
+                pedestal: user.pedestal,
                 gold: user.gold,
                 unlockedAvatars: user.unlockedAvatars,
-rankInfo: getRankInfo(user.reputation || 0)
+                unlockedPedestals: user.unlockedPedestals,
+                rankInfo: getRankInfo(user.reputation || 0)
             }
         });
     } catch (error) {
@@ -5262,6 +5394,11 @@ router.get("/me", authMiddleware, async (req, res) => {
         if (!user.unlockedAvatars.includes('Warrior')) {
             user.unlockedAvatars.push('Warrior');
             if (user.avatar.startsWith('default-')) user.avatar = 'Warrior';
+        }
+        if (!user.unlockedPedestals) user.unlockedPedestals = [];
+        if (!user.unlockedPedestals.includes('default_stone')) {
+            user.unlockedPedestals.push('default_stone');
+            if (!user.pedestal) user.pedestal = 'default_stone';
         }
 
         let canClaimDaily = false;
@@ -5301,8 +5438,10 @@ router.get("/me", authMiddleware, async (req, res) => {
             username: user.username,
             email: user.email,
             avatar: user.avatar,
+            pedestal: user.pedestal,
             gold: user.gold,
             unlockedAvatars: user.unlockedAvatars,
+            unlockedPedestals: user.unlockedPedestals,
             rankInfo: getRankInfo(user.reputation || 0),
             quests: user.quests?.active || [],
             canClaimDaily,
@@ -5353,7 +5492,7 @@ router.post("/daily-reward", authMiddleware, async (req, res) => {
 
 router.put("/profile", authMiddleware, async (req, res) => {
     try {
-        const { username, avatar } = req.body;
+        const { username, avatar, pedestal } = req.body; // pedestal eklendi
         const user = await User.findById(req.user.id);
         
         if (!user) return res.status(404).json({ error: "Kullanıcı bulunamadı." });
@@ -5371,14 +5510,21 @@ router.put("/profile", authMiddleware, async (req, res) => {
             user.avatar = avatar;
         }
 
+        // YENİ EKLENEN KISIM
+        if (pedestal && user.unlockedPedestals.includes(pedestal)) {
+            user.pedestal = pedestal;
+        }
+
         await user.save();
         res.json({ 
             id: user._id, 
             username: user.username, 
             avatar: user.avatar,
+            pedestal: user.pedestal, // YENİ
             gold: user.gold,
             unlockedAvatars: user.unlockedAvatars,
-rankInfo: getRankInfo(user.reputation || 0)
+            unlockedPedestals: user.unlockedPedestals, // YENİ
+            rankInfo: getRankInfo(user.reputation || 0)
         });
     } catch (error) {
         res.status(500).json({ error: "Sunucu hatası" });
@@ -5443,40 +5589,59 @@ const authMiddleware = (req, res, next) => {
 };
 
 const PREMIUM_AVATARS = [
-    { id: 'Warrior', price: 100, label: 'Savaşçı', icon: '⚔️' },
-    { id: 'Wizard', price: 200, label: 'Büyücü', icon: '🔮' },
-    { id: 'Rogue', price: 300, label: 'Suikastçi', icon: '🗡️' },
-    { id: 'Ranger', price: 400, label: 'Okçu', icon: '🏹' },
-    { id: 'Monk', price: 500, label: 'Keşiş', icon: '🥋' },
-    { id: 'Cleric', price: 600, label: 'Şifacı', icon: '✨' }
+    { id: 'Warrior', price: 100, label: 'Savaşçı', icon: '⚔️', type: 'avatar' },
+    { id: 'Wizard', price: 200, label: 'Büyücü', icon: '🔮', type: 'avatar' },
+    { id: 'Rogue', price: 300, label: 'Suikastçi', icon: '🗡️', type: 'avatar' },
+    { id: 'Ranger', price: 400, label: 'Okçu', icon: '🏹', type: 'avatar' },
+    { id: 'Monk', price: 500, label: 'Keşiş', icon: '🥋', type: 'avatar' },
+    { id: 'Cleric', price: 600, label: 'Şifacı', icon: '✨', type: 'avatar' }
 ];
 
+const PREMIUM_PEDESTALS = [
+    { id: 'gold_pedestal', price: 500, label: 'Altın Kaide', icon: '🏆', type: 'pedestal' },
+    { id: 'lava_ring', price: 800, label: 'Lav Halkası', icon: '🌋', type: 'pedestal' },
+    { id: 'ice_block', price: 600, label: 'Buz Kütlesi', icon: '🧊', type: 'pedestal' },
+    { id: 'cloud_base', price: 1000, label: 'Uçan Bulut', icon: '☁️', type: 'pedestal' }
+];
+
+const ALL_ITEMS = [...PREMIUM_AVATARS, ...PREMIUM_PEDESTALS];
+
 router.get("/items", (req, res) => {
-    res.json(PREMIUM_AVATARS);
+    res.json(ALL_ITEMS);
 });
 
 router.post("/buy", authMiddleware, async (req, res) => {
     try {
-        const { avatarId } = req.body;
-        const avatarToBuy = PREMIUM_AVATARS.find(a => a.id === avatarId);
+        const { itemId } = req.body;
+        const itemToBuy = ALL_ITEMS.find(a => a.id === itemId);
         
-        if (!avatarToBuy) {
-            return res.status(400).json({ error: "Böyle bir karakter bulunamadı." });
+        if (!itemToBuy) {
+            return res.status(400).json({ error: "Böyle bir eşya bulunamadı." });
         }
 
         const user = await User.findById(req.user.id);
         if (!user) return res.status(404).json({ error: "Kullanıcı bulunamadı." });
 
-        if (user.unlockedAvatars.includes(avatarId)) {
-            return res.status(400).json({ error: "Bu karaktere zaten sahipsiniz." });
+        const isAvatar = itemToBuy.type === 'avatar';
+        let collection = isAvatar ? user.unlockedAvatars : user.unlockedPedestals;
+
+        if (!isAvatar && !collection.includes('default_stone')) {
+            collection.push('default_stone');
+        }
+        if (isAvatar && !collection.includes('Warrior')) {
+            collection.push('Warrior');
         }
 
-        if (user.gold < avatarToBuy.price) {
+        if (collection.includes(itemId)) {
+            return res.status(400).json({ error: "Bu eşyaya zaten sahipsiniz." });
+        }
+
+        if (user.gold < itemToBuy.price) {
             return res.status(400).json({ error: "Yeterli altınınız yok." });
         }
 
-        user.gold -= avatarToBuy.price;
-        user.unlockedAvatars.push(avatarId);
+        user.gold -= itemToBuy.price;
+        collection.push(itemId);
         
         if (user.quests && user.quests.active) {
             user.quests.active.forEach(q => {
@@ -5490,7 +5655,8 @@ router.post("/buy", authMiddleware, async (req, res) => {
         res.json({
             message: "Satın alma başarılı!",
             gold: user.gold,
-            unlockedAvatars: user.unlockedAvatars
+            unlockedAvatars: user.unlockedAvatars,
+            unlockedPedestals: user.unlockedPedestals
         });
     } catch (error) {
         console.error("Shop buy error:", error);
