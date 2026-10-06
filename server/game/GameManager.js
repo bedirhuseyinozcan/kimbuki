@@ -36,6 +36,7 @@ class GameManager {
         socket.on("game:head_rotation", (payload) => this.handleHeadRotation(socket, payload));
         socket.on("room:close", () => this.handleCloseRoom(socket));
 
+        socket.on("game:taunt", ({ type }) => this.handleTaunt(socket, type));
         socket.on("game:leave", () => this.handleLeave(socket));
         socket.on("disconnect", () => this.handleDisconnect(socket));
     }
@@ -201,6 +202,11 @@ class GameManager {
     handleHeadRotation(socket, payload) {
         const room = this.getRoomBySocket(socket);
         if (room) room.broadcastHeadRotation(socket.id, payload);
+    }
+
+    handleTaunt(socket, type) {
+        const room = this.getRoomBySocket(socket);
+        if (room) room.playTaunt(socket.id, type);
     }
 
     handleDisconnect(socket) {

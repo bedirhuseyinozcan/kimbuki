@@ -6,6 +6,7 @@ import { User, GameState, AVATARS, getRankInfo, NAME_COLORS, TITLES } from './ty
 import * as THREE from 'three';
 import { Avatar as MuiAvatar } from '@mui/material';
 import HelpIcon from '@mui/icons-material/Help';
+import { motion, AnimatePresence } from "framer-motion";
 
 const PLAYER_CENTER = [2, 0, -1]; 
 const MAP_CONFIGS: { [key: string]: { position: [number, number, number], scale: number } } = {
@@ -211,7 +212,7 @@ function PedestalNode({ type }: { type: string }) {
     }
 }
 
-function PlayerNode({ u, index, totalUsers, isCurrentTurn, isMe, isWinner, activeBubble, gameState, headRotations }: any) {
+function PlayerNode({ u, index, totalUsers, isCurrentTurn, isMe, isWinner, activeBubble, gameState, headRotations, taunt }: any) {
     const radius = totalUsers > 4 ? PLAYER_CIRCLE_RADIUS_LARGE : PLAYER_CIRCLE_RADIUS_SMALL;
     const angleOffset = totalUsers === 3 ? (Math.PI / 2) : -(Math.PI / 2);
     const angle = (index / totalUsers) * (2 * Math.PI) + angleOffset;
@@ -244,6 +245,24 @@ function PlayerNode({ u, index, totalUsers, isCurrentTurn, isMe, isWinner, activ
                         </mesh>
                     )}
                 </group>
+            )}
+            {taunt && (
+                <Html position={[0, 3.5, 0]} center zIndexRange={[95, 0]} style={{ pointerEvents: 'none' }}>
+                    <AnimatePresence>
+                        <motion.div
+                            key={taunt.id}
+                            initial={{ opacity: 1, y: 0, scale: 0.5 }}
+                            animate={{ opacity: 0, y: -80, scale: 2 }}
+                            transition={{ duration: 2, ease: "easeOut" }}
+                            className="text-5xl drop-shadow-[0_10px_10px_rgba(0,0,0,0.8)] whitespace-nowrap"
+                        >
+                            {taunt.type === 'fire' && '🔥🔥🔥'}
+                            {taunt.type === 'party' && '🎉✨🎉'}
+                            {taunt.type === 'laugh' && '😂😂😂'}
+                            {taunt.type === 'cry' && '😭😭💦'}
+                        </motion.div>
+                    </AnimatePresence>
+                </Html>
             )}
 
             {!isMe && (
@@ -297,7 +316,7 @@ function MapModel({ url }: { url: string }) {
     );
 }
 
-export default function Scene3D({ gameState, myId, activeBubbles, headRotations, onHeadRotation }: any) {
+export default function Scene3D({ gameState, myId, activeBubbles, headRotations, onHeadRotation, taunts }: any) {
     const isDay = gameState?.theme !== "night";
 
     return (
@@ -331,6 +350,7 @@ export default function Scene3D({ gameState, myId, activeBubbles, headRotations,
                         activeBubble={activeBubbles[u.id]}
                         gameState={gameState}
                         headRotations={headRotations}
+                        taunt={taunts?.[u.id]}
                     />
                 ))}
             </group>
