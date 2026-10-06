@@ -39,6 +39,8 @@ interface GameSceneProps {
     onVoteObjection: (vote: boolean) => void;
     headRotations: { [key: string]: { pitch: number, yaw: number } };
     onHeadRotation: (pitch: number, yaw: number) => void;
+    taunts: { [key: string]: { type: string, id: number } };
+    onTaunt: (type: string) => void;
 }
 
 export default function GameScene({
@@ -52,7 +54,8 @@ export default function GameScene({
     onAskQuestion, onSubmitVote,
     onUseJoker, onToggleVoice,
     onStartObjection, onVoteObjection,
-    headRotations, onHeadRotation
+    headRotations, onHeadRotation,
+    taunts, onTaunt
 }: GameSceneProps) {
     const isMyTurn = gameState.currentTurnUserId === myId;
     const currentTurnUser = gameState.users.find((u: User) => u.id === gameState.currentTurnUserId);
@@ -71,6 +74,14 @@ export default function GameScene({
     const [isChatOpen, setIsChatOpen] = useState(false);
     const [isActionsOpen, setIsActionsOpen] = useState(false);
     const [audioSettingsOpen, setAudioSettingsOpen] = useState(false);
+    const [tauntCooldown, setTauntCooldown] = useState(false);
+
+    const handleTauntClick = (type: string) => {
+        if (tauntCooldown) return;
+        onTaunt(type);
+        setTauntCooldown(true);
+        setTimeout(() => setTauntCooldown(false), 2000);
+    };
 
     useEffect(() => {
         if (typeof window !== "undefined" && window.innerWidth > 768) {
@@ -201,7 +212,43 @@ export default function GameScene({
                     activeBubbles={activeBubbles} 
                     headRotations={headRotations}
                     onHeadRotation={onHeadRotation}
+                    taunts={taunts}
                 />
+            </div>
+            
+            <div className="absolute left-2 md:left-6 top-[35%] md:top-1/2 -translate-y-1/2 z-20 flex flex-col gap-2 md:gap-4 pointer-events-auto">
+                <IconButton 
+                    onClick={() => handleTauntClick('fire')} 
+                    disabled={tauntCooldown}
+                    className={`bg-slate-800/90 backdrop-blur-md border-2 border-red-500/60 hover:bg-red-500/30 shadow-[0_0_15px_rgba(239,68,68,0.3)] p-2 md:p-3 transition-all hover:scale-110 ${tauntCooldown ? 'opacity-50' : ''}`}
+                    title="Sinirli (Alev)"
+                >
+                    <span className="text-3xl md:text-4xl drop-shadow-lg">🔥</span>
+                </IconButton>
+                <IconButton 
+                    onClick={() => handleTauntClick('party')} 
+                    disabled={tauntCooldown}
+                    className={`bg-slate-800/90 backdrop-blur-md border-2 border-blue-500/60 hover:bg-blue-500/30 shadow-[0_0_15px_rgba(59,130,246,0.3)] p-2 md:p-3 transition-all hover:scale-110 ${tauntCooldown ? 'opacity-50' : ''}`}
+                    title="Sevinç (Havai Fişek)"
+                >
+                    <span className="text-3xl md:text-4xl drop-shadow-lg">🎉</span>
+                </IconButton>
+                <IconButton 
+                    onClick={() => handleTauntClick('laugh')} 
+                    disabled={tauntCooldown}
+                    className={`bg-slate-800/90 backdrop-blur-md border-2 border-yellow-500/60 hover:bg-yellow-500/30 shadow-[0_0_15px_rgba(234,179,8,0.3)] p-2 md:p-3 transition-all hover:scale-110 ${tauntCooldown ? 'opacity-50' : ''}`}
+                    title="Gülme"
+                >
+                    <span className="text-3xl md:text-4xl drop-shadow-lg">😂</span>
+                </IconButton>
+                <IconButton 
+                    onClick={() => handleTauntClick('cry')} 
+                    disabled={tauntCooldown}
+                    className={`bg-slate-800/90 backdrop-blur-md border-2 border-cyan-500/60 hover:bg-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.3)] p-2 md:p-3 transition-all hover:scale-110 ${tauntCooldown ? 'opacity-50' : ''}`}
+                    title="Ağlama"
+                >
+                    <span className="text-3xl md:text-4xl drop-shadow-lg">😭</span>
+                </IconButton>
             </div>
             
             <div className="absolute bottom-6 right-6 z-20 pointer-events-none flex flex-col items-end">

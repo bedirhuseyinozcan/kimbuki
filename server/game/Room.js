@@ -866,6 +866,10 @@ class Room {
             yaw: payload.yaw
         });
     }
+
+    playTaunt(userId, type) {
+        this.io.to(this.code).emit("game:play_taunt", { userId, type });
+    }
 }
 
 module.exports = Room;

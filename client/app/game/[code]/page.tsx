@@ -57,6 +57,7 @@ export default function GamePage() {
     const [guessDialogOpen, setGuessDialogOpen] = useState(false);
     const [guessInput, setGuessInput] = useState("");
     const [headRotations, setHeadRotations] = useState<{ [key: string]: { pitch: number, yaw: number } }>({});
+    const [taunts, setTaunts] = useState<{[key: string]: { type: string, id: number }}>({});
 
     const myId = socket?.id || "";
     const me = gameState?.users.find((u: User) => u.id === myId);
@@ -138,6 +139,20 @@ export default function GamePage() {
             toast.error("Oda host tarafından kapatıldı!");
             if (s) s.disconnect();
             router.push("/");
+        });
+        s.on("game:play_taunt", ({ userId, type }: any) => {
+            const tauntId = Date.now();
+            setTaunts(prev => ({ ...prev, [userId]: { type, id: tauntId } }));
+            setTimeout(() => {
+                setTaunts(prev => {
+                    if (prev[userId]?.id === tauntId) {
+                        const next = { ...prev };
+                        delete next[userId];
+                        return next;
+                    }
+                    return prev;
+                });
+            }, 2500);
         });
     };
 
@@ -298,6 +313,8 @@ export default function GamePage() {
                 onVoteObjection={(vote) => socket?.emit("game:vote_objection", { vote })}
                 headRotations={headRotations}
                 onHeadRotation={(pitch, yaw) => socket?.emit("game:head_rotation", { pitch, yaw })}
+                taunts={taunts}
+                onTaunt={(type) => socket?.emit("game:taunt", { type })}
             />;
         }
         if (gameState.gameState === "ROUND_END") {

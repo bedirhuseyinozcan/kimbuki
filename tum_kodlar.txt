@@ -1364,7 +1364,7 @@ export default function Home() {
             <div>
                 <p className="text-slate-400 text-sm mb-3">Karakterini Seç (Envanter):</p>
                 <div className="flex flex-wrap gap-3 max-h-[150px] overflow-y-auto custom-scrollbar p-1">
-                    {user?.unlockedAvatars?.filter(id => !id.startsWith('default-')).map(avId => {
+                    {user?.unlockedAvatars?.map(avId => {
                         const av = AVATARS.find(a => a.id === avId);
                         if (!av) return null;
                         return (
@@ -1816,6 +1816,7 @@ export default function GamePage() {
     const [guessDialogOpen, setGuessDialogOpen] = useState(false);
     const [guessInput, setGuessInput] = useState("");
     const [headRotations, setHeadRotations] = useState<{ [key: string]: { pitch: number, yaw: number } }>({});
+    const [taunts, setTaunts] = useState<{[key: string]: { type: string, id: number }}>({});
 
     const myId = socket?.id || "";
     const me = gameState?.users.find((u: User) => u.id === myId);
@@ -1897,6 +1898,20 @@ export default function GamePage() {
             toast.error("Oda host tarafından kapatıldı!");
             if (s) s.disconnect();
             router.push("/");
+        });
+        s.on("game:play_taunt", ({ userId, type }: any) => {
+            const tauntId = Date.now();
+            setTaunts(prev => ({ ...prev, [userId]: { type, id: tauntId } }));
+            setTimeout(() => {
+                setTaunts(prev => {
+                    if (prev[userId]?.id === tauntId) {
+                        const next = { ...prev };
+                        delete next[userId];
+                        return next;
+                    }
+                    return prev;
+                });
+            }, 2500);
         });
     };
 
@@ -2057,6 +2072,8 @@ export default function GamePage() {
                 onVoteObjection={(vote) => socket?.emit("game:vote_objection", { vote })}
                 headRotations={headRotations}
                 onHeadRotation={(pitch, yaw) => socket?.emit("game:head_rotation", { pitch, yaw })}
+                taunts={taunts}
+                onTaunt={(type) => socket?.emit("game:taunt", { type })}
             />;
         }
         if (gameState.gameState === "ROUND_END") {
@@ -2536,6 +2553,8 @@ interface GameSceneProps {
     onVoteObjection: (vote: boolean) => void;
     headRotations: { [key: string]: { pitch: number, yaw: number } };
     onHeadRotation: (pitch: number, yaw: number) => void;
+    taunts: { [key: string]: { type: string, id: number } };
+    onTaunt: (type: string) => void;
 }
 
 export default function GameScene({
@@ -2549,7 +2568,8 @@ export default function GameScene({
     onAskQuestion, onSubmitVote,
     onUseJoker, onToggleVoice,
     onStartObjection, onVoteObjection,
-    headRotations, onHeadRotation
+    headRotations, onHeadRotation,
+    taunts, onTaunt
 }: GameSceneProps) {
     const isMyTurn = gameState.currentTurnUserId === myId;
     const currentTurnUser = gameState.users.find((u: User) => u.id === gameState.currentTurnUserId);
@@ -2568,6 +2588,14 @@ export default function GameScene({
     const [isChatOpen, setIsChatOpen] = useState(false);
     const [isActionsOpen, setIsActionsOpen] = useState(false);
     const [audioSettingsOpen, setAudioSettingsOpen] = useState(false);
+    const [tauntCooldown, setTauntCooldown] = useState(false);
+
+    const handleTauntClick = (type: string) => {
+        if (tauntCooldown) return;
+        onTaunt(type);
+        setTauntCooldown(true);
+        setTimeout(() => setTauntCooldown(false), 2000);
+    };
 
     useEffect(() => {
         if (typeof window !== "undefined" && window.innerWidth > 768) {
@@ -2698,7 +2726,43 @@ export default function GameScene({
                     activeBubbles={activeBubbles} 
                     headRotations={headRotations}
                     onHeadRotation={onHeadRotation}
+                    taunts={taunts}
                 />
+            </div>
+            
+            <div className="absolute left-2 md:left-6 top-[35%] md:top-1/2 -translate-y-1/2 z-20 flex flex-col gap-2 md:gap-4 pointer-events-auto">
+                <IconButton 
+                    onClick={() => handleTauntClick('fire')} 
+                    disabled={tauntCooldown}
+                    className={`bg-slate-800/90 backdrop-blur-md border-2 border-red-500/60 hover:bg-red-500/30 shadow-[0_0_15px_rgba(239,68,68,0.3)] p-2 md:p-3 transition-all hover:scale-110 ${tauntCooldown ? 'opacity-50' : ''}`}
+                    title="Sinirli (Alev)"
+                >
+                    <span className="text-3xl md:text-4xl drop-shadow-lg">🔥</span>
+                </IconButton>
+                <IconButton 
+                    onClick={() => handleTauntClick('party')} 
+                    disabled={tauntCooldown}
+                    className={`bg-slate-800/90 backdrop-blur-md border-2 border-blue-500/60 hover:bg-blue-500/30 shadow-[0_0_15px_rgba(59,130,246,0.3)] p-2 md:p-3 transition-all hover:scale-110 ${tauntCooldown ? 'opacity-50' : ''}`}
+                    title="Sevinç (Havai Fişek)"
+                >
+                    <span className="text-3xl md:text-4xl drop-shadow-lg">🎉</span>
+                </IconButton>
+                <IconButton 
+                    onClick={() => handleTauntClick('laugh')} 
+                    disabled={tauntCooldown}
+                    className={`bg-slate-800/90 backdrop-blur-md border-2 border-yellow-500/60 hover:bg-yellow-500/30 shadow-[0_0_15px_rgba(234,179,8,0.3)] p-2 md:p-3 transition-all hover:scale-110 ${tauntCooldown ? 'opacity-50' : ''}`}
+                    title="Gülme"
+                >
+                    <span className="text-3xl md:text-4xl drop-shadow-lg">😂</span>
+                </IconButton>
+                <IconButton 
+                    onClick={() => handleTauntClick('cry')} 
+                    disabled={tauntCooldown}
+                    className={`bg-slate-800/90 backdrop-blur-md border-2 border-cyan-500/60 hover:bg-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.3)] p-2 md:p-3 transition-all hover:scale-110 ${tauntCooldown ? 'opacity-50' : ''}`}
+                    title="Ağlama"
+                >
+                    <span className="text-3xl md:text-4xl drop-shadow-lg">😭</span>
+                </IconButton>
             </div>
             
             <div className="absolute bottom-6 right-6 z-20 pointer-events-none flex flex-col items-end">
@@ -3394,6 +3458,7 @@ import { User, GameState, AVATARS, getRankInfo, NAME_COLORS, TITLES } from './ty
 import * as THREE from 'three';
 import { Avatar as MuiAvatar } from '@mui/material';
 import HelpIcon from '@mui/icons-material/Help';
+import { motion, AnimatePresence } from "framer-motion";
 
 const PLAYER_CENTER = [2, 0, -1]; 
 const MAP_CONFIGS: { [key: string]: { position: [number, number, number], scale: number } } = {
@@ -3599,7 +3664,7 @@ function PedestalNode({ type }: { type: string }) {
     }
 }
 
-function PlayerNode({ u, index, totalUsers, isCurrentTurn, isMe, isWinner, activeBubble, gameState, headRotations }: any) {
+function PlayerNode({ u, index, totalUsers, isCurrentTurn, isMe, isWinner, activeBubble, gameState, headRotations, taunt }: any) {
     const radius = totalUsers > 4 ? PLAYER_CIRCLE_RADIUS_LARGE : PLAYER_CIRCLE_RADIUS_SMALL;
     const angleOffset = totalUsers === 3 ? (Math.PI / 2) : -(Math.PI / 2);
     const angle = (index / totalUsers) * (2 * Math.PI) + angleOffset;
@@ -3632,6 +3697,24 @@ function PlayerNode({ u, index, totalUsers, isCurrentTurn, isMe, isWinner, activ
                         </mesh>
                     )}
                 </group>
+            )}
+            {taunt && (
+                <Html position={[0, 3.5, 0]} center zIndexRange={[95, 0]} style={{ pointerEvents: 'none' }}>
+                    <AnimatePresence>
+                        <motion.div
+                            key={taunt.id}
+                            initial={{ opacity: 1, y: 0, scale: 0.5 }}
+                            animate={{ opacity: 0, y: -80, scale: 2 }}
+                            transition={{ duration: 2, ease: "easeOut" }}
+                            className="text-5xl drop-shadow-[0_10px_10px_rgba(0,0,0,0.8)] whitespace-nowrap"
+                        >
+                            {taunt.type === 'fire' && '🔥🔥🔥'}
+                            {taunt.type === 'party' && '🎉✨🎉'}
+                            {taunt.type === 'laugh' && '😂😂😂'}
+                            {taunt.type === 'cry' && '😭😭💦'}
+                        </motion.div>
+                    </AnimatePresence>
+                </Html>
             )}
 
             {!isMe && (
@@ -3685,7 +3768,7 @@ function MapModel({ url }: { url: string }) {
     );
 }
 
-export default function Scene3D({ gameState, myId, activeBubbles, headRotations, onHeadRotation }: any) {
+export default function Scene3D({ gameState, myId, activeBubbles, headRotations, onHeadRotation, taunts }: any) {
     const isDay = gameState?.theme !== "night";
 
     return (
@@ -3719,6 +3802,7 @@ export default function Scene3D({ gameState, myId, activeBubbles, headRotations,
                         activeBubble={activeBubbles[u.id]}
                         gameState={gameState}
                         headRotations={headRotations}
+                        taunt={taunts?.[u.id]}
                     />
                 ))}
             </group>
@@ -3897,12 +3981,6 @@ export type GameState = {
 };
 
 export const AVATARS = [
-    { id: 'default-violet', color: "bg-violet-600" },
-    { id: 'default-red', color: "bg-red-500" },
-    { id: 'default-blue', color: "bg-blue-500" },
-    { id: 'default-green', color: "bg-green-500" },
-    { id: 'default-yellow', color: "bg-yellow-500" },
-    { id: 'default-pink', color: "bg-pink-500" },
     { id: 'Warrior', color: "bg-red-600", icon: <GiBroadsword />, label: "Savaşçı", model: "Warrior.gltf" },
     { id: 'Wizard', color: "bg-blue-600", icon: <GiWizardStaff />, label: "Büyücü", model: "Wizard.gltf" },
     { id: 'Rogue', color: "bg-purple-600", icon: <GiDaggers />, label: "Suikastçi", model: "Rogue.gltf" },
@@ -4131,6 +4209,7 @@ class GameManager {
         socket.on("game:head_rotation", (payload) => this.handleHeadRotation(socket, payload));
         socket.on("room:close", () => this.handleCloseRoom(socket));
 
+        socket.on("game:taunt", ({ type }) => this.handleTaunt(socket, type));
         socket.on("game:leave", () => this.handleLeave(socket));
         socket.on("disconnect", () => this.handleDisconnect(socket));
     }
@@ -4298,6 +4377,11 @@ class GameManager {
         if (room) room.broadcastHeadRotation(socket.id, payload);
     }
 
+    handleTaunt(socket, type) {
+        const room = this.getRoomBySocket(socket);
+        if (room) room.playTaunt(socket.id, type);
+    }
+
     handleDisconnect(socket) {
         const room = this.getRoomBySocket(socket);
         if (room) {
@@ -4399,7 +4483,7 @@ class Room {
             dbId: dbId,
             name,
             isHost,
-            avatar: avatar || 'default-violet',
+            avatar: avatar || 'Warrior',
             pedestal: pedestal || 'default_stone',
             nameColor: nameColor || 'text-white',
             title: title || '',
@@ -5207,6 +5291,10 @@ class Room {
             yaw: payload.yaw
         });
     }
+
+    playTaunt(userId, type) {
+        this.io.to(this.code).emit("game:play_taunt", { userId, type });
+    }
 }
 
 module.exports = Room;
@@ -5418,10 +5506,10 @@ router.post("/register", async (req, res) => {
             username,
             email,
             password: hashedPassword,
-            avatar: "default-violet",
+            avatar: "Warrior",
             pedestal: "default_stone",
             gold: 0,
-            unlockedAvatars: ["default-violet", "default-red", "default-blue", "default-green", "default-yellow", "default-pink", "Warrior"],
+            unlockedAvatars: ["Warrior"],
             unlockedPedestals: ["default_stone"],
             unlockedNameColors: ["text-white"],
             unlockedTitles: []
@@ -5469,7 +5557,14 @@ router.post("/login", async (req, res) => {
         if (!user.unlockedAvatars) user.unlockedAvatars = [];
         if (!user.unlockedAvatars.includes('Warrior')) {
             user.unlockedAvatars.push('Warrior');
-            if (user.avatar.startsWith('default-')) user.avatar = 'Warrior';
+            isModified = true;
+        }
+        if (user.avatar && user.avatar.startsWith('default-')) {
+            user.avatar = 'Warrior';
+            isModified = true;
+        }
+        if (user.unlockedAvatars.some(a => a.startsWith('default-'))) {
+            user.unlockedAvatars = user.unlockedAvatars.filter(a => !a.startsWith('default-'));
             isModified = true;
         }
         if (!user.unlockedPedestals) user.unlockedPedestals = [];
@@ -5528,7 +5623,14 @@ router.get("/me", authMiddleware, async (req, res) => {
         if (!user.unlockedAvatars) user.unlockedAvatars = [];
         if (!user.unlockedAvatars.includes('Warrior')) {
             user.unlockedAvatars.push('Warrior');
-            if (user.avatar && user.avatar.startsWith('default-')) user.avatar = 'Warrior';
+            arraysUpdated = true;
+        }
+        if (user.avatar && user.avatar.startsWith('default-')) {
+            user.avatar = 'Warrior';
+            arraysUpdated = true;
+        }
+        if (user.unlockedAvatars.some(a => a.startsWith('default-'))) {
+            user.unlockedAvatars = user.unlockedAvatars.filter(a => !a.startsWith('default-'));
             arraysUpdated = true;
         }
         if (!user.unlockedPedestals) user.unlockedPedestals = [];
