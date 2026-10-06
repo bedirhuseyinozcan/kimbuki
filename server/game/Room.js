@@ -18,7 +18,7 @@ class Room {
         this.winners = []; 
     }
 
-    addUser(socketId, name, dbId, avatar, reputation = 0) {
+    addUser(socketId, name, dbId, avatar, pedestal = 'default_stone', reputation = 0) {
         if (dbId) {
             const existingUser = this.users.find(u => u.dbId === dbId);
             if (existingUser) {
@@ -30,6 +30,8 @@ class Room {
                 existingUser.id = socketId;
                 existingUser.disconnected = false;
                 existingUser.reputation = reputation;
+                existingUser.avatar = avatar || existingUser.avatar;
+                existingUser.pedestal = pedestal || existingUser.pedestal;
                 
                 this.users.forEach(u => {
                     if (u.targetId === oldId) u.targetId = socketId;
@@ -55,6 +57,7 @@ class Room {
             name,
             isHost,
             avatar: avatar || 'default-violet',
+            pedestal: pedestal || 'default_stone', // YENİ
             reputation: reputation,
             targetId: null,
             assignedWord: null,
@@ -808,6 +811,7 @@ class Room {
                 name: u.name,
                 isHost: u.isHost,
                 avatar: u.avatar,
+                pedestal: u.pedestal, // YENİ
                 reputation: u.reputation || 0,
                 status: u.status,
                 targetId: u.targetId,

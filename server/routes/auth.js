@@ -106,8 +106,10 @@ router.post("/register", async (req, res) => {
             email,
             password: hashedPassword,
             avatar: "default-violet",
+            pedestal: "default_stone",
             gold: 0,
-            unlockedAvatars: ["default-violet", "default-red", "default-blue", "default-green", "default-yellow", "default-pink"]
+            unlockedAvatars: ["default-violet", "default-red", "default-blue", "default-green", "default-yellow", "default-pink"],
+            unlockedPedestals: ["default_stone"]
         });
         await user.save();
 
@@ -148,12 +150,20 @@ router.post("/login", async (req, res) => {
             return res.status(400).json({ error: "Hatalı şifre." });
         }
 
+        let isModified = false;
         if (!user.unlockedAvatars) user.unlockedAvatars = [];
         if (!user.unlockedAvatars.includes('Warrior')) {
             user.unlockedAvatars.push('Warrior');
             if (user.avatar.startsWith('default-')) user.avatar = 'Warrior';
-            await user.save();
+            isModified = true;
         }
+        if (!user.unlockedPedestals) user.unlockedPedestals = [];
+        if (!user.unlockedPedestals.includes('default_stone')) {
+            user.unlockedPedestals.push('default_stone');
+            if (!user.pedestal) user.pedestal = 'default_stone';
+            isModified = true;
+        }
+        if (isModified) await user.save();
 
         const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: "30d" });
 
@@ -164,9 +174,11 @@ router.post("/login", async (req, res) => {
                 username: user.username, 
                 email: user.email, 
                 avatar: user.avatar,
+                pedestal: user.pedestal,
                 gold: user.gold,
                 unlockedAvatars: user.unlockedAvatars,
-rankInfo: getRankInfo(user.reputation || 0)
+                unlockedPedestals: user.unlockedPedestals,
+                rankInfo: getRankInfo(user.reputation || 0)
             }
         });
     } catch (error) {
@@ -186,6 +198,11 @@ router.get("/me", authMiddleware, async (req, res) => {
         if (!user.unlockedAvatars.includes('Warrior')) {
             user.unlockedAvatars.push('Warrior');
             if (user.avatar.startsWith('default-')) user.avatar = 'Warrior';
+        }
+        if (!user.unlockedPedestals) user.unlockedPedestals = [];
+        if (!user.unlockedPedestals.includes('default_stone')) {
+            user.unlockedPedestals.push('default_stone');
+            if (!user.pedestal) user.pedestal = 'default_stone';
         }
 
         let canClaimDaily = false;
@@ -225,8 +242,10 @@ router.get("/me", authMiddleware, async (req, res) => {
             username: user.username,
             email: user.email,
             avatar: user.avatar,
+            pedestal: user.pedestal,
             gold: user.gold,
             unlockedAvatars: user.unlockedAvatars,
+            unlockedPedestals: user.unlockedPedestals,
             rankInfo: getRankInfo(user.reputation || 0),
             quests: user.quests?.active || [],
             canClaimDaily,
@@ -277,7 +296,7 @@ router.post("/daily-reward", authMiddleware, async (req, res) => {
 
 router.put("/profile", authMiddleware, async (req, res) => {
     try {
-        const { username, avatar } = req.body;
+        const { username, avatar, pedestal } = req.body;
         const user = await User.findById(req.user.id);
         
         if (!user) return res.status(404).json({ error: "Kullanıcı bulunamadı." });
@@ -295,14 +314,20 @@ router.put("/profile", authMiddleware, async (req, res) => {
             user.avatar = avatar;
         }
 
+        if (pedestal && user.unlockedPedestals.includes(pedestal)) {
+            user.pedestal = pedestal;
+        }
+
         await user.save();
         res.json({ 
             id: user._id, 
             username: user.username, 
             avatar: user.avatar,
+            pedestal: user.pedestal,
             gold: user.gold,
             unlockedAvatars: user.unlockedAvatars,
-rankInfo: getRankInfo(user.reputation || 0)
+            unlockedPedestals: user.unlockedPedestals,
+            rankInfo: getRankInfo(user.reputation || 0)
         });
     } catch (error) {
         res.status(500).json({ error: "Sunucu hatası" });

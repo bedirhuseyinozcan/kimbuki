@@ -9,8 +9,8 @@ class GameManager {
     handleConnection(socket) {
         console.log("New client connected:", socket.id);
 
-        socket.on("room:create", ({ name, userId, avatar }, cb) => this.handleCreateRoom(socket, name, userId, avatar, cb));
-        socket.on("room:join", ({ roomCode, name, userId, avatar }, cb) => this.handleJoinRoom(socket, roomCode, name, userId, avatar, cb));
+        socket.on("room:create", ({ name, userId, avatar, pedestal }, cb) => this.handleCreateRoom(socket, name, userId, avatar, pedestal, cb));
+        socket.on("room:join", ({ roomCode, name, userId, avatar, pedestal }, cb) => this.handleJoinRoom(socket, roomCode, name, userId, avatar, pedestal, cb));
         socket.on("game:update_avatar", ({ avatarIndex }) => this.handleUpdateAvatar(socket, avatarIndex));
         socket.on("game:start", (settings = {}) => this.handleStartGame(socket, settings));
         socket.on("game:place_bet", ({ targetId }) => this.handlePlaceBet(socket, targetId));
@@ -66,7 +66,7 @@ class GameManager {
         }
     }
 
-    async handleCreateRoom(socket, name, userId, avatar, cb) {
+    async handleCreateRoom(socket, name, userId, avatar, pedestal, cb) {
         try {
             const code = Math.random().toString(36).slice(2, 8).toUpperCase();
             const room = new Room(code, this.io);
@@ -81,7 +81,7 @@ class GameManager {
                 if (userDoc) reputation = userDoc.reputation || 0;
             }
 
-            room.addUser(socket.id, name, userId, avatar, reputation);
+            room.addUser(socket.id, name, userId, avatar, pedestal, reputation);
 
             cb?.({ ok: true, roomCode: code });
         } catch (err) {
@@ -90,7 +90,7 @@ class GameManager {
         }
     }
 
-    async handleJoinRoom(socket, roomCode, name, userId, avatar, cb) {
+    async handleJoinRoom(socket, roomCode, name, userId, avatar, pedestal, cb) {
         try {
             const code = (roomCode || "").toUpperCase();
             let room = this.rooms.get(code);
@@ -115,7 +115,7 @@ class GameManager {
                 if (userDoc) reputation = userDoc.reputation || 0;
             }
 
-            room.addUser(socket.id, name, userId, avatar, reputation);
+            room.addUser(socket.id, name, userId, avatar, pedestal, reputation);
 
             cb?.({ ok: true });
         } catch (err) {

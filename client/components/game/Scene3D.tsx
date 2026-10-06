@@ -163,6 +163,54 @@ function AvatarModel({ url, isWinner, targetRot }: { url: string, isWinner: bool
     );
 }
 
+function PedestalNode({ type }: { type: string }) {
+    switch (type) {
+        case 'gold_pedestal':
+            return (
+                <mesh position={[0, 0.25, 0]} castShadow receiveShadow>
+                    <cylinderGeometry args={[0.8, 0.9, 0.5, 32]} />
+                    <meshStandardMaterial color="#fbbf24" roughness={0.3} metalness={0.8} />
+                </mesh>
+            );
+        case 'lava_ring':
+            return (
+                <group position={[0, 0.25, 0]}>
+                    <mesh castShadow receiveShadow>
+                        <cylinderGeometry args={[0.7, 0.8, 0.4, 16]} />
+                        <meshStandardMaterial color="#1c1917" roughness={0.9} />
+                    </mesh>
+                    <mesh position={[0, 0.2, 0]} rotation={[Math.PI / 2, 0, 0]}>
+                        <torusGeometry args={[0.65, 0.12, 16, 32]} />
+                        <meshStandardMaterial color="#ef4444" emissive="#dc2626" emissiveIntensity={2} toneMapped={false} />
+                    </mesh>
+                </group>
+            );
+        case 'ice_block':
+            return (
+                <mesh position={[0, 0.25, 0]} castShadow receiveShadow>
+                    <boxGeometry args={[1.5, 0.5, 1.5]} />
+                    <meshPhysicalMaterial color="#bae6fd" transmission={0.9} opacity={1} transparent roughness={0.1} thickness={0.5} />
+                </mesh>
+            );
+        case 'cloud_base':
+            return (
+                <group position={[0, 0.25, 0]}>
+                    <mesh position={[0, 0, 0]} castShadow receiveShadow><sphereGeometry args={[0.6, 16, 16]} /><meshStandardMaterial color="#ffffff" roughness={1} /></mesh>
+                    <mesh position={[0.4, -0.1, 0.3]} castShadow receiveShadow><sphereGeometry args={[0.5, 16, 16]} /><meshStandardMaterial color="#ffffff" roughness={1} /></mesh>
+                    <mesh position={[-0.4, -0.1, 0.3]} castShadow receiveShadow><sphereGeometry args={[0.5, 16, 16]} /><meshStandardMaterial color="#ffffff" roughness={1} /></mesh>
+                    <mesh position={[0.2, -0.1, -0.4]} castShadow receiveShadow><sphereGeometry args={[0.45, 16, 16]} /><meshStandardMaterial color="#ffffff" roughness={1} /></mesh>
+                </group>
+            );
+        default:
+            return (
+                <mesh position={[0, 0.25, 0]} castShadow receiveShadow>
+                    <cylinderGeometry args={[0.7, 0.75, 0.5, 8]} />
+                    <meshStandardMaterial color="#475569" roughness={0.9} metalness={0.1} />
+                </mesh>
+            );
+    }
+}
+
 function PlayerNode({ u, index, totalUsers, isCurrentTurn, isMe, isWinner, activeBubble, gameState, headRotations }: any) {
     const radius = totalUsers > 4 ? PLAYER_CIRCLE_RADIUS_LARGE : PLAYER_CIRCLE_RADIUS_SMALL;
     const angleOffset = totalUsers === 3 ? (Math.PI / 2) : -(Math.PI / 2);
@@ -179,10 +227,7 @@ function PlayerNode({ u, index, totalUsers, isCurrentTurn, isMe, isWinner, activ
     return (
         <group ref={groupRef} position={[x, 0, z]} rotation={[0, -angle - Math.PI / 2, 0]}>
             
-            <mesh position={[0, 0.25, 0]} castShadow receiveShadow>
-                <cylinderGeometry args={[0.7, 0.75, 0.5, 8]} />
-                <meshStandardMaterial color="#475569" roughness={0.9} metalness={0.1} />
-            </mesh>
+            <PedestalNode type={u.pedestal || 'default_stone'} />
 
             {!isMe && (
                 <group ref={bodyRef}>

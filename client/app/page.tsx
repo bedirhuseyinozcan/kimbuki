@@ -18,7 +18,7 @@ import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import { InputAdornment, Avatar } from "@mui/material";
 import { toast } from 'react-toastify';
 import Logo from "@/components/Logo";
-import { AVATARS, getRankInfo } from "@/components/game/types";
+import { AVATARS, PEDESTALS, getRankInfo } from "@/components/game/types";
 
 export default function Home() {
   const [roomCode, setRoomCode] = useState("");
@@ -26,7 +26,7 @@ export default function Home() {
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
   const [forgotPasswordDialogOpen, setForgotPasswordDialogOpen] = useState(false);
   
-  const [user, setUser] = useState<{ id: string, username: string, avatar: string, gold: number, unlockedAvatars: string[], rankInfo?: { title: string, reputation: number, nextThreshold: number | null }, quests?: any[], canClaimDaily?: boolean, loginStreak?: number } | null>(null);
+  const [user, setUser] = useState<{ id: string, username: string, avatar: string, pedestal?: string, gold: number, unlockedAvatars: string[], unlockedPedestals?: string[], rankInfo?: { title: string, reputation: number, nextThreshold: number | null }, quests?: any[], canClaimDaily?: boolean, loginStreak?: number } | null>(null);
   
   const [questsDialogOpen, setQuestsDialogOpen] = useState(false);
 
@@ -64,6 +64,7 @@ export default function Home() {
   const [loginName, setLoginName] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [selectedAvatar, setSelectedAvatar] = useState("");
+  const [selectedPedestal, setSelectedPedestal] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
@@ -99,8 +100,10 @@ export default function Home() {
               id: data.id, 
               username: data.username, 
               avatar: data.avatar, 
+              pedestal: data.pedestal,
               gold: data.gold, 
               unlockedAvatars: data.unlockedAvatars,
+              unlockedPedestals: data.unlockedPedestals || ['default_stone'],
               rankInfo: data.rankInfo,
               quests: data.quests,
               canClaimDaily: data.canClaimDaily,
@@ -195,7 +198,7 @@ export default function Home() {
                   "Content-Type": "application/json",
                   "Authorization": `Bearer ${token}`
               },
-              body: JSON.stringify({ username: loginName, avatar: selectedAvatar })
+              body: JSON.stringify({ username: loginName, avatar: selectedAvatar, pedestal: selectedPedestal })
           });
           const data = await res.json();
           if (data.id) {
@@ -216,7 +219,7 @@ export default function Home() {
       setProfileDialogOpen(false);
   };
 
-  const handleBuyAvatar = async (avatarId: string) => {
+  const handleBuyItem = async (itemId: string) => {
     const token = localStorage.getItem("gameToken");
     if (!token) return toast.error("Giriş yapmanız gerekiyor.");
     
@@ -227,13 +230,13 @@ export default function Home() {
               "Content-Type": "application/json",
               "Authorization": `Bearer ${token}`
           },
-          body: JSON.stringify({ avatarId })
+          body: JSON.stringify({ itemId })
       });
       const data = await res.json();
       if (res.ok) {
           toast.success(data.message);
           if (user) {
-              setUser({ ...user, gold: data.gold, unlockedAvatars: data.unlockedAvatars });
+              setUser({ ...user, gold: data.gold, unlockedAvatars: data.unlockedAvatars, unlockedPedestals: data.unlockedPedestals });
           }
       } else {
           toast.error(data.error);
@@ -246,6 +249,7 @@ export default function Home() {
   const openProfile = () => {
       setLoginName(user?.username || "");
       setSelectedAvatar(user?.avatar || "Warrior");
+      setSelectedPedestal(user?.pedestal || "default_stone");
       setProfileDialogOpen(true);
   };
 
@@ -782,6 +786,26 @@ export default function Home() {
                 </div>
             </div>
 
+            <div>
+                <p className="text-slate-400 text-sm mb-3">Platformunu Seç:</p>
+                <div className="flex flex-wrap gap-3 max-h-[150px] overflow-y-auto custom-scrollbar p-1">
+                    {user?.unlockedPedestals?.map(pedId => {
+                        const ped = PEDESTALS.find(p => p.id === pedId);
+                        if (!ped) return null;
+                        return (
+                            <div 
+                                key={ped.id} 
+                                onClick={() => setSelectedPedestal(ped.id)}
+                                className={`w-auto px-4 h-12 rounded-lg cursor-pointer flex justify-center items-center transition-all bg-slate-700
+                                    ${selectedPedestal === ped.id ? 'ring-2 ring-cyan-400 scale-105 shadow-lg' : 'opacity-60 hover:opacity-100'}`}
+                            >
+                                <span className="font-bold text-sm text-white">{ped.label}</span>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+
             <Button
                 variant="contained"
                 fullWidth
@@ -884,17 +908,13 @@ export default function Home() {
             <p className="text-sm text-yellow-500 mt-1 font-bold">Mevcut Altının: {user?.gold || 0}</p>
         </DialogTitle>
         <DialogContent className="p-6">
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {shopItems.map((item) => {
+            <h3 className="text-xl font-bold mb-4 text-cyan-400 border-b border-slate-700 pb-2">Karakterler</h3>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
+                {shopItems.filter(i => i.type === 'avatar' || !i.type).map((item) => {
                     const isUnlocked = user?.unlockedAvatars?.includes(item.id);
-                    const avMeta = AVATARS.find(a => a.id === item.id);
                     return (
                         <div key={item.id} className="bg-slate-800/80 p-4 rounded-2xl border border-slate-700 flex flex-col items-center text-center">
-                            {avMeta?.icon ? (
-                                <span className="text-5xl mb-2 flex justify-center items-center h-[60px] w-[60px]">{avMeta.icon}</span>
-                            ) : (
-                                <span className="text-5xl mb-2 flex justify-center items-center h-[60px] w-[60px]">{item.icon}</span>
-                            )}
+                            <span className="text-5xl mb-2 flex justify-center items-center h-[60px] w-[60px]">{item.icon}</span>
                             <span className="font-bold text-slate-200">{item.label}</span>
                             <div className="mt-3 w-full">
                                 {isUnlocked ? (
@@ -904,7 +924,36 @@ export default function Home() {
                                 ) : (
                                     <Button 
                                         fullWidth size="small" variant="contained" color="warning"
-                                        onClick={() => handleBuyAvatar(item.id)}
+                                        onClick={() => handleBuyItem(item.id)}
+                                        className="font-bold rounded-lg shadow-lg"
+                                        startIcon={<AttachMoneyIcon fontSize="small" />}
+                                    >
+                                        {item.price}
+                                    </Button>
+                                )}
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+
+            <h3 className="text-xl font-bold mb-4 text-amber-400 border-b border-slate-700 pb-2">Zeminler (Platform)</h3>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {shopItems.filter(i => i.type === 'pedestal').map((item) => {
+                    const isUnlocked = user?.unlockedPedestals?.includes(item.id);
+                    return (
+                        <div key={item.id} className="bg-slate-800/80 p-4 rounded-2xl border border-slate-700 flex flex-col items-center text-center">
+                            <span className="text-5xl mb-2 flex justify-center items-center h-[60px] w-[60px]">{item.icon}</span>
+                            <span className="font-bold text-slate-200">{item.label}</span>
+                            <div className="mt-3 w-full">
+                                {isUnlocked ? (
+                                    <Button disabled fullWidth size="small" variant="contained" className="bg-slate-700 text-slate-400 !cursor-not-allowed rounded-lg">
+                                        Alındı
+                                    </Button>
+                                ) : (
+                                    <Button 
+                                        fullWidth size="small" variant="contained" color="warning"
+                                        onClick={() => handleBuyItem(item.id)}
                                         className="font-bold rounded-lg shadow-lg"
                                         startIcon={<AttachMoneyIcon fontSize="small" />}
                                     >

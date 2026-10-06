@@ -7,6 +7,7 @@ export type User = {
     name: string;
     isHost: boolean;
     avatar: string;
+    pedestal?: string;
     reputation?: number;
     status: string;
     targetId: string | null;
@@ -79,3 +80,11 @@ export const getRankInfo = (reputation: number) => {
     else if (reputation >= 400) { title = "Gözlemci"; color = "text-slate-300"; icon = <GiEyeTarget />; }
     return { title, color, icon };
 };
+
+export const PEDESTALS = [
+    { id: 'default_stone', label: 'Taş Zemin' },
+    { id: 'gold_pedestal', label: 'Altın Kaide' },
+    { id: 'lava_ring', label: 'Lav Halkası' },
+    { id: 'ice_block', label: 'Buz Kütlesi' },
+    { id: 'cloud_base', label: 'Uçan Bulut' },
+];

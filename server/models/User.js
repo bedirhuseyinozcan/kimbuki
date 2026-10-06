@@ -30,6 +30,14 @@ const userSchema = new mongoose.Schema({
         type: [String],
         default: ['Warrior']
     },
+    pedestal: {
+        type: String,
+        default: 'default_stone'
+    },
+    unlockedPedestals: {
+        type: [String],
+        default: ['default_stone']
+    },
     lastLoginDate: {
         type: Date,
         default: null
