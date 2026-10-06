@@ -341,7 +341,7 @@ DOSYA: client\next-env.d.ts
 
 /// <reference types="next" />
 /// <reference types="next/image-types/global" />
-import "./.next/dev/types/routes.d.ts";
+import "./.next/types/routes.d.ts";
 
 // NOTE: This file should not be edited
 // see https://nextjs.org/docs/app/api-reference/config/typescript for more information.
@@ -608,7 +608,7 @@ import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import { InputAdornment, Avatar } from "@mui/material";
 import { toast } from 'react-toastify';
 import Logo from "@/components/Logo";
-import { AVATARS, PEDESTALS, getRankInfo } from "@/components/game/types";
+import { AVATARS, PEDESTALS, getRankInfo, NAME_COLORS, TITLES } from "@/components/game/types";
 
 export default function Home() {
   const [roomCode, setRoomCode] = useState("");
@@ -616,7 +616,7 @@ export default function Home() {
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
   const [forgotPasswordDialogOpen, setForgotPasswordDialogOpen] = useState(false);
   
-  const [user, setUser] = useState<{ id: string, username: string, avatar: string, pedestal?: string, gold: number, unlockedAvatars: string[], unlockedPedestals?: string[], rankInfo?: { title: string, reputation: number, nextThreshold: number | null }, quests?: any[], canClaimDaily?: boolean, loginStreak?: number } | null>(null);
+  const [user, setUser] = useState<{ id: string, username: string, avatar: string, pedestal?: string, nameColor?: string, title?: string, gold: number, unlockedAvatars: string[], unlockedPedestals?: string[], unlockedNameColors?: string[], unlockedTitles?: string[], rankInfo?: { title: string, reputation: number, nextThreshold: number | null }, quests?: any[], canClaimDaily?: boolean, loginStreak?: number } | null>(null);
   
   const [questsDialogOpen, setQuestsDialogOpen] = useState(false);
 
@@ -642,6 +642,7 @@ export default function Home() {
   };
   
   const [shopDialogOpen, setShopDialogOpen] = useState(false);
+  const [shopTab, setShopTab] = useState(0);
   const [dailyRewardDialogOpen, setDailyRewardDialogOpen] = useState(false);
   const [shopItems, setShopItems] = useState<any[]>([]);
 
@@ -655,6 +656,8 @@ export default function Home() {
   const [loginPassword, setLoginPassword] = useState("");
   const [selectedAvatar, setSelectedAvatar] = useState("");
   const [selectedPedestal, setSelectedPedestal] = useState("");
+  const [selectedNameColor, setSelectedNameColor] = useState("");
+  const [selectedTitle, setSelectedTitle] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
@@ -691,9 +694,13 @@ export default function Home() {
               username: data.username, 
               avatar: data.avatar, 
               pedestal: data.pedestal,
+              nameColor: data.nameColor,
+              title: data.title,
               gold: data.gold, 
               unlockedAvatars: data.unlockedAvatars,
               unlockedPedestals: data.unlockedPedestals || ['default_stone'],
+              unlockedNameColors: data.unlockedNameColors || ['text-white'],
+              unlockedTitles: data.unlockedTitles || [],
               rankInfo: data.rankInfo,
               quests: data.quests,
               canClaimDaily: data.canClaimDaily,
@@ -788,11 +795,11 @@ export default function Home() {
                   "Content-Type": "application/json",
                   "Authorization": `Bearer ${token}`
               },
-              body: JSON.stringify({ username: loginName, avatar: selectedAvatar, pedestal: selectedPedestal })
+              body: JSON.stringify({ username: loginName, avatar: selectedAvatar, pedestal: selectedPedestal, nameColor: selectedNameColor, title: selectedTitle })
           });
           const data = await res.json();
           if (data.id) {
-              setUser(data);
+              setUser(prev => prev ? { ...prev, ...data } : data);
               setProfileDialogOpen(false);
               toast.success("Profil güncellendi!");
           } else {
@@ -826,7 +833,7 @@ export default function Home() {
       if (res.ok) {
           toast.success(data.message);
           if (user) {
-              setUser({ ...user, gold: data.gold, unlockedAvatars: data.unlockedAvatars, unlockedPedestals: data.unlockedPedestals });
+              setUser({ ...user, gold: data.gold, unlockedAvatars: data.unlockedAvatars, unlockedPedestals: data.unlockedPedestals, unlockedNameColors: data.unlockedNameColors, unlockedTitles: data.unlockedTitles });
           }
       } else {
           toast.error(data.error);
@@ -840,6 +847,8 @@ export default function Home() {
       setLoginName(user?.username || "");
       setSelectedAvatar(user?.avatar || "Warrior");
       setSelectedPedestal(user?.pedestal || "default_stone");
+      setSelectedNameColor(user?.nameColor || "text-white");
+      setSelectedTitle(user?.title || "");
       setProfileDialogOpen(true);
   };
 
@@ -1396,6 +1405,50 @@ export default function Home() {
                 </div>
             </div>
 
+            <div>
+                <p className="text-slate-400 text-sm mb-3">İsim Rengini Seç:</p>
+                <div className="flex flex-wrap gap-3 max-h-[150px] overflow-y-auto custom-scrollbar p-1">
+                    {user?.unlockedNameColors?.map(colorId => {
+                        const c = NAME_COLORS.find(x => x.id === colorId);
+                        if (!c) return null;
+                        return (
+                            <div 
+                                key={c.id} 
+                                onClick={() => setSelectedNameColor(c.id)}
+                                className={`w-auto px-4 h-12 rounded-lg cursor-pointer flex justify-center items-center transition-all bg-slate-700
+                                    ${selectedNameColor === c.id ? 'ring-2 ring-cyan-400 scale-105 shadow-lg' : 'opacity-60 hover:opacity-100'}`}
+                            >
+                                <span className={`font-bold text-sm ${c.className}`}>{c.label}</span>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+
+            <div>
+                <p className="text-slate-400 text-sm mb-3">Özel Ünvanını Seç:</p>
+                <div className="flex flex-wrap gap-3 max-h-[150px] overflow-y-auto custom-scrollbar p-1">
+                    {user?.unlockedTitles?.length === 0 ? (
+                        <p className="text-slate-500 text-sm">Henüz ünvanınız yok. Mağazadan satın alabilirsiniz.</p>
+                    ) : null}
+                    
+                    {['', ...(user?.unlockedTitles || [])].map(titleId => {
+                        const t = TITLES.find(x => x.id === titleId);
+                        if (!t) return null;
+                        return (
+                            <div 
+                                key={t.id} 
+                                onClick={() => setSelectedTitle(t.id)}
+                                className={`w-auto px-4 h-12 rounded-lg cursor-pointer flex justify-center items-center transition-all bg-slate-700
+                                    ${selectedTitle === t.id ? 'ring-2 ring-cyan-400 scale-105 shadow-lg' : 'opacity-60 hover:opacity-100'}`}
+                            >
+                                <span className="font-bold text-sm text-white">{t.label}</span>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+
             <Button
                 variant="contained"
                 fullWidth
@@ -1498,39 +1551,38 @@ export default function Home() {
             <p className="text-sm text-yellow-500 mt-1 font-bold">Mevcut Altının: {user?.gold || 0}</p>
         </DialogTitle>
         <DialogContent className="p-6">
-            <h3 className="text-xl font-bold mb-4 text-cyan-400 border-b border-slate-700 pb-2">Karakterler</h3>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
-                {shopItems.filter(i => i.type === 'avatar' || !i.type).map((item) => {
-                    const isUnlocked = user?.unlockedAvatars?.includes(item.id);
-                    return (
-                        <div key={item.id} className="bg-slate-800/80 p-4 rounded-2xl border border-slate-700 flex flex-col items-center text-center">
-                            <span className="text-5xl mb-2 flex justify-center items-center h-[60px] w-[60px]">{item.icon}</span>
-                            <span className="font-bold text-slate-200">{item.label}</span>
-                            <div className="mt-3 w-full">
-                                {isUnlocked ? (
-                                    <Button disabled fullWidth size="small" variant="contained" className="bg-slate-700 text-slate-400 !cursor-not-allowed rounded-lg">
-                                        Alındı
-                                    </Button>
-                                ) : (
-                                    <Button 
-                                        fullWidth size="small" variant="contained" color="warning"
-                                        onClick={() => handleBuyItem(item.id)}
-                                        className="font-bold rounded-lg shadow-lg"
-                                        startIcon={<AttachMoneyIcon fontSize="small" />}
-                                    >
-                                        {item.price}
-                                    </Button>
-                                )}
-                            </div>
-                        </div>
-                    );
-                })}
-            </div>
+            <Tabs 
+                value={shopTab} 
+                onChange={(_, newValue) => setShopTab(newValue)} 
+                variant="scrollable"
+                scrollButtons="auto"
+                sx={{
+                    mb: 3, borderBottom: 1, borderColor: 'divider',
+                    '& .MuiTab-root': { color: 'gray', fontWeight: 'bold' },
+                    '& .Mui-selected': { color: '#22d3ee' },
+                    '& .MuiTabs-indicator': { backgroundColor: '#22d3ee' }
+                }}
+            >
+                <Tab label="🎭 Karakterler" />
+                <Tab label="🧊 Zeminler" />
+                <Tab label="🎨 İsim Renkleri" />
+                <Tab label="👑 Ünvanlar" />
+            </Tabs>
 
-            <h3 className="text-xl font-bold mb-4 text-amber-400 border-b border-slate-700 pb-2">Zeminler (Platform)</h3>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {shopItems.filter(i => i.type === 'pedestal').map((item) => {
-                    const isUnlocked = user?.unlockedPedestals?.includes(item.id);
+                {shopItems.filter(i => {
+                    if (shopTab === 0) return i.type === 'avatar' || !i.type;
+                    if (shopTab === 1) return i.type === 'pedestal';
+                    if (shopTab === 2) return i.type === 'color';
+                    if (shopTab === 3) return i.type === 'title';
+                    return false;
+                }).map((item) => {
+                    let isUnlocked = false;
+                    if (shopTab === 0) isUnlocked = user?.unlockedAvatars?.includes(item.id) || false;
+                    if (shopTab === 1) isUnlocked = user?.unlockedPedestals?.includes(item.id) || false;
+                    if (shopTab === 2) isUnlocked = user?.unlockedNameColors?.includes(item.id) || false;
+                    if (shopTab === 3) isUnlocked = user?.unlockedTitles?.includes(item.id) || false;
+
                     return (
                         <div key={item.id} className="bg-slate-800/80 p-4 rounded-2xl border border-slate-700 flex flex-col items-center text-center">
                             <span className="text-5xl mb-2 flex justify-center items-center h-[60px] w-[60px]">{item.icon}</span>
@@ -1594,7 +1646,16 @@ export default function Home() {
                                         <span className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1 ${rankObj.color}`}>
                                             {rankObj.icon} {rankObj.title}
                                         </span>
-                                        <span className="font-bold text-lg leading-tight">{u.username}</span>
+                                        <div className="flex items-center gap-2">
+                                            {u.title && (
+                                                <span className="text-[10px] bg-slate-700 px-2 py-0.5 rounded text-white shadow">
+                                                    {TITLES.find(t => t.id === u.title)?.label || u.title}
+                                                </span>
+                                            )}
+                                            <span className={`font-bold text-lg leading-tight ${NAME_COLORS.find(c => c.id === u.nameColor)?.className || 'text-white'}`}>
+                                                {u.username}
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-1 text-cyan-400 font-bold bg-cyan-400/10 px-3 py-1 rounded-full border border-cyan-400/20">
@@ -1812,7 +1873,7 @@ export default function GamePage() {
         const s = io(process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:4000");
         setSocket(s);
 
-        s.emit("room:join", { roomCode: code, name: user.username, userId: user.id, avatar: user.avatar, pedestal: user.pedestal }, (res: any) => {
+        s.emit("room:join", { roomCode: code, name: user.username, userId: user.id, avatar: user.avatar, pedestal: user.pedestal, nameColor: user.nameColor, title: user.title }, (res: any) => {
             if (!res.ok) {
                 toast.error("Hata: " + res.error);
                 router.push("/");
@@ -2445,7 +2506,7 @@ import MicIcon from '@mui/icons-material/Mic';
 import SettingsIcon from '@mui/icons-material/Settings';
 import AudioSettingsDialog from './AudioSettingsDialog';
 import MicOffIcon from '@mui/icons-material/MicOff';
-import { User, GameState, AVATARS } from "./types";
+import { User, GameState, AVATARS, NAME_COLORS } from "./types";
 import { playTurnSound, playWinSound } from "@/utils/audio";
 import confetti from "canvas-confetti";
 import { motion, AnimatePresence } from "framer-motion";
@@ -2780,12 +2841,19 @@ export default function GameScene({
 
                         <div className={`group ${isChatOpen ? 'flex flex-col' : 'hidden'}`}>
                             <div className="h-40 group-focus-within:h-64 md:group-focus-within:h-72 transition-all duration-300 ease-in-out overflow-y-auto p-4 space-y-2 custom-scrollbar pointer-events-auto">
-                                {gameState.chatHistory.map((msg: any, i: number) => (
-                                    <div key={i} className={`text-sm ${msg.system ? 'text-cyan-400 text-center italic my-2' : ''}`}>
-                                        {!msg.system && <strong className="text-violet-400">{msg.name}: </strong>}
-                                        <span className={`break-words break-all ${msg.system ? 'font-bold' : 'text-slate-200'}`}>{msg.message}</span>
-                                    </div>
-                                ))}
+                                {gameState.chatHistory.map((msg: any, i: number) => {
+                                    let colorClass = "text-violet-400";
+                                    if (!msg.system && msg.nameColor) {
+                                        const found = NAME_COLORS.find(c => c.id === msg.nameColor);
+                                        if (found) colorClass = found.className;
+                                    }
+                                    return (
+                                        <div key={i} className={`text-sm ${msg.system ? 'text-cyan-400 text-center italic my-2' : ''}`}>
+                                            {!msg.system && <strong className={colorClass}>{msg.name}: </strong>}
+                                            <span className={`break-words break-all ${msg.system ? 'font-bold' : 'text-slate-200'}`}>{msg.message}</span>
+                                        </div>
+                                    );
+                                })}
                                 <div ref={chatEndRef} />
                             </div>
                             <form onSubmit={handleChat} className="p-2 border-t border-slate-700 flex gap-2 pointer-events-auto">
@@ -3114,7 +3182,7 @@ import { Button, TextField, IconButton, Avatar, Chip, FormControlLabel, Switch }
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CancelIcon from '@mui/icons-material/Cancel';
 import LogoutIcon from '@mui/icons-material/Logout';
-import { User, GameState, AVATARS, getRankInfo } from "./types";
+import { User, GameState, AVATARS, getRankInfo, NAME_COLORS, TITLES } from "./types";
 
 interface LobbyProps {
     gameState: GameState;
@@ -3199,10 +3267,19 @@ export default function Lobby({
                                             )}
                                         </Avatar>
                                         <div className="flex flex-col">
-                                            <span className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1 ${getRankInfo(u.reputation || 0).color}`}>
-                                                {getRankInfo(u.reputation || 0).icon} {getRankInfo(u.reputation || 0).title}
+                                            <div className="flex items-center gap-1">
+                                                <span className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1 ${getRankInfo(u.reputation || 0).color}`}>
+                                                    {getRankInfo(u.reputation || 0).icon} {getRankInfo(u.reputation || 0).title}
+                                                </span>
+                                                {u.title && (
+                                                    <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full bg-slate-700/50 text-white border border-slate-600 ml-1">
+                                                        {TITLES.find(t => t.id === u.title)?.label || u.title}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <span className={`font-bold text-lg leading-tight ${u.nameColor ? (NAME_COLORS.find(c => c.id === u.nameColor)?.className || 'text-white') : 'text-white'}`}>
+                                                {u.name} {u.id === myId ? '(Sen)' : ''}
                                             </span>
-                                            <span className="font-bold text-lg leading-tight">{u.name} {u.id === myId ? '(Sen)' : ''}</span>
                                         </div>
                                         {u.disconnected && <Chip label="Koptu" size="small" color="error" />}
                                         {u.isVoiceEnabled && <span title="Sesli Sohbet Açık" className="text-xl animate-pulse">🎤</span>}
@@ -3313,7 +3390,7 @@ import React, { useRef, Suspense } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Html, ContactShadows, useGLTF } from '@react-three/drei';
 import { SkeletonUtils } from 'three-stdlib';
-import { User, GameState, AVATARS, getRankInfo } from './types';
+import { User, GameState, AVATARS, getRankInfo, NAME_COLORS, TITLES } from './types';
 import * as THREE from 'three';
 import { Avatar as MuiAvatar } from '@mui/material';
 import HelpIcon from '@mui/icons-material/Help';
@@ -3570,11 +3647,16 @@ function PlayerNode({ u, index, totalUsers, isCurrentTurn, isMe, isWinner, activ
                                 {u.assignedWord}
                             </div>
                         )}
-                        <span className={`mt-1 font-bold text-[11px] bg-black/80 px-2.5 py-1 rounded-full whitespace-nowrap shadow-lg flex items-center gap-1.5 ${u.status === 'spectator' ? 'line-through text-slate-500' : 'text-white'} ${u.disconnected ? 'text-red-400' : ''}`}>
+                        <span className={`mt-1 font-bold text-[11px] bg-black/80 px-2.5 py-1 rounded-full whitespace-nowrap shadow-lg flex items-center gap-1.5 ${u.status === 'spectator' ? 'line-through text-slate-500' : (u.nameColor ? (NAME_COLORS.find(c => c.id === u.nameColor)?.className || 'text-white') : 'text-white')} ${u.disconnected ? 'text-red-400' : ''}`}>
                             <span className={`flex items-center gap-1 ${getRankInfo(u.reputation || 0).color}`}>
                                 <span className="text-[13px]">{getRankInfo(u.reputation || 0).icon}</span>
                                 <span className="text-[9px] uppercase tracking-wider font-black">{getRankInfo(u.reputation || 0).title}</span>
                             </span>
+                            {u.title && (
+                                <span className="text-[8px] font-black px-1.5 py-0.5 rounded-full bg-slate-700/50 text-white border border-slate-600">
+                                    {TITLES.find(t => t.id === u.title)?.label || u.title}
+                                </span>
+                            )}
                             <span className="text-slate-500 mx-0.5">|</span>
                             {u.name} {u.disconnected && '(Koptu)'}
                         </span>
@@ -3765,6 +3847,8 @@ export type User = {
     isHost: boolean;
     avatar: string;
     pedestal?: string;
+    nameColor?: string;
+    title?: string;
     reputation?: number;
     status: string;
     targetId: string | null;
@@ -3844,6 +3928,20 @@ export const PEDESTALS = [
     { id: 'lava_ring', label: 'Lav Halkası' },
     { id: 'ice_block', label: 'Buz Kütlesi' },
     { id: 'cloud_base', label: 'Uçan Bulut' },
+];
+
+export const NAME_COLORS = [
+    { id: 'text-white', label: 'Standart Beyaz', className: 'text-white' },
+    { id: 'color_neon_pink', label: 'Neon Pembe', className: 'text-pink-400 drop-shadow-[0_0_8px_rgba(244,114,182,0.8)]' },
+    { id: 'color_electric_blue', label: 'Elektrik Mavisi', className: 'text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]' },
+    { id: 'color_gold', label: 'Saf Altın', className: 'text-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.8)]' }
+];
+
+export const TITLES = [
+    { id: '', label: 'Ünvansız' },
+    { id: 'title_rich', label: '👑 Zengin' },
+    { id: 'title_troll', label: '🤡 Trol' },
+    { id: 'title_collector', label: '💎 Koleksiyoncu' }
 ];
 
 
@@ -4006,8 +4104,8 @@ class GameManager {
     handleConnection(socket) {
         console.log("New client connected:", socket.id);
 
-        socket.on("room:create", ({ name, userId, avatar, pedestal }, cb) => this.handleCreateRoom(socket, name, userId, avatar, pedestal, cb));
-        socket.on("room:join", ({ roomCode, name, userId, avatar, pedestal }, cb) => this.handleJoinRoom(socket, roomCode, name, userId, avatar, pedestal, cb));
+        socket.on("room:create", ({ name, userId, avatar, pedestal, nameColor, title }, cb) => this.handleCreateRoom(socket, name, userId, avatar, pedestal, nameColor, title, cb));
+        socket.on("room:join", ({ roomCode, name, userId, avatar, pedestal, nameColor, title }, cb) => this.handleJoinRoom(socket, roomCode, name, userId, avatar, pedestal, nameColor, title, cb));
         socket.on("game:update_avatar", ({ avatarIndex }) => this.handleUpdateAvatar(socket, avatarIndex));
         socket.on("game:start", (settings = {}) => this.handleStartGame(socket, settings));
         socket.on("game:place_bet", ({ targetId }) => this.handlePlaceBet(socket, targetId));
@@ -4063,7 +4161,7 @@ class GameManager {
         }
     }
 
-    async handleCreateRoom(socket, name, userId, avatar, pedestal, cb) {
+    async handleCreateRoom(socket, name, userId, avatar, pedestal, nameColor, title, cb) {
         try {
             const code = Math.random().toString(36).slice(2, 8).toUpperCase();
             const room = new Room(code, this.io);
@@ -4078,7 +4176,7 @@ class GameManager {
                 if (userDoc) reputation = userDoc.reputation || 0;
             }
 
-            room.addUser(socket.id, name, userId, avatar, pedestal, reputation);
+            room.addUser(socket.id, name, userId, avatar, pedestal, reputation, nameColor, title);
 
             cb?.({ ok: true, roomCode: code });
         } catch (err) {
@@ -4087,7 +4185,7 @@ class GameManager {
         }
     }
 
-    async handleJoinRoom(socket, roomCode, name, userId, avatar, pedestal, cb) {
+    async handleJoinRoom(socket, roomCode, name, userId, avatar, pedestal, nameColor, title, cb) {
         try {
             const code = (roomCode || "").toUpperCase();
             let room = this.rooms.get(code);
@@ -4112,7 +4210,7 @@ class GameManager {
                 if (userDoc) reputation = userDoc.reputation || 0;
             }
 
-            room.addUser(socket.id, name, userId, avatar, pedestal, reputation);
+            room.addUser(socket.id, name, userId, avatar, pedestal, reputation, nameColor, title);
 
             cb?.({ ok: true });
         } catch (err) {
@@ -4261,7 +4359,7 @@ class Room {
         this.winners = []; 
     }
 
-    addUser(socketId, name, dbId, avatar, pedestal = 'default_stone', reputation = 0) {
+    addUser(socketId, name, dbId, avatar, pedestal = 'default_stone', reputation = 0, nameColor = 'text-white', title = '') {
         if (dbId) {
             const existingUser = this.users.find(u => u.dbId === dbId);
             if (existingUser) {
@@ -4275,6 +4373,8 @@ class Room {
                 existingUser.reputation = reputation;
                 existingUser.avatar = avatar || existingUser.avatar;
                 existingUser.pedestal = pedestal || existingUser.pedestal;
+                existingUser.nameColor = nameColor || existingUser.nameColor;
+                existingUser.title = (title !== undefined) ? title : existingUser.title;
                 
                 this.users.forEach(u => {
                     if (u.targetId === oldId) u.targetId = socketId;
@@ -4300,7 +4400,9 @@ class Room {
             name,
             isHost,
             avatar: avatar || 'default-violet',
-            pedestal: pedestal || 'default_stone', // YENİ
+            pedestal: pedestal || 'default_stone',
+            nameColor: nameColor || 'text-white',
+            title: title || '',
             reputation: reputation,
             targetId: null,
             assignedWord: null,
@@ -4636,6 +4738,7 @@ class Room {
         this.chatHistory.push({
             userId: user.id,
             name: user.name,
+            nameColor: user.nameColor,
             message: message,
             timestamp: Date.now()
         });
@@ -5055,7 +5158,9 @@ class Room {
                 name: u.name,
                 isHost: u.isHost,
                 avatar: u.avatar,
-                pedestal: u.pedestal, // YENİ
+                pedestal: u.pedestal,
+                nameColor: u.nameColor,
+                title: u.title,
                 reputation: u.reputation || 0,
                 status: u.status,
                 targetId: u.targetId,
@@ -5150,6 +5255,22 @@ const userSchema = new mongoose.Schema({
     unlockedPedestals: {
         type: [String],
         default: ['default_stone']
+    },
+    nameColor: {
+        type: String,
+        default: 'text-white'
+    },
+    unlockedNameColors: {
+        type: [String],
+        default: ['text-white']
+    },
+    title: {
+        type: String,
+        default: ''
+    },
+    unlockedTitles: {
+        type: [String],
+        default: []
     },
     lastLoginDate: {
         type: Date,
@@ -5300,8 +5421,10 @@ router.post("/register", async (req, res) => {
             avatar: "default-violet",
             pedestal: "default_stone",
             gold: 0,
-            unlockedAvatars: ["default-violet", "default-red", "default-blue", "default-green", "default-yellow", "default-pink"],
-            unlockedPedestals: ["default_stone"]
+            unlockedAvatars: ["default-violet", "default-red", "default-blue", "default-green", "default-yellow", "default-pink", "Warrior"],
+            unlockedPedestals: ["default_stone"],
+            unlockedNameColors: ["text-white"],
+            unlockedTitles: []
         });
         await user.save();
 
@@ -5355,6 +5478,16 @@ router.post("/login", async (req, res) => {
             if (!user.pedestal) user.pedestal = 'default_stone';
             isModified = true;
         }
+        if (!user.unlockedNameColors) user.unlockedNameColors = [];
+        if (!user.unlockedNameColors.includes('text-white')) {
+            user.unlockedNameColors.push('text-white');
+            if (!user.nameColor) user.nameColor = 'text-white';
+            isModified = true;
+        }
+        if (!user.unlockedTitles) {
+            user.unlockedTitles = [];
+            isModified = true;
+        }
         if (isModified) await user.save();
 
         const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: "30d" });
@@ -5367,9 +5500,13 @@ router.post("/login", async (req, res) => {
                 email: user.email, 
                 avatar: user.avatar,
                 pedestal: user.pedestal,
+                nameColor: user.nameColor,
+                title: user.title,
                 gold: user.gold,
                 unlockedAvatars: user.unlockedAvatars,
                 unlockedPedestals: user.unlockedPedestals,
+                unlockedNameColors: user.unlockedNameColors,
+                unlockedTitles: user.unlockedTitles,
                 rankInfo: getRankInfo(user.reputation || 0)
             }
         });
@@ -5386,15 +5523,19 @@ router.get("/me", authMiddleware, async (req, res) => {
             return res.status(404).json({ error: "Kullanıcı bulunamadı." });
         }
 
+        let arraysUpdated = false;
+
         if (!user.unlockedAvatars) user.unlockedAvatars = [];
         if (!user.unlockedAvatars.includes('Warrior')) {
             user.unlockedAvatars.push('Warrior');
-            if (user.avatar.startsWith('default-')) user.avatar = 'Warrior';
+            if (user.avatar && user.avatar.startsWith('default-')) user.avatar = 'Warrior';
+            arraysUpdated = true;
         }
         if (!user.unlockedPedestals) user.unlockedPedestals = [];
         if (!user.unlockedPedestals.includes('default_stone')) {
             user.unlockedPedestals.push('default_stone');
             if (!user.pedestal) user.pedestal = 'default_stone';
+            arraysUpdated = true;
         }
 
         let canClaimDaily = false;
@@ -5408,9 +5549,20 @@ router.get("/me", authMiddleware, async (req, res) => {
             yesterday.setDate(yesterday.getDate() - 1);
             
             if (!user.lastLoginDate || user.lastLoginDate < yesterday) {
-                // If they missed yesterday, their NEXT claim will be streak 1
                 streak = 0; 
             }
+        }
+
+        if (!user.unlockedNameColors) user.unlockedNameColors = [];
+        if (!user.unlockedNameColors.includes('text-white')) {
+            user.unlockedNameColors.push('text-white');
+            if (!user.nameColor) user.nameColor = 'text-white';
+            arraysUpdated = true;
+        }
+
+        if (!user.unlockedTitles) {
+            user.unlockedTitles = [];
+            arraysUpdated = true;
         }
 
         const todayStr = new Date().toDateString();
@@ -5427,7 +5579,14 @@ router.get("/me", authMiddleware, async (req, res) => {
             questsUpdated = true;
         }
 
-        if (questsUpdated || canClaimDaily) await user.save();
+        if (arraysUpdated) {
+            user.markModified('unlockedAvatars');
+            user.markModified('unlockedPedestals');
+            user.markModified('unlockedNameColors');
+            user.markModified('unlockedTitles');
+        }
+
+        if (questsUpdated || canClaimDaily || arraysUpdated) await user.save();
 
         res.json({
             id: user._id,
@@ -5435,9 +5594,13 @@ router.get("/me", authMiddleware, async (req, res) => {
             email: user.email,
             avatar: user.avatar,
             pedestal: user.pedestal,
+            nameColor: user.nameColor,
+            title: user.title,
             gold: user.gold,
             unlockedAvatars: user.unlockedAvatars,
             unlockedPedestals: user.unlockedPedestals,
+            unlockedNameColors: user.unlockedNameColors,
+            unlockedTitles: user.unlockedTitles,
             rankInfo: getRankInfo(user.reputation || 0),
             quests: user.quests?.active || [],
             canClaimDaily,
@@ -5488,7 +5651,7 @@ router.post("/daily-reward", authMiddleware, async (req, res) => {
 
 router.put("/profile", authMiddleware, async (req, res) => {
     try {
-        const { username, avatar, pedestal } = req.body;
+        const { username, avatar, pedestal, nameColor, title } = req.body;
         const user = await User.findById(req.user.id);
         
         if (!user) return res.status(404).json({ error: "Kullanıcı bulunamadı." });
@@ -5499,15 +5662,25 @@ router.put("/profile", authMiddleware, async (req, res) => {
             user.username = username;
         }
 
-        if (avatar) {
-            if (!user.unlockedAvatars.includes(avatar)) {
-                return res.status(400).json({ error: "Bu karaktere sahip değilsiniz." });
-            }
+        if (!user.unlockedAvatars) user.unlockedAvatars = ['Warrior'];
+        if (!user.unlockedPedestals) user.unlockedPedestals = ['default_stone'];
+        if (!user.unlockedNameColors) user.unlockedNameColors = ['text-white'];
+        if (!user.unlockedTitles) user.unlockedTitles = [];
+
+        if (avatar && user.unlockedAvatars.includes(avatar)) {
             user.avatar = avatar;
         }
 
         if (pedestal && user.unlockedPedestals.includes(pedestal)) {
             user.pedestal = pedestal;
+        }
+
+        if (nameColor && user.unlockedNameColors.includes(nameColor)) {
+            user.nameColor = nameColor;
+        }
+
+        if (title !== undefined && (title === '' || user.unlockedTitles.includes(title))) {
+            user.title = title;
         }
 
         await user.save();
@@ -5516,9 +5689,13 @@ router.put("/profile", authMiddleware, async (req, res) => {
             username: user.username, 
             avatar: user.avatar,
             pedestal: user.pedestal,
+            nameColor: user.nameColor,
+            title: user.title,
             gold: user.gold,
             unlockedAvatars: user.unlockedAvatars,
             unlockedPedestals: user.unlockedPedestals,
+            unlockedNameColors: user.unlockedNameColors,
+            unlockedTitles: user.unlockedTitles,
             rankInfo: getRankInfo(user.reputation || 0)
         });
     } catch (error) {
@@ -5599,7 +5776,19 @@ const PREMIUM_PEDESTALS = [
     { id: 'cloud_base', price: 1000, label: 'Uçan Bulut', icon: '☁️', type: 'pedestal' }
 ];
 
-const ALL_ITEMS = [...PREMIUM_AVATARS, ...PREMIUM_PEDESTALS];
+const PREMIUM_COLORS = [
+    { id: 'color_neon_pink', price: 1000, label: 'Neon Pembe', icon: '🎀', type: 'color' },
+    { id: 'color_electric_blue', price: 1000, label: 'Elektrik Mavisi', icon: '⚡', type: 'color' },
+    { id: 'color_gold', price: 2000, label: 'Saf Altın', icon: '✨', type: 'color' }
+];
+
+const PREMIUM_TITLES = [
+    { id: 'title_rich', price: 5000, label: 'Ünvan: Zengin', icon: '👑', type: 'title' },
+    { id: 'title_troll', price: 1500, label: 'Ünvan: Trol', icon: '🤡', type: 'title' },
+    { id: 'title_collector', price: 2500, label: 'Ünvan: Koleksiyoncu', icon: '💎', type: 'title' }
+];
+
+const ALL_ITEMS = [...PREMIUM_AVATARS, ...PREMIUM_PEDESTALS, ...PREMIUM_COLORS, ...PREMIUM_TITLES];
 
 router.get("/items", (req, res) => {
     res.json(ALL_ITEMS);
@@ -5617,14 +5806,25 @@ router.post("/buy", authMiddleware, async (req, res) => {
         const user = await User.findById(req.user.id);
         if (!user) return res.status(404).json({ error: "Kullanıcı bulunamadı." });
 
-        const isAvatar = itemToBuy.type === 'avatar';
-        let collection = isAvatar ? user.unlockedAvatars : user.unlockedPedestals;
+        if (!user.unlockedAvatars) user.unlockedAvatars = ['Warrior'];
+        if (!user.unlockedPedestals) user.unlockedPedestals = ['default_stone'];
+        if (!user.unlockedNameColors) user.unlockedNameColors = ['text-white'];
+        if (!user.unlockedTitles) user.unlockedTitles = [];
 
-        if (!isAvatar && !collection.includes('default_stone')) {
+        let collection;
+        if (itemToBuy.type === 'avatar') collection = user.unlockedAvatars;
+        else if (itemToBuy.type === 'pedestal') collection = user.unlockedPedestals;
+        else if (itemToBuy.type === 'color') collection = user.unlockedNameColors;
+        else if (itemToBuy.type === 'title') collection = user.unlockedTitles;
+
+        if (itemToBuy.type === 'pedestal' && !collection.includes('default_stone')) {
             collection.push('default_stone');
         }
-        if (isAvatar && !collection.includes('Warrior')) {
+        if (itemToBuy.type === 'avatar' && !collection.includes('Warrior')) {
             collection.push('Warrior');
+        }
+        if (itemToBuy.type === 'color' && !collection.includes('text-white')) {
+            collection.push('text-white');
         }
 
         if (collection.includes(itemId)) {
@@ -5645,13 +5845,20 @@ router.post("/buy", authMiddleware, async (req, res) => {
             user.markModified('quests');
         }
         
+        user.markModified('unlockedAvatars');
+        user.markModified('unlockedPedestals');
+        user.markModified('unlockedNameColors');
+        user.markModified('unlockedTitles');
+
         await user.save();
 
         res.json({
             message: "Satın alma başarılı!",
             gold: user.gold,
             unlockedAvatars: user.unlockedAvatars,
-            unlockedPedestals: user.unlockedPedestals
+            unlockedPedestals: user.unlockedPedestals,
+            unlockedNameColors: user.unlockedNameColors,
+            unlockedTitles: user.unlockedTitles
         });
     } catch (error) {
         console.error("Shop buy error:", error);
@@ -5678,7 +5885,7 @@ router.get("/live", (req, res) => {
 
 router.get("/leaderboard", async (req, res) => {
     try {
-        const topUsers = await User.find({}, "username gold reputation avatar").sort({ reputation: -1, gold: -1 }).limit(10).lean();
+        const topUsers = await User.find({}, "username gold reputation avatar nameColor title").sort({ reputation: -1, gold: -1 }).limit(10).lean();
         res.json(topUsers);
     } catch (err) {
         res.status(500).json({ error: "Sunucu hatasi" });

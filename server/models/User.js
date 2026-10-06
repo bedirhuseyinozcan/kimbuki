@@ -38,6 +38,22 @@ const userSchema = new mongoose.Schema({
         type: [String],
         default: ['default_stone']
     },
+    nameColor: {
+        type: String,
+        default: 'text-white'
+    },
+    unlockedNameColors: {
+        type: [String],
+        default: ['text-white']
+    },
+    title: {
+        type: String,
+        default: ''
+    },
+    unlockedTitles: {
+        type: [String],
+        default: []
+    },
     lastLoginDate: {
         type: Date,
         default: null

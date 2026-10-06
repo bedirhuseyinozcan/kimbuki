@@ -105,11 +105,13 @@ router.post("/register", async (req, res) => {
             username,
             email,
             password: hashedPassword,
-            avatar: "default-violet",
+            avatar: "Warrior",
             pedestal: "default_stone",
             gold: 0,
-            unlockedAvatars: ["default-violet", "default-red", "default-blue", "default-green", "default-yellow", "default-pink"],
-            unlockedPedestals: ["default_stone"]
+            unlockedAvatars: ["Warrior"],
+            unlockedPedestals: ["default_stone"],
+            unlockedNameColors: ["text-white"],
+            unlockedTitles: []
         });
         await user.save();
 
@@ -154,13 +156,30 @@ router.post("/login", async (req, res) => {
         if (!user.unlockedAvatars) user.unlockedAvatars = [];
         if (!user.unlockedAvatars.includes('Warrior')) {
             user.unlockedAvatars.push('Warrior');
-            if (user.avatar.startsWith('default-')) user.avatar = 'Warrior';
+            isModified = true;
+        }
+        if (user.avatar && user.avatar.startsWith('default-')) {
+            user.avatar = 'Warrior';
+            isModified = true;
+        }
+        if (user.unlockedAvatars.some(a => a.startsWith('default-'))) {
+            user.unlockedAvatars = user.unlockedAvatars.filter(a => !a.startsWith('default-'));
             isModified = true;
         }
         if (!user.unlockedPedestals) user.unlockedPedestals = [];
         if (!user.unlockedPedestals.includes('default_stone')) {
             user.unlockedPedestals.push('default_stone');
             if (!user.pedestal) user.pedestal = 'default_stone';
+            isModified = true;
+        }
+        if (!user.unlockedNameColors) user.unlockedNameColors = [];
+        if (!user.unlockedNameColors.includes('text-white')) {
+            user.unlockedNameColors.push('text-white');
+            if (!user.nameColor) user.nameColor = 'text-white';
+            isModified = true;
+        }
+        if (!user.unlockedTitles) {
+            user.unlockedTitles = [];
             isModified = true;
         }
         if (isModified) await user.save();
@@ -175,9 +194,13 @@ router.post("/login", async (req, res) => {
                 email: user.email, 
                 avatar: user.avatar,
                 pedestal: user.pedestal,
+                nameColor: user.nameColor,
+                title: user.title,
                 gold: user.gold,
                 unlockedAvatars: user.unlockedAvatars,
                 unlockedPedestals: user.unlockedPedestals,
+                unlockedNameColors: user.unlockedNameColors,
+                unlockedTitles: user.unlockedTitles,
                 rankInfo: getRankInfo(user.reputation || 0)
             }
         });
@@ -194,15 +217,26 @@ router.get("/me", authMiddleware, async (req, res) => {
             return res.status(404).json({ error: "Kullanıcı bulunamadı." });
         }
 
+        let arraysUpdated = false;
+
         if (!user.unlockedAvatars) user.unlockedAvatars = [];
         if (!user.unlockedAvatars.includes('Warrior')) {
             user.unlockedAvatars.push('Warrior');
-            if (user.avatar.startsWith('default-')) user.avatar = 'Warrior';
+            arraysUpdated = true;
+        }
+        if (user.avatar && user.avatar.startsWith('default-')) {
+            user.avatar = 'Warrior';
+            arraysUpdated = true;
+        }
+        if (user.unlockedAvatars.some(a => a.startsWith('default-'))) {
+            user.unlockedAvatars = user.unlockedAvatars.filter(a => !a.startsWith('default-'));
+            arraysUpdated = true;
         }
         if (!user.unlockedPedestals) user.unlockedPedestals = [];
         if (!user.unlockedPedestals.includes('default_stone')) {
             user.unlockedPedestals.push('default_stone');
             if (!user.pedestal) user.pedestal = 'default_stone';
+            arraysUpdated = true;
         }
 
         let canClaimDaily = false;
@@ -216,9 +250,20 @@ router.get("/me", authMiddleware, async (req, res) => {
             yesterday.setDate(yesterday.getDate() - 1);
             
             if (!user.lastLoginDate || user.lastLoginDate < yesterday) {
-                // If they missed yesterday, their NEXT claim will be streak 1
                 streak = 0; 
             }
+        }
+
+        if (!user.unlockedNameColors) user.unlockedNameColors = [];
+        if (!user.unlockedNameColors.includes('text-white')) {
+            user.unlockedNameColors.push('text-white');
+            if (!user.nameColor) user.nameColor = 'text-white';
+            arraysUpdated = true;
+        }
+
+        if (!user.unlockedTitles) {
+            user.unlockedTitles = [];
+            arraysUpdated = true;
         }
 
         const todayStr = new Date().toDateString();
@@ -235,7 +280,14 @@ router.get("/me", authMiddleware, async (req, res) => {
             questsUpdated = true;
         }
 
-        if (questsUpdated || canClaimDaily) await user.save();
+        if (arraysUpdated) {
+            user.markModified('unlockedAvatars');
+            user.markModified('unlockedPedestals');
+            user.markModified('unlockedNameColors');
+            user.markModified('unlockedTitles');
+        }
+
+        if (questsUpdated || canClaimDaily || arraysUpdated) await user.save();
 
         res.json({
             id: user._id,
@@ -243,9 +295,13 @@ router.get("/me", authMiddleware, async (req, res) => {
             email: user.email,
             avatar: user.avatar,
             pedestal: user.pedestal,
+            nameColor: user.nameColor,
+            title: user.title,
             gold: user.gold,
             unlockedAvatars: user.unlockedAvatars,
             unlockedPedestals: user.unlockedPedestals,
+            unlockedNameColors: user.unlockedNameColors,
+            unlockedTitles: user.unlockedTitles,
             rankInfo: getRankInfo(user.reputation || 0),
             quests: user.quests?.active || [],
             canClaimDaily,
@@ -296,7 +352,7 @@ router.post("/daily-reward", authMiddleware, async (req, res) => {
 
 router.put("/profile", authMiddleware, async (req, res) => {
     try {
-        const { username, avatar, pedestal } = req.body;
+        const { username, avatar, pedestal, nameColor, title } = req.body;
         const user = await User.findById(req.user.id);
         
         if (!user) return res.status(404).json({ error: "Kullanıcı bulunamadı." });
@@ -307,15 +363,25 @@ router.put("/profile", authMiddleware, async (req, res) => {
             user.username = username;
         }
 
-        if (avatar) {
-            if (!user.unlockedAvatars.includes(avatar)) {
-                return res.status(400).json({ error: "Bu karaktere sahip değilsiniz." });
-            }
+        if (!user.unlockedAvatars) user.unlockedAvatars = ['Warrior'];
+        if (!user.unlockedPedestals) user.unlockedPedestals = ['default_stone'];
+        if (!user.unlockedNameColors) user.unlockedNameColors = ['text-white'];
+        if (!user.unlockedTitles) user.unlockedTitles = [];
+
+        if (avatar && user.unlockedAvatars.includes(avatar)) {
             user.avatar = avatar;
         }
 
         if (pedestal && user.unlockedPedestals.includes(pedestal)) {
             user.pedestal = pedestal;
+        }
+
+        if (nameColor && user.unlockedNameColors.includes(nameColor)) {
+            user.nameColor = nameColor;
+        }
+
+        if (title !== undefined && (title === '' || user.unlockedTitles.includes(title))) {
+            user.title = title;
         }
 
         await user.save();
@@ -324,9 +390,13 @@ router.put("/profile", authMiddleware, async (req, res) => {
             username: user.username, 
             avatar: user.avatar,
             pedestal: user.pedestal,
+            nameColor: user.nameColor,
+            title: user.title,
             gold: user.gold,
             unlockedAvatars: user.unlockedAvatars,
             unlockedPedestals: user.unlockedPedestals,
+            unlockedNameColors: user.unlockedNameColors,
+            unlockedTitles: user.unlockedTitles,
             rankInfo: getRankInfo(user.reputation || 0)
         });
     } catch (error) {

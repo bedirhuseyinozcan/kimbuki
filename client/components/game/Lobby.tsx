@@ -2,7 +2,7 @@ import { Button, TextField, IconButton, Avatar, Chip, FormControlLabel, Switch }
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CancelIcon from '@mui/icons-material/Cancel';
 import LogoutIcon from '@mui/icons-material/Logout';
-import { User, GameState, AVATARS, getRankInfo } from "./types";
+import { User, GameState, AVATARS, getRankInfo, NAME_COLORS, TITLES } from "./types";
 
 interface LobbyProps {
     gameState: GameState;
@@ -87,10 +87,19 @@ export default function Lobby({
                                             )}
                                         </Avatar>
                                         <div className="flex flex-col">
-                                            <span className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1 ${getRankInfo(u.reputation || 0).color}`}>
-                                                {getRankInfo(u.reputation || 0).icon} {getRankInfo(u.reputation || 0).title}
+                                            <div className="flex items-center gap-1">
+                                                <span className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1 ${getRankInfo(u.reputation || 0).color}`}>
+                                                    {getRankInfo(u.reputation || 0).icon} {getRankInfo(u.reputation || 0).title}
+                                                </span>
+                                                {u.title && (
+                                                    <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full bg-slate-700/50 text-white border border-slate-600 ml-1">
+                                                        {TITLES.find(t => t.id === u.title)?.label || u.title}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <span className={`font-bold text-lg leading-tight ${u.nameColor ? (NAME_COLORS.find(c => c.id === u.nameColor)?.className || 'text-white') : 'text-white'}`}>
+                                                {u.name} {u.id === myId ? '(Sen)' : ''}
                                             </span>
-                                            <span className="font-bold text-lg leading-tight">{u.name} {u.id === myId ? '(Sen)' : ''}</span>
                                         </div>
                                         {u.disconnected && <Chip label="Koptu" size="small" color="error" />}
                                         {u.isVoiceEnabled && <span title="Sesli Sohbet Açık" className="text-xl animate-pulse">🎤</span>}

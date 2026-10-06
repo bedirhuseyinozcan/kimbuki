@@ -9,7 +9,7 @@ import MicIcon from '@mui/icons-material/Mic';
 import SettingsIcon from '@mui/icons-material/Settings';
 import AudioSettingsDialog from './AudioSettingsDialog';
 import MicOffIcon from '@mui/icons-material/MicOff';
-import { User, GameState, AVATARS } from "./types";
+import { User, GameState, AVATARS, NAME_COLORS } from "./types";
 import { playTurnSound, playWinSound } from "@/utils/audio";
 import confetti from "canvas-confetti";
 import { motion, AnimatePresence } from "framer-motion";
@@ -344,12 +344,19 @@ export default function GameScene({
 
                         <div className={`group ${isChatOpen ? 'flex flex-col' : 'hidden'}`}>
                             <div className="h-40 group-focus-within:h-64 md:group-focus-within:h-72 transition-all duration-300 ease-in-out overflow-y-auto p-4 space-y-2 custom-scrollbar pointer-events-auto">
-                                {gameState.chatHistory.map((msg: any, i: number) => (
-                                    <div key={i} className={`text-sm ${msg.system ? 'text-cyan-400 text-center italic my-2' : ''}`}>
-                                        {!msg.system && <strong className="text-violet-400">{msg.name}: </strong>}
-                                        <span className={`break-words break-all ${msg.system ? 'font-bold' : 'text-slate-200'}`}>{msg.message}</span>
-                                    </div>
-                                ))}
+                                {gameState.chatHistory.map((msg: any, i: number) => {
+                                    let colorClass = "text-violet-400";
+                                    if (!msg.system && msg.nameColor) {
+                                        const found = NAME_COLORS.find(c => c.id === msg.nameColor);
+                                        if (found) colorClass = found.className;
+                                    }
+                                    return (
+                                        <div key={i} className={`text-sm ${msg.system ? 'text-cyan-400 text-center italic my-2' : ''}`}>
+                                            {!msg.system && <strong className={colorClass}>{msg.name}: </strong>}
+                                            <span className={`break-words break-all ${msg.system ? 'font-bold' : 'text-slate-200'}`}>{msg.message}</span>
+                                        </div>
+                                    );
+                                })}
                                 <div ref={chatEndRef} />
                             </div>
                             <form onSubmit={handleChat} className="p-2 border-t border-slate-700 flex gap-2 pointer-events-auto">
