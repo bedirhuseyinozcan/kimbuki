@@ -45,8 +45,7 @@ export default function BettingPhase({
 
                 <div className="flex flex-wrap justify-center gap-6 mb-8">
                     {gameState.users.map((u: User) => {
-                        const avatarIndex = typeof u.avatar === 'string' ? parseInt(u.avatar) : (u.avatar as number);
-                        const userAvatar = AVATARS[avatarIndex] || AVATARS[0];
+                        const userAvatar = AVATARS.find(a => a.id === u.avatar) || AVATARS[0];
                         return (
                         <div 
                             key={u.id} 

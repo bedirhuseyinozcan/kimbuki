@@ -51,6 +51,23 @@ class Room {
                     if (u.bloodTieTarget === oldId) u.bloodTieTarget = socketId;
                     if (u.timeBomb && u.timeBomb.casterId === oldId) u.timeBomb.casterId = socketId;
                 });
+                
+                if (this.bets) {
+                    if (this.bets[oldId]) {
+                        this.bets[socketId] = this.bets[oldId];
+                        delete this.bets[oldId];
+                    }
+                    for (let b in this.bets) {
+                        if (this.bets[b] === oldId) this.bets[b] = socketId;
+                    }
+                }
+                if (this.pendingMirrorWordOwner === oldId) this.pendingMirrorWordOwner = socketId;
+                if (this.pendingMirrorWordTarget === oldId) this.pendingMirrorWordTarget = socketId;
+                if (this.objection && this.objection.votes[oldId] !== undefined) {
+                    this.objection.votes[socketId] = this.objection.votes[oldId];
+                    delete this.objection.votes[oldId];
+                }
+
                 const winnerIndex = this.winners.indexOf(oldId);
                 if (winnerIndex !== -1) this.winners[winnerIndex] = socketId;
                 if (this.activeQuestion) {
@@ -133,6 +150,19 @@ class Room {
             if (nextHost) nextHost.isHost = true;
         }
 
+        if (this.gameState === "WORD_SELECTION") {
+            const active = this.users.filter(u => !u.disconnected);
+            if (active.length >= 2) {
+                for (let i = 0; i < active.length; i++) {
+                    const next = (i + 1) % active.length;
+                    active[i].targetId = active[next].id;
+                    active[i].hasSubmittedWord = false;
+                    active[i].assignedWord = null;
+                }
+                this.addChatLog({ system: true, message: `⚠️ Bir oyuncu ayrıldığı için kelime hedefleri yeniden dağıtıldı!`, timestamp: Date.now() });
+            }
+        }
+
         const playingUsers = this.users.filter(u => u.status === 'playing' && !u.disconnected);
         if (playingUsers.length < 2 && (this.gameState === "PLAYING" || this.gameState === "WORD_SELECTION" || this.gameState === "JOKER_DRAFT")) {
             this.endGame();
@@ -163,10 +193,11 @@ class Room {
     }
 
     async startGame(settings = {}) {
-        if (this.users.length < 2) return; 
+        const activeUsers = this.users.filter(u => !u.disconnected);
+        if (activeUsers.length < 2) return; 
 
         this.category = settings.category || "Karışık"; this.theme = settings.theme || "day"; this.map = settings.map || "floating_island__low_poly_vr.glb";
-        this.initialPlayerCount = this.users.length;
+        this.initialPlayerCount = activeUsers.length;
         this.isBettingEnabled = settings.bettingEnabled || false;
         this.betAmount = settings.betAmount || 50;
         this.isJokersEnabled = settings.jokersEnabled !== undefined ? settings.jokersEnabled : true;
@@ -177,7 +208,7 @@ class Room {
 
         if (this.isBettingEnabled) {
             const User = require('../models/User');
-            for (let u of this.users) {
+            for (let u of activeUsers) {
                 if (u.dbId) {
                     const userDb = await User.findById(u.dbId);
                     if (!userDb || userDb.gold < this.betAmount) {
@@ -190,7 +221,7 @@ class Room {
                 }
             }
             
-            for (let u of this.users) {
+            for (let u of activeUsers) {
                 await User.findByIdAndUpdate(u.dbId, { $inc: { gold: -this.betAmount } });
             }
 
@@ -201,7 +232,7 @@ class Room {
             this.bettingEndTime = Date.now() + 10000;
             
             for (let i = 0; i < this.users.length; i++) {
-                this.users[i].status = 'playing';
+                this.users[i].status = this.users[i].disconnected ? 'spectator' : 'playing';
                 this.users[i].lives = 3;
                 this.users[i].assignedWord = null;
                 this.users[i].hasSubmittedWord = false;
@@ -225,8 +256,10 @@ class Room {
         this.roundLogs = [];
         this.winners = [];
 
+        const activeUsers = this.users.filter(u => !u.disconnected);
+
         for (let i = 0; i < this.users.length; i++) {
-            this.users[i].status = 'playing';
+            this.users[i].status = this.users[i].disconnected ? 'spectator' : 'playing';
             this.users[i].lives = 3;
             this.users[i].assignedWord = null;
             this.users[i].hasSubmittedWord = false;
@@ -244,15 +277,23 @@ class Room {
             this.users[i].silencedTurns = 0;
             this.users[i].extraQuestions = 0;
             this.users[i].questionsAskedThisTurn = 0;
-            
-            const nextIndex = (i + 1) % this.users.length;
-            this.users[i].targetId = this.users[nextIndex].id;
+            this.users[i].targetId = null;
+        }
+
+        for (let i = 0; i < activeUsers.length; i++) {
+            const nextIndex = (i + 1) % activeUsers.length;
+            activeUsers[i].targetId = activeUsers[nextIndex].id;
         }
 
         this.broadcastState();
     }
 
     startJokerDraft() {
+        if (!this.isJokersEnabled) {
+            this.startPlaying();
+            return;
+        }
+
         this.gameState = "JOKER_DRAFT";
         
         const getRandomJoker = () => {
@@ -263,16 +304,12 @@ class Room {
         };
 
         for (let u of this.users) {
-            if (u.status === 'playing') {
-                if (this.isJokersEnabled) {
-                    let j1 = getRandomJoker();
-                    let j2 = getRandomJoker();
-                    while (j1 === j2) j2 = getRandomJoker();
-                    u.jokerChoices = [j1, j2];
-                    u.hasDrafted = false;
-                } else {
-                    u.hasDrafted = true; 
-                }
+            if (u.status === 'playing' && !u.disconnected) {
+                let j1 = getRandomJoker();
+                let j2 = getRandomJoker();
+                while (j1 === j2) j2 = getRandomJoker();
+                u.jokerChoices = [j1, j2];
+                u.hasDrafted = false;
                 u.joker = null;
             }
         }
@@ -474,14 +511,12 @@ class Room {
 
     startPlaying() {
         this.gameState = "PLAYING";
-        this.currentTurnIndex = 0;
         this.roundCount = 1;
         this.activeQuestion = null;
         this.resolvedQuestionsThisTurn = [];
         
-        while (this.users[this.currentTurnIndex].disconnected) {
-            this.currentTurnIndex = (this.currentTurnIndex + 1) % this.users.length;
-        }
+        const firstPlayableIndex = this.users.findIndex(u => !u.disconnected && u.status === 'playing');
+        this.currentTurnIndex = firstPlayableIndex !== -1 ? firstPlayableIndex : 0;
 
         this.startTimer();
         this.broadcastState();
@@ -549,9 +584,10 @@ class Room {
         const normalizedGuess = (guess || "").toLocaleLowerCase("tr-TR").replace(/[^a-z0-9çğıöşü]/g, "");
         if (!normalizedGuess || normalizedGuess.length === 0) return;
 
-        const isCorrect = normalizedTarget === normalizedGuess || 
-                         (normalizedTarget.includes(normalizedGuess) && normalizedGuess.length > 3) ||
-                         (normalizedGuess.includes(normalizedTarget) && normalizedTarget.length > 3);
+        const targetTokens = (user.assignedWord || "").toLocaleLowerCase("tr-TR").split(/\s+/).map(w => w.replace(/[^a-z0-9çğıöşü]/g, "")).filter(Boolean);
+        const isTokenMatch = targetTokens.some(w => w === normalizedGuess && w.length >= 3);
+
+        const isCorrect = normalizedTarget === normalizedGuess || isTokenMatch;
 
         const isRussianRoulette = user.russianRouletteActive;
 
@@ -780,7 +816,7 @@ class Room {
 
         const jokerType = user.joker;
         let targetId = payload.targetId;
-        let originalTargetId = targetId; 
+        let initialTargetId = targetId; 
         
         if (targetId === user.id && [3, 4, 5, 7, 10].includes(jokerType)) {
             this.io.to(userId).emit("game:error", { message: "Bu jokeri kendi üzerinde kullanamazsın!" });
@@ -840,17 +876,22 @@ class Room {
                 break;
             case 4: 
                 if (targetId && payload.newWord && typeof payload.newWord === 'string') {
+                    const cleanWord = payload.newWord.trim().substring(0, 30);
+                    if (!cleanWord) {
+                        this.io.to(userId).emit("game:error", { message: "Geçerli bir kelime girmelisiniz!" });
+                        break;
+                    }
                     const target = this.users.find(u => u.id === targetId);
                     if (target) {
-                        if (target.id === user.id && originalTargetId !== user.id) {
-                            this.pendingMirrorWordOwner = originalTargetId;
+                        if (target.id === user.id && initialTargetId !== user.id) {
+                            this.pendingMirrorWordOwner = initialTargetId;
                             this.pendingMirrorWordTarget = user.id;
                             target.assignedWord = "AYNA SAHİBİ KELİME BEKLENİYOR"; 
                             target.revealedLetters = [];
                             
-                            const mirrorOwner = this.users.find(u => u.id === originalTargetId);
+                            const mirrorOwner = this.users.find(u => u.id === initialTargetId);
                             this.addChatLog({ system: true, message: `🧠 Hafıza Silici geri tepti! ${target.name}'in kelimesi silindi! Ayna sahibi ${mirrorOwner ? mirrorOwner.name : ''} yeni kelimeyi belirliyor...`, timestamp: Date.now() });
-                            this.addChatLog({ system: true, privateTo: originalTargetId, message: `Sistem (Özel): Ayna ile Hafıza Siliciyi yansıttın! Lütfen 30 saniye içinde chat alanına "/kelime YENIKELIME" yazarak rakibinin yeni kelimesini belirle (Örn: /kelime Karpuz).`, timestamp: Date.now() });
+                            this.addChatLog({ system: true, privateTo: initialTargetId, message: `Sistem (Özel): Ayna ile Hafıza Siliciyi yansıttın! Lütfen 30 saniye içinde chat alanına "/kelime YENIKELIME" yazarak rakibinin yeni kelimesini belirle (Örn: /kelime Karpuz).`, timestamp: Date.now() });
 
                             if (this.mirrorWordTimer) clearTimeout(this.mirrorWordTimer);
                             this.mirrorWordTimer = setTimeout(() => {
@@ -866,7 +907,7 @@ class Room {
                                 }
                             }, 30000);
                         } else {
-                            target.assignedWord = payload.newWord.substring(0, 30); 
+                            target.assignedWord = cleanWord; 
                             this.addChatLog({ system: true, message: `🧠 Hafıza Silici kullanıldı! ${target.name}'in kelimesi acımasızca değiştirildi!`, timestamp: Date.now() });
                             target.revealedLetters = [];
                         }
@@ -891,7 +932,8 @@ class Room {
                 if (targetId && typeof targetId === 'string') {
                     const target = this.users.find(u => u.id === targetId);
                     if (target) {
-                        target.timeBomb = { casterId: originalTargetId, roundsLeft: 3 };
+                        const actualCaster = (targetId === user.id) ? initialTargetId : user.id;
+                        target.timeBomb = { casterId: actualCaster, roundsLeft: 3 };
                         this.addChatLog({ system: true, message: `💣 SAATLİ BOMBA! ${target.name}'in üzerine bomba yerleştirildi. 3 tur içinde bilemezse patlayacak!`, timestamp: Date.now() });
                         jokerConsumed = true;
                     }
@@ -1178,7 +1220,6 @@ class Room {
                         message: `🤐 ${nextUser.name} susturulduğu için sırasını atlıyor.`,
                         timestamp: Date.now()
                     });
-                    
                 } else {
                     nextUser.questionsAskedThisTurn = 0;
                     foundNext = true;
@@ -1260,8 +1301,8 @@ class Room {
                 russianRouletteActive: u.russianRouletteActive,
                 bloodTieTarget: u.bloodTieTarget,
                 timeBomb: u.timeBomb,
-                mirrorRoundsLeft: 0, 
-                shieldActive: false, 
+                mirrorRoundsLeft: (u.id === user.id) ? (u.mirrorRoundsLeft || 0) : 0, 
+                shieldActive: (u.id === user.id) ? !!u.shieldActive : false, 
                 extraQuestionChain: (u.id === user.id) ? u.extraQuestionChain : false,
                 silencedTurns: u.silencedTurns,
                 extraQuestions: u.extraQuestions || 0,
@@ -1300,6 +1341,7 @@ class Room {
             this.io.to(user.id).emit("game:state", payload);
         });
     }
+
     broadcastHeadRotation(userId, payload) {
         if (!payload || typeof payload.pitch !== 'number' || typeof payload.yaw !== 'number') return;
         
