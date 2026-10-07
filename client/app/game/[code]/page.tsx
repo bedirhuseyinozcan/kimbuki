@@ -65,7 +65,8 @@ export default function GamePage() {
         if (!me?.id || !code) return;
         (async () => {
             try {
-                const resp = await fetch(`/api/livekit?room=${code}&username=${me.id}`);
+                const livekitIdentity = me.dbId || me.id;
+                const resp = await fetch(`/api/livekit?room=${code}&username=${livekitIdentity}`);
                 const data = await resp.json();
                 if (data.token) {
                     setToken(data.token);
@@ -74,7 +75,7 @@ export default function GamePage() {
                 console.error("LiveKit token fetch error", e);
             }
         })();
-    }, [me?.id, code]);
+    }, [me?.id, me?.dbId, code]);
 
     const [checkingAuth, setCheckingAuth] = useState(true);
 

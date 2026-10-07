@@ -968,7 +968,12 @@ class Room {
         if (this.activeQuestion.askerId === userId) return; 
 
         this.activeQuestion.votes[userId] = voteType;
-        this.broadcastState();
+        const playingUsers = this.users.filter(u => u.status === 'playing' && !u.disconnected && u.id !== this.activeQuestion.askerId);
+        if (Object.keys(this.activeQuestion.votes).length >= playingUsers.length) {
+            this.resolveQuestion();
+        } else {
+            this.broadcastState();
+        }
     }
 
     resolveQuestion() {
