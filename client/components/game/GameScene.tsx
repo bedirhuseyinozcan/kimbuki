@@ -256,12 +256,12 @@ export default function GameScene({
                             </h4>
                             <p className="text-xs text-slate-300">{myJokerMeta.desc}</p>
                             
-                            {(me.shieldActive || (me.mirrorRoundsLeft && me.mirrorRoundsLeft > 0)) && (
+                            {(me.shieldActive || (me.mirrorRoundsLeft ?? 0) > 0) && (
                                 <div className="mt-2 flex flex-wrap gap-1.5 pt-2 border-t border-slate-700/50">
                                     {me.shieldActive && (
                                         <Chip size="small" label="🛡️ Gizli Kalkan Aktif" color="info" className="font-bold text-xs" />
                                     )}
-                                    {me.mirrorRoundsLeft && me.mirrorRoundsLeft > 0 ? (
+                                    {(me.mirrorRoundsLeft ?? 0) > 0 ? (
                                         <Chip size="small" label={`🪞 Ayna (${me.mirrorRoundsLeft} Tur)`} color="secondary" className="font-bold text-xs" />
                                     ) : null}
                                 </div>

@@ -124,6 +124,12 @@ class Room {
 
         user.disconnected = true;
 
+        if (user.isHost) {
+            user.isHost = false;
+            const nextHost = this.users.find(u => !u.disconnected);
+            if (nextHost) nextHost.isHost = true;
+        }
+
         if (this.activeQuestion) {
             const playingUsers = this.users.filter(u => u.status === 'playing' && !u.disconnected && u.id !== this.activeQuestion.askerId);
             const voteCount = Object.keys(this.activeQuestion.votes).filter(vId => playingUsers.some(p => p.id === vId)).length;
@@ -427,7 +433,7 @@ class Room {
         if (!this.objection || typeof vote !== 'boolean') return;
         
         const user = this.users.find(u => u.id === userId);
-        if (!user || user.status !== 'playing' || user.disconnected) return; // İzleyiciler oy kullanamaz
+        if (!user || user.status !== 'playing' || user.disconnected) return; 
 
         this.objection.votes[userId] = vote;
         
@@ -483,12 +489,18 @@ class Room {
     setWord(userId, word) {
         if (this.gameState !== "WORD_SELECTION" || typeof word !== 'string') return;
 
+        const cleanWord = word.trim().substring(0, 50);
+        if (!cleanWord || cleanWord.length === 0) {
+            this.io.to(userId).emit("game:error", { message: "Geçersiz! Lütfen rakibiniz için kurallara uygun, mantıklı bir kelime girin." });
+            return;
+        }
+
         const user = this.users.find(u => u.id === userId);
         if (!user || !user.targetId || user.hasSubmittedWord) return;
 
         const targetUser = this.users.find(u => u.id === user.targetId);
         if (targetUser) {
-            targetUser.assignedWord = word.trim().substring(0, 50); 
+            targetUser.assignedWord = cleanWord; 
             user.hasSubmittedWord = true;
         }
 
@@ -629,7 +641,10 @@ class Room {
         const targetTokens = (user.assignedWord || "").toLocaleLowerCase("tr-TR").split(/\s+/).map(w => w.replace(/[^a-z0-9çğıöşü]/g, "")).filter(Boolean);
         const isTokenMatch = targetTokens.some(w => w === normalizedGuess && w.length >= 3);
 
-        const isCorrect = normalizedTarget === normalizedGuess || isTokenMatch;
+        const isSubstringMatch = (normalizedTarget.length >= 4 && normalizedGuess.length >= 4) && 
+                                 (normalizedTarget.includes(normalizedGuess) || normalizedGuess.includes(normalizedTarget));
+
+        const isCorrect = (normalizedTarget === normalizedGuess) || isTokenMatch || isSubstringMatch;
 
         const isRussianRoulette = user.russianRouletteActive;
 
@@ -1008,7 +1023,6 @@ class Room {
                 user.joker = goldJokers[Math.floor(Math.random() * goldJokers.length)];
                 this.addChatLog({ system: true, privateTo: user.id, message: "Sistem (Özel): Gümüş Sürpriz Kutu'yu açtın ve içinden ALTIN joker çıktı!", timestamp: Date.now() });
                 jokerConsumed = true;
-                // Yeni joker verildiği için "kullanıldı" ibaresini iptal et.
                 user.hasUsedJoker = false; 
                 break;
             case 12:
