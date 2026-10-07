@@ -314,9 +314,9 @@ export default function GameScene({
                                         if (found) colorClass = found.className;
                                     }
                                     return (
-                                        <div key={i} className={`text-sm ${msg.system ? 'text-cyan-400 text-center italic my-2' : ''}`}>
+                                        <div key={i} className={`text-sm ${msg.system ? (msg.message.includes('Sistem (Özel)') ? 'text-fuchsia-400 font-bold' : 'text-cyan-400 text-center italic my-2') : ''}`}>
                                             {!msg.system && <strong className={colorClass}>{msg.name}: </strong>}
-                                            <span className={`break-words break-all ${msg.system ? 'font-bold' : 'text-slate-200'}`}>{msg.message}</span>
+                                            <span className={`break-words break-all ${msg.system ? (msg.message.includes('Sistem (Özel)') ? '' : 'font-bold') : 'text-slate-200'}`}>{msg.message}</span>
                                         </div>
                                     );
                                 })}
@@ -340,15 +340,6 @@ export default function GameScene({
                             </div>
 
                             <div className={`p-4 flex-col justify-center items-center gap-3 ${isActionsOpen ? 'flex' : 'hidden md:flex'}`}>
-                                {me?.hintStr && (
-                                    <div className="w-full bg-slate-800/80 rounded-xl p-3 text-center border border-slate-600 mb-2 shadow-inner">
-                                        <p className="text-xs text-slate-400 uppercase font-bold mb-1">KELİMEN</p>
-                                        <p className="text-2xl font-black tracking-[0.3em] text-cyan-400 drop-shadow-md whitespace-pre-wrap">
-                                            {me.hintStr.split('').map(c => c === ' ' ? '   ' : c).join(' ')}
-                                        </p>
-                                    </div>
-                                )}
-
                                 <motion.div whileHover={{ scale: isMyTurn ? 1.05 : 1 }} whileTap={{ scale: isMyTurn ? 0.95 : 1 }} className="w-full">
                                     <Button variant="contained" color="info" size="medium" fullWidth startIcon={<QuestionAnswerIcon />} onClick={() => setQuestionDialogOpen(true)} disabled={!isMyTurn || ((me?.questionsAskedThisTurn ?? 0) >= 1 && (me?.extraQuestions ?? 0) <= 0) || !!gameState.activeQuestion || isRussianRoulette} className={`py-3 rounded-xl border-2 font-bold ${isMyTurn && !gameState.activeQuestion && !isRussianRoulette ? 'bg-cyan-600 shadow-lg shadow-cyan-500/30' : 'opacity-50'}`}>
                                         Soru Sor & Oylat
@@ -377,8 +368,8 @@ export default function GameScene({
                                             size="medium" 
                                             fullWidth 
                                             onClick={() => setJokerDialogOpen(true)}
-                                            disabled={!isMyTurn || currentRound < 3 || isRussianRoulette}
-                                            className={`py-3 rounded-xl border-2 font-bold ${isMyTurn && currentRound >= 3 && !isRussianRoulette ? 'bg-fuchsia-600 shadow-[0_0_15px_rgba(192,38,211,0.5)]' : 'opacity-50'}`}
+                                            disabled={currentRound < 3 || isRussianRoulette || !isMyTurn}
+                                            className={`py-3 rounded-xl border-2 font-bold ${currentRound >= 3 && !isRussianRoulette && isMyTurn ? 'bg-fuchsia-600 shadow-[0_0_15px_rgba(192,38,211,0.5)]' : 'opacity-50'}`}
                                         >
                                             {currentRound < 3 ? '🃏 Joker (3. Turda Açılır)' : '🃏 Joker Kullan'}
                                         </Button>
