@@ -123,14 +123,34 @@ class Room {
         if (!user) return this.users.length === 0;
 
         user.disconnected = true;
+
+        if (this.activeQuestion) {
+            const playingUsers = this.users.filter(u => u.status === 'playing' && !u.disconnected && u.id !== this.activeQuestion.askerId);
+            const voteCount = Object.keys(this.activeQuestion.votes).filter(vId => playingUsers.some(p => p.id === vId)).length;
+            if (voteCount >= playingUsers.length && playingUsers.length > 0) {
+                this.resolveQuestion();
+            }
+        }
+        
+        if (this.objection) {
+            const playingUsers = this.users.filter(u => u.status === 'playing' && !u.disconnected);
+            const voteCount = Object.keys(this.objection.votes).filter(vId => playingUsers.some(p => p.id === vId)).length;
+            if (voteCount >= playingUsers.length && playingUsers.length > 0) {
+                clearTimeout(this.objectionTimer);
+                this.resolveObjection();
+            }
+        }
+
         this.broadcastState();
 
         const allDisconnected = this.users.every(u => u.disconnected);
         if (allDisconnected) return true; 
 
-        user.disconnectTimer = setTimeout(() => {
-            this.permanentlyRemoveUser(socketId);
-        }, 60000);
+        if (!user.disconnectTimer) {
+            user.disconnectTimer = setTimeout(() => {
+                this.permanentlyRemoveUser(socketId);
+            }, 60000);
+        }
 
         return false;
     }
@@ -160,6 +180,22 @@ class Room {
                     active[i].assignedWord = null;
                 }
                 this.addChatLog({ system: true, message: `⚠️ Bir oyuncu ayrıldığı için kelime hedefleri yeniden dağıtıldı!`, timestamp: Date.now() });
+            }
+        }
+        
+        if (this.activeQuestion) {
+            const playingUsers = this.users.filter(u => u.status === 'playing' && !u.disconnected && u.id !== this.activeQuestion.askerId);
+            const voteCount = Object.keys(this.activeQuestion.votes).filter(vId => playingUsers.some(p => p.id === vId)).length;
+            if (voteCount >= playingUsers.length && playingUsers.length > 0) {
+                this.resolveQuestion();
+            }
+        }
+        if (this.objection) {
+            const playingUsers = this.users.filter(u => u.status === 'playing' && !u.disconnected);
+            const voteCount = Object.keys(this.objection.votes).filter(vId => playingUsers.some(p => p.id === vId)).length;
+            if (voteCount >= playingUsers.length && playingUsers.length > 0) {
+                clearTimeout(this.objectionTimer);
+                this.resolveObjection();
             }
         }
 
@@ -389,10 +425,16 @@ class Room {
 
     voteObjection(userId, vote) {
         if (!this.objection || typeof vote !== 'boolean') return;
+        
+        const user = this.users.find(u => u.id === userId);
+        if (!user || user.status !== 'playing' || user.disconnected) return; // İzleyiciler oy kullanamaz
+
         this.objection.votes[userId] = vote;
         
         const playingUsers = this.users.filter(u => u.status === 'playing' && !u.disconnected);
-        if (Object.keys(this.objection.votes).length >= playingUsers.length) {
+        const voteCount = Object.keys(this.objection.votes).filter(vId => playingUsers.some(p => p.id === vId)).length;
+
+        if (voteCount >= playingUsers.length) {
             clearTimeout(this.objectionTimer);
             this.resolveObjection();
         } else {
@@ -966,6 +1008,7 @@ class Room {
                 user.joker = goldJokers[Math.floor(Math.random() * goldJokers.length)];
                 this.addChatLog({ system: true, privateTo: user.id, message: "Sistem (Özel): Gümüş Sürpriz Kutu'yu açtın ve içinden ALTIN joker çıktı!", timestamp: Date.now() });
                 jokerConsumed = true;
+                // Yeni joker verildiği için "kullanıldı" ibaresini iptal et.
                 user.hasUsedJoker = false; 
                 break;
             case 12:
@@ -978,7 +1021,9 @@ class Room {
         }
         
         if (jokerConsumed) {
-            user.hasUsedJoker = true;
+            if (jokerType !== 11 && jokerType !== 12) {
+                user.hasUsedJoker = true;
+            }
             if (user.dbId) {
                 const User = require('../models/User');
                 User.findById(user.dbId).then(userDb => {
@@ -1045,10 +1090,16 @@ class Room {
         if (this.gameState !== "PLAYING" || !this.activeQuestion || typeof voteType !== 'string') return;
         if (this.activeQuestion.askerId === userId) return; 
 
+        const user = this.users.find(u => u.id === userId);
+        if (!user || user.status !== 'playing' || user.disconnected) return;
+
         this.activeQuestion.votes[userId] = voteType;
         
         const playingUsers = this.users.filter(u => u.status === 'playing' && !u.disconnected && u.id !== this.activeQuestion.askerId);
-        if (Object.keys(this.activeQuestion.votes).length >= playingUsers.length) {
+        
+        const validVotesCount = Object.keys(this.activeQuestion.votes).filter(vId => playingUsers.some(p => p.id === vId)).length;
+        
+        if (validVotesCount >= playingUsers.length) {
             this.resolveQuestion();
         } else {
             this.broadcastState();
@@ -1060,7 +1111,6 @@ class Room {
         
         const asker = this.users.find(u => u.id === this.activeQuestion.askerId);
         
-        const playingUsers = this.users.filter(u => u.status === 'playing');
         let yesCount = 0, noCount = 0;
         for (let vote of Object.values(this.activeQuestion.votes)) {
             if(vote === 'yes') yesCount++;
