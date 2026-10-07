@@ -13,6 +13,7 @@ class Room {
         this.timer = null;
         this.turnTimeLeft = 0;
         this.currentTurnIndex = 0;
+        this.roundCount = 1;
 
         this.chatHistory = [];
         this.winners = []; 
@@ -71,7 +72,11 @@ class Room {
             lives: 3,
             disconnected: false,
             joker: null,
+            jokerChoices: [],
+            hasDrafted: false,
             hasUsedJoker: false,
+            russianRouletteActive: false,
+            bloodTieTarget: null,
             silencedTurns: 0,
             extraQuestions: 0
         });
@@ -111,12 +116,10 @@ class Room {
         }
 
         const playingUsers = this.users.filter(u => u.status === 'playing' && !u.disconnected);
-        if (playingUsers.length < 2 && (this.gameState === "PLAYING" || this.gameState === "WORD_SELECTION")) {
+        if (playingUsers.length < 2 && (this.gameState === "PLAYING" || this.gameState === "WORD_SELECTION" || this.gameState === "JOKER_DRAFT")) {
             this.endGame();
         } else if (wasCurrentTurn && this.gameState === "PLAYING") {
-            
             this.currentTurnIndex = this.currentTurnIndex % this.users.length;
-            
             this.nextTurn();
         }
 
@@ -151,10 +154,10 @@ class Room {
         this.bets = {};
         this.hasObjectionUsed = false;
         this.objection = null;
+        this.roundCount = 1;
 
         if (this.isBettingEnabled) {
             const User = require('../models/User');
-            // Check if all players have enough gold
             for (let u of this.users) {
                 if (u.dbId) {
                     const userDb = await User.findById(u.dbId);
@@ -168,7 +171,6 @@ class Room {
                 }
             }
             
-            // Deduct gold from all
             for (let u of this.users) {
                 await User.findByIdAndUpdate(u.dbId, { $inc: { gold: -this.betAmount } });
             }
@@ -204,19 +206,17 @@ class Room {
         this.roundLogs = [];
         this.winners = [];
 
-        const availableJokers = [0, 1, 2, 3, 4];
-        for(let i = availableJokers.length - 1; i > 0; i--){
-            const j = Math.floor(Math.random() * (i + 1));
-            [availableJokers[i], availableJokers[j]] = [availableJokers[j], availableJokers[i]];
-        }
-        
         for (let i = 0; i < this.users.length; i++) {
             this.users[i].status = 'playing';
             this.users[i].lives = 3;
             this.users[i].assignedWord = null;
             this.users[i].hasSubmittedWord = false;
-            this.users[i].joker = this.isJokersEnabled ? availableJokers[i % availableJokers.length] : null;
+            this.users[i].joker = null;
+            this.users[i].hasDrafted = false;
+            this.users[i].jokerChoices = [];
             this.users[i].hasUsedJoker = false;
+            this.users[i].russianRouletteActive = false;
+            this.users[i].bloodTieTarget = null;
             this.users[i].silencedTurns = 0;
             this.users[i].extraQuestions = 0;
             this.users[i].questionsAskedThisTurn = 0;
@@ -227,6 +227,64 @@ class Room {
         }
 
         this.broadcastState();
+    }
+
+    startJokerDraft() {
+        this.gameState = "JOKER_DRAFT";
+        
+        const getRandomJoker = () => {
+            const r = Math.random() * 100;
+            if (r < 10) return [5, 6][Math.floor(Math.random() * 2)];
+            if (r < 40) return [2, 3, 4][Math.floor(Math.random() * 3)];
+            return [0, 1][Math.floor(Math.random() * 2)];
+        };
+
+        for (let u of this.users) {
+            if (u.status === 'playing') {
+                if (this.isJokersEnabled) {
+                    let j1 = getRandomJoker();
+                    let j2 = getRandomJoker();
+                    while (j1 === j2) j2 = getRandomJoker();
+                    u.jokerChoices = [j1, j2];
+                    u.hasDrafted = false;
+                } else {
+                    u.hasDrafted = true; 
+                }
+                u.joker = null;
+            }
+        }
+        
+        this.jokerDraftEndTime = Date.now() + 15000;
+        this.jokerDraftTimer = setTimeout(() => {
+            for (let u of this.users) {
+                if (u.status === 'playing' && !u.hasDrafted && this.isJokersEnabled) {
+                    u.joker = u.jokerChoices ? u.jokerChoices[0] : null;
+                    u.hasDrafted = true;
+                }
+            }
+            this.startPlaying();
+        }, 15000);
+        
+        this.broadcastState();
+    }
+
+    selectJoker(userId, jokerId) {
+        if(this.gameState !== "JOKER_DRAFT") return;
+        const user = this.users.find(u => u.id === userId);
+        if(!user || user.hasDrafted || !this.isJokersEnabled) return;
+        
+        if(user.jokerChoices.includes(jokerId)) {
+            user.joker = jokerId;
+            user.hasDrafted = true;
+        }
+
+        const allDrafted = this.users.filter(u => u.status === 'playing').every(u => u.hasDrafted);
+        if(allDrafted) {
+            if(this.jokerDraftTimer) clearTimeout(this.jokerDraftTimer);
+            this.startPlaying();
+        } else {
+            this.broadcastState();
+        }
     }
 
     placeBet(userId, targetId) {
@@ -327,7 +385,7 @@ class Room {
 
         const allAssigned = this.users.every(u => u.hasSubmittedWord);
         if (allAssigned) {
-            this.startPlaying();
+            this.startJokerDraft();
         } else {
             this.broadcastState();
         }
@@ -384,6 +442,7 @@ class Room {
     startPlaying() {
         this.gameState = "PLAYING";
         this.currentTurnIndex = 0;
+        this.roundCount = 1;
         this.activeQuestion = null;
         this.resolvedQuestionsThisTurn = [];
         this.startTimer();
@@ -429,6 +488,8 @@ class Room {
                          (normalizedTarget.includes(normalizedGuess) && normalizedGuess.length > 3) ||
                          (normalizedGuess.includes(normalizedTarget) && normalizedTarget.length > 3);
 
+        const isRussianRoulette = user.russianRouletteActive;
+
         if (isCorrect) {
             user.status = 'spectator';
             this.winners.push(user.id);
@@ -443,26 +504,31 @@ class Room {
                 const totalPot = playersCount * this.betAmount;
                 let pct = 0;
                 
-                if (playersCount <= 2) {
-                    pct = rank === 1 ? 1.0 : 0;
-                } else if (playersCount === 3) {
-                    pct = rank === 1 ? 0.60 : (rank === 2 ? 0.40 : 0);
-                } else if (playersCount === 4) {
-                    pct = rank === 1 ? 0.50 : (rank === 2 ? 0.30 : (rank === 3 ? 0.20 : 0));
+                if (isRussianRoulette) {
+                    winnerReward = totalPot; 
+                    bettorReward = 0;
                 } else {
-                    if (rank === 1) pct = 0.40;
-                    else if (rank === 2) pct = 0.30;
-                    else if (rank === 3) pct = 0.20;
-                    else if (rank === 4) pct = 0.10;
-                    else pct = 0;
+                    if (playersCount <= 2) {
+                        pct = rank === 1 ? 1.0 : 0;
+                    } else if (playersCount === 3) {
+                        pct = rank === 1 ? 0.60 : (rank === 2 ? 0.40 : 0);
+                    } else if (playersCount === 4) {
+                        pct = rank === 1 ? 0.50 : (rank === 2 ? 0.30 : (rank === 3 ? 0.20 : 0));
+                    } else {
+                        if (rank === 1) pct = 0.40;
+                        else if (rank === 2) pct = 0.30;
+                        else if (rank === 3) pct = 0.20;
+                        else if (rank === 4) pct = 0.10;
+                        else pct = 0;
+                    }
+                    winnerReward = Math.floor(totalPot * pct);
+                    bettorReward = Math.max(1, Math.floor(winnerReward / 2));
                 }
-                
-                winnerReward = Math.floor(totalPot * pct);
-                bettorReward = Math.max(1, Math.floor(winnerReward / 2));
             }
             
             let repReward = 5;
-            if (rank === 1) repReward = 50;
+            if (isRussianRoulette) repReward = 200;
+            else if (rank === 1) repReward = 50;
             else if (rank === 2) repReward = 20;
             else if (rank === 3) repReward = 10;
             
@@ -479,7 +545,9 @@ class Room {
             addReward(user.dbId, winnerReward, repReward, 'win');
 
             let winMsg = "";
-            if (this.isBettingEnabled) {
+            if (isRussianRoulette) {
+                winMsg = `💀👑 RUS RULETİ BAŞARILI! ${user.name} hayatını riske attı ve tüm kasayı (${winnerReward || repReward} Ödül) TEK BAŞINA ALDI!`;
+            } else if (this.isBettingEnabled) {
                 winMsg = `🏆 ${user.name} doğru tahmin etti! (${rank}. oldu) -> Oyun kazancı: ${winnerReward} Altın. (Kelimesi: ${user.assignedWord})`;
             } else {
                 winMsg = `🏆 ${user.name} doğru tahmin etti! (${rank}. oldu) -> Oyun kazancı: ${repReward} İtibar. (Kelimesi: ${user.assignedWord})`;
@@ -487,7 +555,7 @@ class Room {
             this.chatHistory.push({ system: true, message: winMsg, timestamp: Date.now() });
             this.roundLogs.push(winMsg);
 
-            if (this.isBettingEnabled && bettorReward > 0) {
+            if (this.isBettingEnabled && bettorReward > 0 && !isRussianRoulette) {
                 const bettors = Object.keys(this.bets || {}).filter(uid => this.bets[uid] === user.id);
                 let bettorNames = [];
                 
@@ -524,6 +592,11 @@ class Room {
                 }).catch(err => console.error("Aggregated reward update error:", err));
             }
 
+            if (isRussianRoulette) {
+                this.endGame();
+                return;
+            }
+
             const playingUsers = this.users.filter(u => u.status === 'playing');
             if (playingUsers.length <= 1) { 
                 this.endGame();
@@ -536,12 +609,19 @@ class Room {
                 this.broadcastState();
             }
         } else {
-            user.lives--;
+            if (isRussianRoulette) {
+                user.lives = 0;
+            } else {
+                user.lives--;
+            }
+
             if (user.lives <= 0) {
                 user.status = 'spectator';
                 this.chatHistory.push({
                     system: true,
-                    message: `${user.name} tüm tahmin haklarını kaybetti ve izleyici oldu! Kelimesi: ${user.assignedWord}`,
+                    message: isRussianRoulette 
+                        ? `💀 RUS RULETİ PATLADI! ${user.name} yanlış bildi ve anında elendi! Kelimesi: ${user.assignedWord}`
+                        : `${user.name} tüm tahmin haklarını kaybetti ve izleyici oldu! Kelimesi: ${user.assignedWord}`,
                     timestamp: Date.now()
                 });
             } else {
@@ -566,8 +646,36 @@ class Room {
         }
     }
 
+    openLettersForUser(user, count) {
+        if (!user.assignedWord) return;
+        if (!user.hintStr) {
+            user.hintStr = user.assignedWord.split('').map(c => c === ' ' ? ' ' : '_').join('');
+        }
+        const word = user.assignedWord;
+        for (let k = 0; k < count; k++) {
+            let hiddenIndices = [];
+            for(let i = 0; i < word.length; i++) {
+                if(user.hintStr[i] === '_') hiddenIndices.push(i);
+            }
+            if(hiddenIndices.length > 0) {
+                const randomIdx = hiddenIndices[Math.floor(Math.random() * hiddenIndices.length)];
+                let newHintStr = "";
+                for(let i = 0; i < word.length; i++) {
+                    if (i === randomIdx) newHintStr += word[i];
+                    else newHintStr += user.hintStr[i];
+                }
+                user.hintStr = newHintStr;
+            }
+        }
+    }
+
     useJoker(userId, payload) {
         if (this.gameState !== "PLAYING") return;
+        if (this.roundCount < 3) {
+            this.io.to(userId).emit("game:error", { message: "Jokerler 3. turdan itibaren kullanılabilir!" });
+            return;
+        }
+
         const user = this.users.find(u => u.id === userId);
         if (!user || user.status !== 'playing' || user.hasUsedJoker || user.joker === null) return;
 
@@ -588,65 +696,47 @@ class Room {
                         }
                     }, newTime * 1000);
                     
-                    this.chatHistory.push({ system: true, message: `${user.name} joker kullanarak süresine 1 dakika ekledi!`, timestamp: Date.now() });
+                    this.chatHistory.push({ system: true, message: `⏳ ${user.name} Zaman Bükücü kullanarak süresine 1 dakika ekledi!`, timestamp: Date.now() });
                 }
                 break;
             case 1: 
-                if (payload && payload.targetId && payload.newWord) {
-                    const target = this.users.find(u => u.id === payload.targetId);
-                    if (target) {
-                        target.assignedWord = payload.newWord;
-                        this.chatHistory.push({ system: true, message: `${user.name}, bir oyuncunun kelimesini değiştirdi!`, timestamp: Date.now() });
-                    }
-                }
+                this.openLettersForUser(user, 1);
+                const formattedHint = user.hintStr.split('').join(' ');
+                this.chatHistory.push({ system: true, message: `🔍 ${user.name}, Harf Açıcı kullanarak bir ipucu elde etti! Mevcut kelimesi: ${formattedHint}`, timestamp: Date.now() });
                 break;
             case 2: 
                 user.extraQuestions = 3;
-                this.chatHistory.push({ system: true, message: `${user.name}, joker kullanarak 3 ekstra soru sorma hakkı kazandı!`, timestamp: Date.now() });
+                this.chatHistory.push({ system: true, message: `🔫 ${user.name}, Çift Şarjör kullanarak 3 ekstra soru hakkı kazandı!`, timestamp: Date.now() });
                 break;
             case 3: 
-                if (user.assignedWord) {
-                    if (!user.hintStr) {
-                        let hint = "";
-                        for (let i = 0; i < user.assignedWord.length; i++) {
-                            hint += (user.assignedWord[i] === ' ') ? ' ' : '_';
-                        }
-                        user.hintStr = hint;
-                    }
-
-                    const word = user.assignedWord;
-                    let hiddenIndices = [];
-                    for(let i = 0; i < word.length; i++) {
-                        if(user.hintStr[i] === '_') hiddenIndices.push(i);
-                    }
-                    if(hiddenIndices.length > 0) {
-                        const randomIdx = hiddenIndices[Math.floor(Math.random() * hiddenIndices.length)];
-                        
-                        let newHintStr = "";
-                        for(let i = 0; i < word.length; i++) {
-                            if (i === randomIdx) newHintStr += word[i];
-                            else newHintStr += user.hintStr[i];
-                        }
-                        user.hintStr = newHintStr;
-                        
-                        const formattedHint = user.hintStr.split('').join(' ');
-                        this.chatHistory.push({ 
-                            system: true, 
-                            message: `${user.name}, joker kullanarak bir ipucu aldı! Mevcut kelimesi: ${formattedHint}`, 
-                            timestamp: Date.now() 
-                        });
-                        this.broadcastState();
-                    }
-                }
-                break;
-            case 4: 
                 if (payload && payload.targetId) {
                     const silenceTarget = this.users.find(u => u.id === payload.targetId);
                     if (silenceTarget) {
                         silenceTarget.silencedTurns = 2;
-                        this.chatHistory.push({ system: true, message: `${user.name}, bir oyuncuyu 2 tur susturdu!`, timestamp: Date.now() });
+                        this.chatHistory.push({ system: true, message: `🤫 ${user.name}, Susturucu kullanarak ${silenceTarget.name}'i 2 tur susturdu!`, timestamp: Date.now() });
                     }
                 }
+                break;
+            case 4: 
+                if (payload && payload.targetId && payload.newWord) {
+                    const target = this.users.find(u => u.id === payload.targetId);
+                    if (target) {
+                        target.assignedWord = payload.newWord;
+                        target.hintStr = null;
+                        this.chatHistory.push({ system: true, message: `🧠 ${user.name}, Hafıza Silici ile bir oyuncunun kelimesini acımasızca değiştirdi!`, timestamp: Date.now() });
+                    }
+                }
+                break;
+            case 5:
+                if (payload && payload.targetId) {
+                    user.bloodTieTarget = payload.targetId;
+                    this.chatHistory.push({ system: true, message: `🩸 Kan Bağı: ${user.name} jokerini kullanarak hedefini seçti! Onun kaderi artık ${user.name}'in kaderi.`, timestamp: Date.now() });
+                }
+                break;
+            case 6:
+                user.russianRouletteActive = true;
+                this.openLettersForUser(user, 2);
+                this.chatHistory.push({ system: true, message: `💀 RUS RULETİ! ${user.name}'in 2 harfi açıldı ve hemen tahmin etmek zorunda!`, timestamp: Date.now() });
                 break;
         }
         
@@ -672,11 +762,11 @@ class Room {
         if (!question || question.length > 150) return;
         const currentUser = this.users[this.currentTurnIndex];
         if (currentUser.id !== userId) return;
+        if (currentUser.russianRouletteActive) return; 
 
         const asked = currentUser.questionsAskedThisTurn || 0;
         
         if (asked >= 1) {
-            
             if (currentUser.extraQuestions > 0) {
                 currentUser.extraQuestions--;
             } else {
@@ -720,11 +810,44 @@ class Room {
     resolveQuestion() {
         if (!this.activeQuestion) return;
         
-        if (!this.resolvedQuestionsThisTurn) this.resolvedQuestionsThisTurn = []; this.resolvedQuestionsThisTurn.push(this.activeQuestion);
+        const playingUsers = this.users.filter(u => u.status === 'playing');
+        let yesCount = 0, noCount = 0;
+        for (let vote of Object.values(this.activeQuestion.votes)) {
+            if(vote === 'yes') yesCount++;
+            else if(vote === 'no') noCount++;
+        }
+        const isYesMajority = yesCount > noCount;
+        const isNoMajority = noCount > yesCount;
+
+        for (let u of this.users) {
+            if (u.bloodTieTarget === this.activeQuestion.askerId && u.status === 'playing') {
+                if (isYesMajority) {
+                    this.openLettersForUser(u, 1);
+                    this.chatHistory.push({ system: true, message: `🩸 Kan Bağı: Bağlı olduğun oyuncu EVET aldı! ${u.name}'in bir harfi açıldı.`, timestamp: Date.now() });
+                } else if (isNoMajority) {
+                    u.lives -= 1;
+                    if (u.lives <= 0) {
+                        u.status = 'spectator';
+                        this.chatHistory.push({ system: true, message: `🩸 Kan Bağı: Bağlı olduğun oyuncu HAYIR aldı! ${u.name} tüm canlarını kaybetti ve elendi!`, timestamp: Date.now() });
+                    } else {
+                        this.chatHistory.push({ system: true, message: `🩸 Kan Bağı: Bağlı olduğun oyuncu HAYIR aldı! ${u.name} 1 can kaybetti!`, timestamp: Date.now() });
+                    }
+                }
+            }
+        }
+
+        if (!this.resolvedQuestionsThisTurn) this.resolvedQuestionsThisTurn = []; 
+        this.resolvedQuestionsThisTurn.push(this.activeQuestion);
         this.activeQuestion = null;
         if (this.questionTimer) {
             clearTimeout(this.questionTimer);
             this.questionTimer = null;
+        }
+
+        const activePlayers = this.users.filter(x => x.status === 'playing');
+        if (activePlayers.length <= 1) {
+            this.endGame();
+            return;
         }
         
         this.turnStartTime = Date.now() - ((this.turnTime * 1000) - this.pausedRemainingMs);
@@ -743,9 +866,26 @@ class Room {
         this.resolvedQuestionsThisTurn = [];
         if (this.gameState !== "PLAYING") return;
 
+        const prevUser = this.users[this.currentTurnIndex];
+        if (prevUser && prevUser.russianRouletteActive && prevUser.status === 'playing') {
+            prevUser.lives = 0;
+            prevUser.status = 'spectator';
+            this.chatHistory.push({ system: true, message: `💀 ${prevUser.name} Rus Ruleti süresini aştı ve elendi!`, timestamp: Date.now() });
+            
+            const activePlayers = this.users.filter(x => x.status === 'playing');
+            if (activePlayers.length <= 1) {
+                this.endGame();
+                return;
+            }
+        }
+
         let attempts = 0;
         do {
             this.currentTurnIndex = (this.currentTurnIndex + 1) % this.users.length;
+            if (this.currentTurnIndex === 0) {
+                this.roundCount++;
+            }
+
             attempts++;
             if (attempts > this.users.length) {
                 this.endGame();
@@ -758,7 +898,7 @@ class Room {
                     nextUser.silencedTurns--;
                     this.chatHistory.push({
                         system: true,
-                        message: `${nextUser.name} susturulduğu için sırasını atlıyor.`,
+                        message: `🤐 ${nextUser.name} susturulduğu için sırasını atlıyor.`,
                         timestamp: Date.now()
                     });
                     continue; 
@@ -827,7 +967,11 @@ class Room {
                 isVoiceEnabled: u.isVoiceEnabled,
                 lives: u.lives,
                 joker: u.id === user.id ? u.joker : null,
+                jokerChoices: u.id === user.id ? u.jokerChoices : undefined,
+                hasDrafted: u.hasDrafted,
                 hasUsedJoker: u.hasUsedJoker,
+                russianRouletteActive: u.russianRouletteActive,
+                bloodTieTarget: u.bloodTieTarget,
                 silencedTurns: u.silencedTurns,
                 extraQuestions: u.extraQuestions || 0,
                 questionsAskedThisTurn: u.questionsAskedThisTurn || 0,
@@ -851,6 +995,8 @@ class Room {
                 objection: this.objection,
                 hasObjectionUsed: this.hasObjectionUsed,
                 bettingEndTime: this.bettingEndTime,
+                jokerDraftEndTime: this.jokerDraftEndTime,
+                roundCount: this.roundCount || 1,
                 roundLogs: this.gameState === "ROUND_END" ? this.roundLogs : []
             };
 

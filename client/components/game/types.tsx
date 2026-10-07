@@ -17,7 +17,11 @@ export type User = {
     hasPlacedBet?: boolean;
     isVoiceEnabled: boolean;
     joker?: number | null;
+    jokerChoices?: number[];
+    hasDrafted?: boolean;
     hasUsedJoker?: boolean;
+    russianRouletteActive?: boolean;
+    bloodTieTarget?: string | null;
     silencedTurns?: number;
     extraQuestions?: number;
     questionsAskedThisTurn?: number;
@@ -28,8 +32,10 @@ export type User = {
 };
 
 export type GameState = {
-    gameState: "LOBBY" | "BETTING" | "WORD_SELECTION" | "PLAYING" | "ROUND_END";
+    gameState: "LOBBY" | "BETTING" | "WORD_SELECTION" | "JOKER_DRAFT" | "PLAYING" | "ROUND_END";
     bettingEndTime?: number;
+    jokerDraftEndTime?: number;
+    roundCount?: number;
     objection?: {
         initiator: string;
         votes: { [userId: string]: boolean };
@@ -56,6 +62,16 @@ export type GameState = {
     winners: string[];
     hasObjectionUsed?: boolean;
 };
+
+export const JOKERS = [
+    { id: 0, name: "Zaman Bükücü", rarity: "silver", desc: "Sıran geldiğinde sürene +1 Dakika ekler.", requiresTarget: false, requiresWord: false },
+    { id: 1, name: "Harf Açıcı", rarity: "gold", desc: "Kendi kelimenden rastgele 1 harfi açar.", requiresTarget: false, requiresWord: false },
+    { id: 2, name: "Çift Şarjör", rarity: "gold", desc: "Sıran geldiğinde 3 ekstra soru hakkı verir.", requiresTarget: false, requiresWord: false },
+    { id: 3, name: "Susturucu", rarity: "gold", desc: "Seçtiğin bir oyuncuyu 2 tur susturur.", requiresTarget: true, requiresWord: false },
+    { id: 4, name: "Hafıza Silici", rarity: "gold", desc: "Seçtiğin kişinin kelimesini değiştirir.", requiresTarget: true, requiresWord: true },
+    { id: 5, name: "Kan Bağı", rarity: "prismatic", desc: "Biriyle bağlan. O 'Evet' alırsa harfin açılır, 'Hayır' alırsa canın gider.", requiresTarget: true, requiresWord: false },
+    { id: 6, name: "Rus Ruleti", rarity: "prismatic", desc: "Hemen tahmin zorunlu olur. Bilirsen tüm kasayı alırsın, bilemezsen elenirsin!", requiresTarget: false, requiresWord: false }
+];
 
 export const AVATARS = [
     { id: 'Warrior', color: "bg-red-600", icon: <GiBroadsword />, label: "Savaşçı", model: "Warrior.gltf" },

@@ -9,11 +9,13 @@ import { toast } from "react-toastify";
 import { User, GameState } from "@/components/game/types";
 import Lobby from "@/components/game/Lobby";
 import WordSelection from "@/components/game/WordSelection";
+import JokerDraft from "@/components/game/JokerDraft";
 import GameScene from "@/components/game/GameScene";
 import GameOver from "@/components/game/GameOver";
 import BettingPhase from "@/components/game/BettingPhase";
 import { LiveKitRoom, RoomAudioRenderer, useRoomContext } from '@livekit/components-react';
 import '@livekit/components-styles';
+import { useLocalParticipant } from '@livekit/components-react';
 
 function LiveKitSpeakerSync() {
     const room = useRoomContext();
@@ -25,8 +27,6 @@ function LiveKitSpeakerSync() {
     }, [room]);
     return null;
 }
-
-import { useLocalParticipant } from '@livekit/components-react';
 
 function LiveKitMicSync({ isVoiceEnabled }: { isVoiceEnabled: boolean }) {
     const { localParticipant } = useLocalParticipant();
@@ -47,11 +47,8 @@ export default function GamePage() {
     const [gameState, setGameState] = useState<GameState | null>(null);
     const [inviteUrl, setInviteUrl] = useState<string>("");
 
-    const [nameInput, setNameInput] = useState("");
     const [isJoined, setIsJoined] = useState(false);
-
     const [wordInput, setWordInput] = useState("");
-
     const [chatInput, setChatInput] = useState("");
     const [notepad, setNotepad] = useState("");
     const [guessDialogOpen, setGuessDialogOpen] = useState(false);
@@ -239,62 +236,33 @@ export default function GamePage() {
                     <p className="font-bold">Odayı kapatmak istediğine emin misin?</p>
                     <p className="text-sm">Odada bulunan herkes atılacak.</p>
                     <div className="flex gap-2 justify-end mt-2">
-                        <Button 
-                            size="small" 
-                            variant="outlined" 
-                            color="inherit" 
-                            onClick={closeToast}
-                        >
-                            İptal
-                        </Button>
-                        <Button 
-                            size="small" 
-                            variant="contained" 
-                            color="error" 
-                            onClick={() => {
+                        <Button size="small" variant="outlined" color="inherit" onClick={closeToast}>İptal</Button>
+                        <Button size="small" variant="contained" color="error" onClick={() => {
                                 socket?.emit("room:close");
                                 if (socket) socket.disconnect();
                                 sessionStorage.removeItem("username");
                                 router.push("/");
                                 if (closeToast) closeToast();
-                            }}
-                        >
-                            Kapat
-                        </Button>
+                            }}>Kapat</Button>
                     </div>
                 </div>
             ),
-            { 
-                autoClose: false, 
-                closeOnClick: false, 
-                draggable: false, 
-                position: "top-center" 
-            }
+            { autoClose: false, closeOnClick: false, draggable: false, position: "top-center" }
         );
     };
 
     const renderGameState = () => {
         if (gameState.gameState === "LOBBY") {
-            return <Lobby 
-                gameState={gameState} me={me!} code={code as string} inviteUrl={inviteUrl} myId={myId!} 
-                onStart={handleStart} onCloseRoom={handleCloseRoom} onLeaveRoom={handleLeaveRoom} onCopyLink={copyLink} 
-                onSelectAvatar={handleSelectAvatar} onToggleVoice={toggleVoice}
-            />;
+            return <Lobby gameState={gameState} me={me!} code={code as string} inviteUrl={inviteUrl} myId={myId!} onStart={handleStart} onCloseRoom={handleCloseRoom} onLeaveRoom={handleLeaveRoom} onCopyLink={copyLink} onSelectAvatar={handleSelectAvatar} onToggleVoice={toggleVoice} />;
         }
         if (gameState.gameState === "BETTING") {
-            return <BettingPhase
-                gameState={gameState} me={me!}
-                onPlaceBet={(targetId) => socket?.emit("game:place_bet", { targetId })}
-            />;
+            return <BettingPhase gameState={gameState} me={me!} onPlaceBet={(targetId) => socket?.emit("game:place_bet", { targetId })} />;
         }
         if (gameState.gameState === "WORD_SELECTION") {
-            return <WordSelection 
-                gameState={gameState} me={me!} wordInput={wordInput} setWordInput={setWordInput} 
-                onSetWord={handleSetWord} 
-                onEditWord={() => socket?.emit("game:edit_word")}
-                onShuffleTargets={() => socket?.emit("game:shuffle_targets")}
-                onLeaveRoom={handleLeaveRoom} 
-            />;
+            return <WordSelection gameState={gameState} me={me!} wordInput={wordInput} setWordInput={setWordInput} onSetWord={handleSetWord} onEditWord={() => socket?.emit("game:edit_word")} onShuffleTargets={() => socket?.emit("game:shuffle_targets")} onLeaveRoom={handleLeaveRoom} />;
+        }
+        if (gameState.gameState === "JOKER_DRAFT") {
+            return <JokerDraft gameState={gameState} me={me!} onSelectJoker={(jokerId) => socket?.emit("game:select_joker", { jokerId })} />;
         }
         if (gameState.gameState === "PLAYING") {
             return <GameScene 
@@ -318,9 +286,7 @@ export default function GamePage() {
             />;
         }
         if (gameState.gameState === "ROUND_END") {
-            return <GameOver 
-                gameState={gameState} me={me!} onStart={() => handleStart({ category: gameState.category || "Karışık", bettingEnabled: gameState.isBettingEnabled, jokersEnabled: gameState.isJokersEnabled, betAmount: gameState.betAmount })} onLeaveRoom={handleLeaveRoom} 
-            />;
+            return <GameOver gameState={gameState} me={me!} onStart={() => handleStart({ category: gameState.category || "Karışık", bettingEnabled: gameState.isBettingEnabled, jokersEnabled: gameState.isJokersEnabled, betAmount: gameState.betAmount })} onLeaveRoom={handleLeaveRoom} />;
         }
         return null;
     };
@@ -335,14 +301,7 @@ export default function GamePage() {
     };
 
     return (
-        <LiveKitRoom
-            video={false}
-            audio={me?.isVoiceEnabled || false}
-            token={token}
-            serverUrl={process.env.NEXT_PUBLIC_LIVEKIT_URL}
-            connect={!!token}
-            options={roomOptions}
-        >
+        <LiveKitRoom video={false} audio={me?.isVoiceEnabled || false} token={token} serverUrl={process.env.NEXT_PUBLIC_LIVEKIT_URL} connect={!!token} options={roomOptions}>
             {renderGameState()}
             <RoomAudioRenderer />
             <LiveKitSpeakerSync />

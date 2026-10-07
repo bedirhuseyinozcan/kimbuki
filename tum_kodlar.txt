@@ -36,6 +36,7 @@ PROJE DOSYA VE KLASÖR AĞACI:
                 📄 BettingPhase.tsx
                 📄 GameOver.tsx
                 📄 GameScene.tsx
+                📄 JokerDraft.tsx
                 📄 Lobby.tsx
                 📄 Scene3D.tsx
                 📄 WordSelection.tsx
@@ -341,7 +342,7 @@ DOSYA: client\next-env.d.ts
 
 /// <reference types="next" />
 /// <reference types="next/image-types/global" />
-import "./.next/types/routes.d.ts";
+import "./.next/dev/types/routes.d.ts";
 
 // NOTE: This file should not be edited
 // see https://nextjs.org/docs/app/api-reference/config/typescript for more information.
@@ -1768,11 +1769,13 @@ import { toast } from "react-toastify";
 import { User, GameState } from "@/components/game/types";
 import Lobby from "@/components/game/Lobby";
 import WordSelection from "@/components/game/WordSelection";
+import JokerDraft from "@/components/game/JokerDraft";
 import GameScene from "@/components/game/GameScene";
 import GameOver from "@/components/game/GameOver";
 import BettingPhase from "@/components/game/BettingPhase";
 import { LiveKitRoom, RoomAudioRenderer, useRoomContext } from '@livekit/components-react';
 import '@livekit/components-styles';
+import { useLocalParticipant } from '@livekit/components-react';
 
 function LiveKitSpeakerSync() {
     const room = useRoomContext();
@@ -1784,8 +1787,6 @@ function LiveKitSpeakerSync() {
     }, [room]);
     return null;
 }
-
-import { useLocalParticipant } from '@livekit/components-react';
 
 function LiveKitMicSync({ isVoiceEnabled }: { isVoiceEnabled: boolean }) {
     const { localParticipant } = useLocalParticipant();
@@ -1806,11 +1807,8 @@ export default function GamePage() {
     const [gameState, setGameState] = useState<GameState | null>(null);
     const [inviteUrl, setInviteUrl] = useState<string>("");
 
-    const [nameInput, setNameInput] = useState("");
     const [isJoined, setIsJoined] = useState(false);
-
     const [wordInput, setWordInput] = useState("");
-
     const [chatInput, setChatInput] = useState("");
     const [notepad, setNotepad] = useState("");
     const [guessDialogOpen, setGuessDialogOpen] = useState(false);
@@ -1998,62 +1996,33 @@ export default function GamePage() {
                     <p className="font-bold">Odayı kapatmak istediğine emin misin?</p>
                     <p className="text-sm">Odada bulunan herkes atılacak.</p>
                     <div className="flex gap-2 justify-end mt-2">
-                        <Button 
-                            size="small" 
-                            variant="outlined" 
-                            color="inherit" 
-                            onClick={closeToast}
-                        >
-                            İptal
-                        </Button>
-                        <Button 
-                            size="small" 
-                            variant="contained" 
-                            color="error" 
-                            onClick={() => {
+                        <Button size="small" variant="outlined" color="inherit" onClick={closeToast}>İptal</Button>
+                        <Button size="small" variant="contained" color="error" onClick={() => {
                                 socket?.emit("room:close");
                                 if (socket) socket.disconnect();
                                 sessionStorage.removeItem("username");
                                 router.push("/");
                                 if (closeToast) closeToast();
-                            }}
-                        >
-                            Kapat
-                        </Button>
+                            }}>Kapat</Button>
                     </div>
                 </div>
             ),
-            { 
-                autoClose: false, 
-                closeOnClick: false, 
-                draggable: false, 
-                position: "top-center" 
-            }
+            { autoClose: false, closeOnClick: false, draggable: false, position: "top-center" }
         );
     };
 
     const renderGameState = () => {
         if (gameState.gameState === "LOBBY") {
-            return <Lobby 
-                gameState={gameState} me={me!} code={code as string} inviteUrl={inviteUrl} myId={myId!} 
-                onStart={handleStart} onCloseRoom={handleCloseRoom} onLeaveRoom={handleLeaveRoom} onCopyLink={copyLink} 
-                onSelectAvatar={handleSelectAvatar} onToggleVoice={toggleVoice}
-            />;
+            return <Lobby gameState={gameState} me={me!} code={code as string} inviteUrl={inviteUrl} myId={myId!} onStart={handleStart} onCloseRoom={handleCloseRoom} onLeaveRoom={handleLeaveRoom} onCopyLink={copyLink} onSelectAvatar={handleSelectAvatar} onToggleVoice={toggleVoice} />;
         }
         if (gameState.gameState === "BETTING") {
-            return <BettingPhase
-                gameState={gameState} me={me!}
-                onPlaceBet={(targetId) => socket?.emit("game:place_bet", { targetId })}
-            />;
+            return <BettingPhase gameState={gameState} me={me!} onPlaceBet={(targetId) => socket?.emit("game:place_bet", { targetId })} />;
         }
         if (gameState.gameState === "WORD_SELECTION") {
-            return <WordSelection 
-                gameState={gameState} me={me!} wordInput={wordInput} setWordInput={setWordInput} 
-                onSetWord={handleSetWord} 
-                onEditWord={() => socket?.emit("game:edit_word")}
-                onShuffleTargets={() => socket?.emit("game:shuffle_targets")}
-                onLeaveRoom={handleLeaveRoom} 
-            />;
+            return <WordSelection gameState={gameState} me={me!} wordInput={wordInput} setWordInput={setWordInput} onSetWord={handleSetWord} onEditWord={() => socket?.emit("game:edit_word")} onShuffleTargets={() => socket?.emit("game:shuffle_targets")} onLeaveRoom={handleLeaveRoom} />;
+        }
+        if (gameState.gameState === "JOKER_DRAFT") {
+            return <JokerDraft gameState={gameState} me={me!} onSelectJoker={(jokerId) => socket?.emit("game:select_joker", { jokerId })} />;
         }
         if (gameState.gameState === "PLAYING") {
             return <GameScene 
@@ -2077,9 +2046,7 @@ export default function GamePage() {
             />;
         }
         if (gameState.gameState === "ROUND_END") {
-            return <GameOver 
-                gameState={gameState} me={me!} onStart={() => handleStart({ category: gameState.category || "Karışık", bettingEnabled: gameState.isBettingEnabled, jokersEnabled: gameState.isJokersEnabled, betAmount: gameState.betAmount })} onLeaveRoom={handleLeaveRoom} 
-            />;
+            return <GameOver gameState={gameState} me={me!} onStart={() => handleStart({ category: gameState.category || "Karışık", bettingEnabled: gameState.isBettingEnabled, jokersEnabled: gameState.isJokersEnabled, betAmount: gameState.betAmount })} onLeaveRoom={handleLeaveRoom} />;
         }
         return null;
     };
@@ -2094,14 +2061,7 @@ export default function GamePage() {
     };
 
     return (
-        <LiveKitRoom
-            video={false}
-            audio={me?.isVoiceEnabled || false}
-            token={token}
-            serverUrl={process.env.NEXT_PUBLIC_LIVEKIT_URL}
-            connect={!!token}
-            options={roomOptions}
-        >
+        <LiveKitRoom video={false} audio={me?.isVoiceEnabled || false} token={token} serverUrl={process.env.NEXT_PUBLIC_LIVEKIT_URL} connect={!!token} options={roomOptions}>
             {renderGameState()}
             <RoomAudioRenderer />
             <LiveKitSpeakerSync />
@@ -2523,7 +2483,7 @@ import MicIcon from '@mui/icons-material/Mic';
 import SettingsIcon from '@mui/icons-material/Settings';
 import AudioSettingsDialog from './AudioSettingsDialog';
 import MicOffIcon from '@mui/icons-material/MicOff';
-import { User, GameState, AVATARS, NAME_COLORS } from "./types";
+import { User, GameState, AVATARS, NAME_COLORS, JOKERS } from "./types";
 import { playTurnSound, playWinSound } from "@/utils/audio";
 import confetti from "canvas-confetti";
 import { motion, AnimatePresence } from "framer-motion";
@@ -2558,18 +2518,9 @@ interface GameSceneProps {
 }
 
 export default function GameScene({
-    gameState, me, myId,
-    chatInput, setChatInput, handleChat,
-    notepad, setNotepad,
-    handleSkip,
-    guessInput, setGuessInput, handleGuess,
-    guessDialogOpen, setGuessDialogOpen,
-    onLeaveRoom,
-    onAskQuestion, onSubmitVote,
-    onUseJoker, onToggleVoice,
-    onStartObjection, onVoteObjection,
-    headRotations, onHeadRotation,
-    taunts, onTaunt
+    gameState, me, myId, chatInput, setChatInput, handleChat, notepad, setNotepad, handleSkip, guessInput, setGuessInput, handleGuess,
+    guessDialogOpen, setGuessDialogOpen, onLeaveRoom, onAskQuestion, onSubmitVote, onUseJoker, onToggleVoice,
+    onStartObjection, onVoteObjection, headRotations, onHeadRotation, taunts, onTaunt
 }: GameSceneProps) {
     const isMyTurn = gameState.currentTurnUserId === myId;
     const currentTurnUser = gameState.users.find((u: User) => u.id === gameState.currentTurnUserId);
@@ -2590,6 +2541,10 @@ export default function GameScene({
     const [audioSettingsOpen, setAudioSettingsOpen] = useState(false);
     const [tauntCooldown, setTauntCooldown] = useState(false);
 
+    const myJokerMeta = JOKERS.find(j => j.id === me?.joker);
+    const currentRound = gameState.roundCount || 1;
+    const isRussianRoulette = me?.russianRouletteActive;
+
     const handleTauntClick = (type: string) => {
         if (tauntCooldown) return;
         onTaunt(type);
@@ -2599,9 +2554,7 @@ export default function GameScene({
 
     useEffect(() => {
         if (typeof window !== "undefined" && window.innerWidth > 768) {
-            setIsNotepadOpen(true);
-            setIsChatOpen(true);
-            setIsActionsOpen(true);
+            setIsNotepadOpen(true); setIsChatOpen(true); setIsActionsOpen(true);
         }
     }, []);
 
@@ -2627,38 +2580,33 @@ export default function GameScene({
     };
 
     useEffect(() => {
-        if (!gameState.turnEndsAt) {
-            setTimeLeft(0);
-            return;
+        if (isRussianRoulette) {
+            setGuessDialogOpen(true);
         }
-        
+    }, [isRussianRoulette]);
+
+    useEffect(() => {
+        if (!gameState.turnEndsAt) { setTimeLeft(0); return; }
         if (gameState.activeQuestion) {
             const remaining = Math.max(0, Math.floor((gameState.turnEndsAt - Date.now()) / 1000));
             setTimeLeft(remaining);
             return; 
         }
-
         const updateTimer = () => {
             const remaining = Math.max(0, Math.floor((gameState.turnEndsAt! - Date.now()) / 1000));
             setTimeLeft(remaining);
         };
-
         updateTimer();
         const interval = setInterval(updateTimer, 500);
         return () => clearInterval(interval);
     }, [gameState.turnEndsAt, gameState.activeQuestion]);
 
     useEffect(() => {
-        if (!gameState.activeQuestion?.endTime) {
-            setQuestionTimeLeft(0);
-            return;
-        }
-        
+        if (!gameState.activeQuestion?.endTime) { setQuestionTimeLeft(0); return; }
         const updateQTimer = () => {
             const remaining = Math.max(0, Math.floor((gameState.activeQuestion!.endTime! - Date.now()) / 1000));
             setQuestionTimeLeft(remaining);
         };
-
         updateQTimer();
         const interval = setInterval(updateQTimer, 500);
         return () => clearInterval(interval);
@@ -2669,20 +2617,13 @@ export default function GameScene({
 
     useEffect(() => {
         if (gameState.currentTurnUserId && gameState.currentTurnUserId !== previousTurnRef.current) {
-            if (gameState.currentTurnUserId === myId) {
-                playTurnSound();
-            }
+            if (gameState.currentTurnUserId === myId) playTurnSound();
             previousTurnRef.current = gameState.currentTurnUserId;
         }
 
         if (gameState.winners.length > previousWinnersRef.current) {
             playWinSound();
-            confetti({
-                particleCount: 100,
-                spread: 70,
-                origin: { y: 0.6 },
-                colors: ['#22c55e', '#3b82f6', '#a855f7']
-            });
+            confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 }, colors: ['#22c55e', '#3b82f6', '#a855f7'] });
             previousWinnersRef.current = gameState.winners.length;
         }
     }, [gameState.currentTurnUserId, gameState.winners, myId]);
@@ -2690,7 +2631,6 @@ export default function GameScene({
     useEffect(() => {
         if (gameState?.chatHistory) {
             chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-            
             if (gameState.chatHistory.length > 0) {
                 const lastMsg = gameState.chatHistory[gameState.chatHistory.length - 1];
                 if (!lastMsg.system && lastMsg.userId) {
@@ -2698,9 +2638,7 @@ export default function GameScene({
                     setTimeout(() => {
                         setActiveBubbles(prev => {
                             const next = { ...prev };
-                            if (next[lastMsg.userId] === lastMsg.message) {
-                                delete next[lastMsg.userId];
-                            }
+                            if (next[lastMsg.userId] === lastMsg.message) delete next[lastMsg.userId];
                             return next;
                         });
                     }, 4000);
@@ -2721,48 +2659,16 @@ export default function GameScene({
             
             <div className="fixed inset-0 z-0 pointer-events-auto bg-slate-900">
                 <Scene3D 
-                    gameState={gameState} 
-                    myId={myId} 
-                    activeBubbles={activeBubbles} 
-                    headRotations={headRotations}
-                    onHeadRotation={onHeadRotation}
-                    taunts={taunts}
+                    gameState={gameState} myId={myId} activeBubbles={activeBubbles} 
+                    headRotations={headRotations} onHeadRotation={onHeadRotation} taunts={taunts}
                 />
             </div>
             
             <div className="absolute left-2 md:left-6 top-[35%] md:top-1/2 -translate-y-1/2 z-20 flex flex-col gap-2 md:gap-4 pointer-events-auto">
-                <IconButton 
-                    onClick={() => handleTauntClick('fire')} 
-                    disabled={tauntCooldown}
-                    className={`bg-slate-800/90 backdrop-blur-md border-2 border-red-500/60 hover:bg-red-500/30 shadow-[0_0_15px_rgba(239,68,68,0.3)] p-2 md:p-3 transition-all hover:scale-110 ${tauntCooldown ? 'opacity-50' : ''}`}
-                    title="Sinirli (Alev)"
-                >
-                    <span className="text-3xl md:text-4xl drop-shadow-lg">🔥</span>
-                </IconButton>
-                <IconButton 
-                    onClick={() => handleTauntClick('party')} 
-                    disabled={tauntCooldown}
-                    className={`bg-slate-800/90 backdrop-blur-md border-2 border-blue-500/60 hover:bg-blue-500/30 shadow-[0_0_15px_rgba(59,130,246,0.3)] p-2 md:p-3 transition-all hover:scale-110 ${tauntCooldown ? 'opacity-50' : ''}`}
-                    title="Sevinç (Havai Fişek)"
-                >
-                    <span className="text-3xl md:text-4xl drop-shadow-lg">🎉</span>
-                </IconButton>
-                <IconButton 
-                    onClick={() => handleTauntClick('laugh')} 
-                    disabled={tauntCooldown}
-                    className={`bg-slate-800/90 backdrop-blur-md border-2 border-yellow-500/60 hover:bg-yellow-500/30 shadow-[0_0_15px_rgba(234,179,8,0.3)] p-2 md:p-3 transition-all hover:scale-110 ${tauntCooldown ? 'opacity-50' : ''}`}
-                    title="Gülme"
-                >
-                    <span className="text-3xl md:text-4xl drop-shadow-lg">😂</span>
-                </IconButton>
-                <IconButton 
-                    onClick={() => handleTauntClick('cry')} 
-                    disabled={tauntCooldown}
-                    className={`bg-slate-800/90 backdrop-blur-md border-2 border-cyan-500/60 hover:bg-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.3)] p-2 md:p-3 transition-all hover:scale-110 ${tauntCooldown ? 'opacity-50' : ''}`}
-                    title="Ağlama"
-                >
-                    <span className="text-3xl md:text-4xl drop-shadow-lg">😭</span>
-                </IconButton>
+                <IconButton onClick={() => handleTauntClick('fire')} disabled={tauntCooldown} className={`bg-slate-800/90 backdrop-blur-md border-2 border-red-500/60 hover:bg-red-500/30 shadow-[0_0_15px_rgba(239,68,68,0.3)] p-2 md:p-3 transition-all hover:scale-110 ${tauntCooldown ? 'opacity-50' : ''}`} title="Sinirli (Alev)"><span className="text-3xl md:text-4xl drop-shadow-lg">🔥</span></IconButton>
+                <IconButton onClick={() => handleTauntClick('party')} disabled={tauntCooldown} className={`bg-slate-800/90 backdrop-blur-md border-2 border-blue-500/60 hover:bg-blue-500/30 shadow-[0_0_15px_rgba(59,130,246,0.3)] p-2 md:p-3 transition-all hover:scale-110 ${tauntCooldown ? 'opacity-50' : ''}`} title="Sevinç (Havai Fişek)"><span className="text-3xl md:text-4xl drop-shadow-lg">🎉</span></IconButton>
+                <IconButton onClick={() => handleTauntClick('laugh')} disabled={tauntCooldown} className={`bg-slate-800/90 backdrop-blur-md border-2 border-yellow-500/60 hover:bg-yellow-500/30 shadow-[0_0_15px_rgba(234,179,8,0.3)] p-2 md:p-3 transition-all hover:scale-110 ${tauntCooldown ? 'opacity-50' : ''}`} title="Gülme"><span className="text-3xl md:text-4xl drop-shadow-lg">😂</span></IconButton>
+                <IconButton onClick={() => handleTauntClick('cry')} disabled={tauntCooldown} className={`bg-slate-800/90 backdrop-blur-md border-2 border-cyan-500/60 hover:bg-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.3)] p-2 md:p-3 transition-all hover:scale-110 ${tauntCooldown ? 'opacity-50' : ''}`} title="Ağlama"><span className="text-3xl md:text-4xl drop-shadow-lg">😭</span></IconButton>
             </div>
             
             <div className="absolute bottom-6 right-6 z-20 pointer-events-none flex flex-col items-end">
@@ -2788,21 +2694,14 @@ export default function GameScene({
                     </div>
 
                     <div className="flex flex-wrap gap-2">
-                        {gameState.category && (
-                            <Chip label={`Kategori: ${gameState.category}`} color="secondary" className="font-bold border border-slate-700 bg-slate-800/80 backdrop-blur-md max-w-full" />
-                        )}
-                        {gameState.isBettingEnabled && (
-                            <Chip label={`💰 BAHİSLİ OYUN`} className="font-bold border border-yellow-500/50 bg-yellow-900/80 text-yellow-400 backdrop-blur-md" />
-                        )}
+                        <Chip label={`Tur: ${currentRound}`} color="primary" className="font-bold border border-slate-700 bg-slate-800/80 backdrop-blur-md" />
+                        {gameState.category && <Chip label={`Kategori: ${gameState.category}`} color="secondary" className="font-bold border border-slate-700 bg-slate-800/80 backdrop-blur-md max-w-full" />}
+                        {gameState.isBettingEnabled && <Chip label={`💰 BAHİSLİ`} className="font-bold border border-yellow-500/50 bg-yellow-900/80 text-yellow-400 backdrop-blur-md" />}
                     </div>
                 </div>
 
-                
                 <div className="flex gap-1 md:gap-3 items-center pointer-events-auto shrink-0">
-                    <button 
-                        onClick={() => onToggleVoice(!me?.isVoiceEnabled)}
-                        className={`flex items-center justify-center p-1.5 rounded-full border backdrop-blur-md transition-colors ${me?.isVoiceEnabled ? 'border-green-500/80 bg-green-500/40 text-white hover:bg-green-500/60' : 'border-red-500/80 bg-red-500/40 text-white hover:bg-red-500/60'}`}
-                    >
+                    <button onClick={() => onToggleVoice(!me?.isVoiceEnabled)} className={`flex items-center justify-center p-1.5 rounded-full border backdrop-blur-md transition-colors ${me?.isVoiceEnabled ? 'border-green-500/80 bg-green-500/40 text-white hover:bg-green-500/60' : 'border-red-500/80 bg-red-500/40 text-white hover:bg-red-500/60'}`}>
                         {me?.isVoiceEnabled ? <MicIcon fontSize="small" /> : <MicOffIcon fontSize="small" />}
                     </button>
                     <button onClick={() => setAudioSettingsOpen(true)} className="flex items-center justify-center p-1.5 rounded-full border border-slate-600/80 bg-slate-700/40 text-slate-300 hover:bg-slate-600/60 backdrop-blur-md transition-colors"><SettingsIcon fontSize="small" /></button>
@@ -2816,35 +2715,20 @@ export default function GameScene({
             <div className="w-full h-full flex-1 relative z-10 mt-12 md:mt-10 px-2 pb-2 md:px-6 md:pb-0 pointer-events-none flex flex-col justify-end gap-2 md:flex-row md:gap-6">
                 
                 <div className="order-2 md:order-1 w-full md:w-1/4 md:max-w-[400px] md:self-start glass p-3 rounded-2xl flex flex-col border border-slate-700/50 pointer-events-auto shadow-2xl bg-slate-900/60 backdrop-blur-lg transition-all duration-300 h-auto max-h-[85vh] overflow-y-auto custom-scrollbar">
-                    <h3 
-                        className="font-bold text-lg flex items-center justify-between gap-2 text-yellow-400 cursor-pointer select-none hover:text-yellow-300"
-                        onClick={() => handleToggle('notepad')}
-                    >
+                    <h3 onClick={() => handleToggle('notepad')} className="font-bold text-lg flex items-center justify-between gap-2 text-yellow-400 cursor-pointer select-none hover:text-yellow-300">
                         <span className="flex items-center gap-2">📝 Not Defterim</span>
                         <span className="text-sm bg-slate-800/80 px-2 py-1 rounded-lg">{isNotepadOpen ? '▲ Gizle' : '▼ Aç'}</span>
                     </h3>
                     {isNotepadOpen && (
-                        <textarea
-                            placeholder="Örn: Gerçek bir insan mı? Yaşıyor mu?..."
-                            value={notepad}
-                            onChange={e => setNotepad(e.target.value)}
-                            spellCheck="false"
-                            className="w-full bg-yellow-900/20 rounded-xl text-slate-200 p-3 mt-2 border border-yellow-500/30 focus:border-yellow-500/60 outline-none resize-none h-[150px] md:h-[250px] custom-scrollbar shrink-0"
-                        />
+                        <textarea placeholder="Örn: Gerçek bir insan mı? Yaşıyor mu?..." value={notepad} onChange={e => setNotepad(e.target.value)} spellCheck="false" className="w-full bg-yellow-900/20 rounded-xl text-slate-200 p-3 mt-2 border border-yellow-500/30 focus:border-yellow-500/60 outline-none resize-none h-[150px] md:h-[250px] custom-scrollbar shrink-0" />
                     )}
                     
-                    {me?.joker !== undefined && me?.joker !== null && (
-                        <div className={`mt-4 p-3 rounded-xl border ${me.hasUsedJoker ? 'bg-slate-800/50 border-slate-700/50 opacity-60' : 'bg-fuchsia-900/30 border-fuchsia-500/30'}`}>
-                            <h4 className={`font-bold text-sm flex items-center gap-1 mb-1 ${me.hasUsedJoker ? 'text-slate-400' : 'text-fuchsia-400'}`}>
-                                🃏 Senin Jokerin {me.hasUsedJoker && <span className="text-red-400 text-xs ml-auto">(Kullanıldı)</span>}
+                    {myJokerMeta && (
+                        <div className={`mt-4 p-3 rounded-xl border ${me.hasUsedJoker ? 'bg-slate-800/50 border-slate-700/50 opacity-60' : (myJokerMeta.rarity === 'prismatic' ? 'bg-fuchsia-900/30 border-fuchsia-500/30' : myJokerMeta.rarity === 'gold' ? 'bg-amber-900/30 border-amber-500/30' : 'bg-slate-700/30 border-slate-400/30')}`}>
+                            <h4 className={`font-bold text-sm flex items-center gap-1 mb-1 ${me.hasUsedJoker ? 'text-slate-400' : (myJokerMeta.rarity === 'prismatic' ? 'text-fuchsia-400' : myJokerMeta.rarity === 'gold' ? 'text-amber-400' : 'text-slate-200')}`}>
+                                🃏 {myJokerMeta.name} {me.hasUsedJoker && <span className="text-red-400 text-xs ml-auto">(Kullanıldı)</span>}
                             </h4>
-                            <p className="text-xs text-slate-300">
-                                {me.joker === 0 && "Sıra sendeyken sürene +1 Dakika ekler."}
-                                {me.joker === 1 && "Seçtiğin bir oyuncunun kelimesini değiştirir."}
-                                {me.joker === 2 && "Sana ekstra 3 soru sorma hakkı verir."}
-                                {me.joker === 3 && "Kendi kelimenden rastgele 1 harfi açar."}
-                                {me.joker === 4 && "Seçtiğin bir oyuncuyu 2 tur susturur."}
-                            </p>
+                            <p className="text-xs text-slate-300">{myJokerMeta.desc}</p>
                         </div>
                     )}
 
@@ -2852,9 +2736,7 @@ export default function GameScene({
                         <div className="mt-4 flex flex-col gap-3 overflow-y-auto custom-scrollbar max-h-[200px] pr-2">
                             {gameState.resolvedQuestionsThisTurn.map((q, index) => (
                                 <div key={index} className="p-3 rounded-xl border bg-cyan-900/30 border-cyan-500/30">
-                                    <h4 className="font-bold text-sm text-cyan-400 mb-1">
-                                        {index + 1}. Soru
-                                    </h4>
+                                    <h4 className="font-bold text-sm text-cyan-400 mb-1">{index + 1}. Soru</h4>
                                     <p className="text-sm font-bold text-slate-200 mb-2 break-words break-all">"{q.question}"</p>
                                     <div className="flex gap-2 text-xs flex-wrap">
                                         {Object.entries(q.votes).map(([voterId, vote]) => {
@@ -2877,7 +2759,6 @@ export default function GameScene({
                 </div>
 
                 <div className="order-3 md:order-2 w-full md:flex-1 md:w-auto flex flex-col pointer-events-none z-20 md:justify-between">
-
                     <div className="hidden md:flex justify-between items-center bg-slate-900/80 backdrop-blur-md border border-slate-700/50 p-4 rounded-2xl relative z-10 pointer-events-auto shadow-2xl">
                         <div>
                             <p className="text-xs text-slate-400 uppercase tracking-widest">Sıra Kimde</p>
@@ -2889,16 +2770,11 @@ export default function GameScene({
                             {timeLeft}s
                         </div>
                     </div>
-
                    
                     <div className="hidden md:block flex-1" />
-
                  
                     <div className="bg-slate-900/80 backdrop-blur-md border border-slate-700/50 rounded-2xl transition-all duration-300 flex flex-col z-10 relative pointer-events-auto shadow-2xl">
-                        <div 
-                            className="p-3 flex justify-between items-center cursor-pointer border-b border-slate-700/50"
-                            onClick={() => handleToggle('chat')}
-                        >
+                        <div onClick={() => handleToggle('chat')} className="p-3 flex justify-between items-center cursor-pointer border-b border-slate-700/50">
                             <span className="font-bold text-sm text-violet-400 flex items-center gap-2">💬 Sohbet</span>
                             <span className="text-xs bg-slate-800 px-2 py-1 rounded-lg text-slate-300">{isChatOpen ? '▼ Gizle' : '▲ Aç'}</span>
                         </div>
@@ -2921,32 +2797,18 @@ export default function GameScene({
                                 <div ref={chatEndRef} />
                             </div>
                             <form onSubmit={handleChat} className="p-2 border-t border-slate-700 flex gap-2 pointer-events-auto">
-                                <TextField 
-                                    fullWidth 
-                                    size="small"
-                                    slotProps={{ htmlInput: { maxLength: 120 } }}
-                                    placeholder={me?.status === 'playing' ? "Soru sor veya cevapla..." : "İzleyici sohbeti..."}
-                                    value={chatInput}
-                                    onChange={e => setChatInput(e.target.value)}
-                                    sx={{ input: { color: 'white' }, '& .MuiOutlinedInput-root': { '& fieldset': { borderColor: '#475569' }, '&:hover fieldset': { borderColor: '#94a3b8' }, '&.Mui-focused fieldset': { borderColor: '#06b6d4' } } }}
-                                />
-                                <IconButton type="submit" color="primary" className="bg-violet-600 hover:bg-violet-500 text-white rounded-lg px-4">
-                                    <SendIcon />
-                                </IconButton>
+                                <TextField fullWidth size="small" slotProps={{ htmlInput: { maxLength: 120 } }} placeholder={me?.status === 'playing' ? "Soru sor veya cevapla..." : "İzleyici sohbeti..."} value={chatInput} onChange={e => setChatInput(e.target.value)} sx={{ input: { color: 'white' }, '& .MuiOutlinedInput-root': { '& fieldset': { borderColor: '#475569' }, '&:hover fieldset': { borderColor: '#94a3b8' }, '&.Mui-focused fieldset': { borderColor: '#06b6d4' } } }} />
+                                <IconButton type="submit" color="primary" className="bg-violet-600 hover:bg-violet-500 text-white rounded-lg px-4"><SendIcon /></IconButton>
                             </form>
                         </div>
                     </div>
-
                 </div>
 
                 <div className="order-1 md:order-3 w-full md:w-1/4 md:max-w-[400px] flex flex-col gap-3 pointer-events-auto z-40">
                     {me?.status === 'playing' && gameState.gameState === "PLAYING" && (
                         <div className="glass rounded-2xl flex flex-col border border-slate-700/50 shadow-xl bg-slate-900/60 backdrop-blur-lg overflow-hidden transition-all duration-300">
                             
-                            <div 
-                                className="p-3 md:hidden flex justify-between items-center cursor-pointer border-b border-slate-700/50 bg-slate-800/80"
-                                onClick={() => handleToggle('actions')}
-                            >
+                            <div onClick={() => handleToggle('actions')} className="p-3 md:hidden flex justify-between items-center cursor-pointer border-b border-slate-700/50 bg-slate-800/80">
                                 <span className="font-bold text-sm text-green-400 flex items-center gap-2">⚡ Aksiyonlar</span>
                                 <span className="text-xs bg-slate-700 px-2 py-1 rounded-lg text-slate-300">{isActionsOpen ? '▼ Gizle' : '▲ Aç'}</span>
                             </div>
@@ -2962,16 +2824,7 @@ export default function GameScene({
                                 )}
 
                                 <motion.div whileHover={{ scale: isMyTurn ? 1.05 : 1 }} whileTap={{ scale: isMyTurn ? 0.95 : 1 }} className="w-full">
-                                    <Button 
-                                        variant="contained" 
-                                        color="info" 
-                                        size="medium" 
-                                        fullWidth 
-                                        startIcon={<QuestionAnswerIcon />}
-                                        onClick={() => setQuestionDialogOpen(true)}
-                                        disabled={!isMyTurn || ((me?.questionsAskedThisTurn ?? 0) >= 1 && (me?.extraQuestions ?? 0) <= 0) || !!gameState.activeQuestion}
-                                        className={`py-3 rounded-xl border-2 font-bold ${isMyTurn && !gameState.activeQuestion ? 'bg-cyan-600 shadow-lg shadow-cyan-500/30' : 'opacity-50'}`}
-                                    >
+                                    <Button variant="contained" color="info" size="medium" fullWidth startIcon={<QuestionAnswerIcon />} onClick={() => setQuestionDialogOpen(true)} disabled={!isMyTurn || ((me?.questionsAskedThisTurn ?? 0) >= 1 && (me?.extraQuestions ?? 0) <= 0) || !!gameState.activeQuestion || isRussianRoulette} className={`py-3 rounded-xl border-2 font-bold ${isMyTurn && !gameState.activeQuestion && !isRussianRoulette ? 'bg-cyan-600 shadow-lg shadow-cyan-500/30' : 'opacity-50'}`}>
                                         Soru Sor & Oylat
                                     </Button>
                                 </motion.div>
@@ -2979,30 +2832,13 @@ export default function GameScene({
                                 <div className="w-full h-px bg-slate-700 my-2"></div>
 
                                 <motion.div whileHover={{ scale: isMyTurn ? 1.05 : 1 }} whileTap={{ scale: isMyTurn ? 0.95 : 1 }} className="w-full">
-                                    <Button 
-                                        variant="contained" 
-                                        color="success" 
-                                        size="medium" 
-                                        fullWidth 
-                                        onClick={() => setGuessDialogOpen(true)}
-                                        disabled={!isMyTurn}
-                                        className={`py-3 rounded-xl text-lg font-bold shadow-lg shadow-green-500/20 ${!isMyTurn ? 'opacity-50' : ''}`}
-                                    >
+                                    <Button variant="contained" color="success" size="medium" fullWidth onClick={() => setGuessDialogOpen(true)} disabled={!isMyTurn} className={`py-3 rounded-xl text-lg font-bold shadow-lg shadow-green-500/20 ${!isMyTurn ? 'opacity-50' : ''}`}>
                                         TAHMİN ET
                                     </Button>
                                 </motion.div>
 
                                 <motion.div whileHover={{ scale: isMyTurn ? 1.05 : 1 }} whileTap={{ scale: isMyTurn ? 0.95 : 1 }} className="w-full">
-                                    <Button 
-                                        variant="outlined" 
-                                        color="warning" 
-                                        size="medium" 
-                                        fullWidth 
-                                        startIcon={<SkipNextIcon />}
-                                        onClick={handleSkip}
-                                        disabled={!isMyTurn}
-                                        className={`py-3 rounded-xl border-2 ${isMyTurn ? 'hover:bg-warning-main/10' : 'opacity-50'}`}
-                                    >
+                                    <Button variant="outlined" color="warning" size="medium" fullWidth startIcon={<SkipNextIcon />} onClick={handleSkip} disabled={!isMyTurn || isRussianRoulette} className={`py-3 rounded-xl border-2 ${isMyTurn && !isRussianRoulette ? 'hover:bg-warning-main/10' : 'opacity-50'}`}>
                                         Turu Geç
                                     </Button>
                                 </motion.div>
@@ -3015,25 +2851,17 @@ export default function GameScene({
                                             size="medium" 
                                             fullWidth 
                                             onClick={() => setJokerDialogOpen(true)}
-                                            disabled={!isMyTurn}
-                                            className={`py-3 rounded-xl border-2 font-bold ${isMyTurn ? 'bg-fuchsia-600 shadow-[0_0_15px_rgba(192,38,211,0.5)]' : 'opacity-50'}`}
+                                            disabled={!isMyTurn || currentRound < 3 || isRussianRoulette}
+                                            className={`py-3 rounded-xl border-2 font-bold ${isMyTurn && currentRound >= 3 && !isRussianRoulette ? 'bg-fuchsia-600 shadow-[0_0_15px_rgba(192,38,211,0.5)]' : 'opacity-50'}`}
                                         >
-                                            🃏 Joker Kullan
+                                            {currentRound < 3 ? '🃏 Joker (3. Turda Açılır)' : '🃏 Joker Kullan'}
                                         </Button>
                                     </motion.div>
                                 )}
 
                                 {gameState.isBettingEnabled && (
                                     <motion.div whileHover={{ scale: !gameState.hasObjectionUsed ? 1.05 : 1 }} whileTap={{ scale: !gameState.hasObjectionUsed ? 0.95 : 1 }} className="w-full mt-4">
-                                        <Button 
-                                            variant="outlined" 
-                                            color="error" 
-                                            size="medium" 
-                                            fullWidth 
-                                            onClick={onStartObjection}
-                                            disabled={gameState.hasObjectionUsed}
-                                            className={`py-2 rounded-xl border-2 font-bold ${!gameState.hasObjectionUsed ? 'border-red-500/80 text-red-400 shadow-[0_0_15px_rgba(239,68,68,0.2)] hover:bg-red-500/20' : 'opacity-50'}`}
-                                        >
+                                        <Button variant="outlined" color="error" size="medium" fullWidth onClick={onStartObjection} disabled={gameState.hasObjectionUsed || isRussianRoulette} className={`py-2 rounded-xl border-2 font-bold ${!gameState.hasObjectionUsed && !isRussianRoulette ? 'border-red-500/80 text-red-400 shadow-[0_0_15px_rgba(239,68,68,0.2)] hover:bg-red-500/20' : 'opacity-50'}`}>
                                             🚨 ŞİKEYE İTİRAZ ET {gameState.hasObjectionUsed && '(Kullanıldı)'}
                                         </Button>
                                     </motion.div>
@@ -3044,49 +2872,21 @@ export default function GameScene({
                 </div>
             </div>
 
-            <Dialog 
-                open={jokerDialogOpen} 
-                onClose={() => setJokerDialogOpen(false)} 
-                slotProps={{ paper: { className: "!bg-white !text-slate-900 !rounded-2xl min-w-[300px]" } }}
-            >
-                <DialogTitle className="text-center font-bold text-fuchsia-600">🃏 Özel Yetenek Jokerin</DialogTitle>
+            <Dialog open={jokerDialogOpen} onClose={() => setJokerDialogOpen(false)} slotProps={{ paper: { className: "!bg-white !text-slate-900 !rounded-2xl min-w-[300px]" } }}>
+                <DialogTitle className="text-center font-bold text-fuchsia-600">🃏 {myJokerMeta?.name || 'Joker'}</DialogTitle>
                 <DialogContent>
-                    {me?.joker === 0 && <p className="text-center text-slate-600 mt-2">Şu anki sıranda sürene <strong>1 Dakika</strong> eklersin.</p>}
-                    {me?.joker === 1 && (
-                        <div className="flex flex-col gap-4 mt-4">
-                            <p className="text-sm text-center text-slate-600">Bir oyuncunun kelimesini değiştir.</p>
-                            <TextField 
-                                select 
-                                label="Oyuncu Seç"
-                                value={jokerTarget} 
-                                onChange={e => setJokerTarget(e.target.value)} 
-                            >
-                                {gameState.users.filter((u:User) => u.id !== myId).map((u:User) => (
+                    <p className="text-center text-slate-600 mt-2 font-medium">{myJokerMeta?.desc}</p>
+                    
+                    {myJokerMeta?.requiresTarget && (
+                        <div className="flex flex-col gap-4 mt-6">
+                            <TextField select label="Oyuncu Seç" value={jokerTarget} onChange={e => setJokerTarget(e.target.value)}>
+                                {gameState.users.filter((u:User) => u.id !== myId && u.status === 'playing').map((u:User) => (
                                     <MenuItem key={u.id} value={u.id}>{u.name}</MenuItem>
                                 ))}
                             </TextField>
-                            <TextField 
-                                label="Yeni Kelime" 
-                                value={jokerWord} 
-                                onChange={e => setJokerWord(e.target.value)} 
-                            />
-                        </div>
-                    )}
-                    {me?.joker === 2 && <p className="text-center text-slate-600 mt-2">Bunu kullandığında <strong>3 ekstra soru</strong> sorma hakkı kazanırsın.</p>}
-                    {me?.joker === 3 && <p className="text-center text-slate-600 mt-2">Kendi kelimenin içinden rastgele <strong>1 harfi</strong> açarsın.</p>}
-                    {me?.joker === 4 && (
-                        <div className="flex flex-col gap-4 mt-4">
-                            <p className="text-sm text-center text-slate-600">Bir oyuncuyu 2 tur boyunca sustur.</p>
-                            <TextField 
-                                select 
-                                label="Oyuncu Seç"
-                                value={jokerTarget} 
-                                onChange={e => setJokerTarget(e.target.value)} 
-                            >
-                                {gameState.users.filter((u:User) => u.id !== myId).map((u:User) => (
-                                    <MenuItem key={u.id} value={u.id}>{u.name}</MenuItem>
-                                ))}
-                            </TextField>
+                            {myJokerMeta?.requiresWord && (
+                                <TextField label="Yeni Kelime" value={jokerWord} onChange={e => setJokerWord(e.target.value)} />
+                            )}
                         </div>
                     )}
                 </DialogContent>
@@ -3097,29 +2897,28 @@ export default function GameScene({
                         variant="contained" 
                         color="secondary" 
                         className="px-6 font-bold" 
-                        disabled={(me?.joker === 1 && (!jokerTarget || !jokerWord)) || (me?.joker === 4 && !jokerTarget) || (me?.joker === 0 && !isMyTurn)}
+                        disabled={(myJokerMeta?.requiresTarget && !jokerTarget) || (myJokerMeta?.requiresWord && !jokerWord)}
                     >
                         Kullan
                     </Button>
                 </DialogActions>
             </Dialog>
 
-            <Dialog open={guessDialogOpen} onClose={() => setGuessDialogOpen(false)} slotProps={{ paper: { className: "!bg-white !text-slate-900 !rounded-2xl min-w-[300px]" } }}>
-                <DialogTitle className="text-center font-bold">Kimin Nesin Sen?</DialogTitle>
+            <Dialog open={guessDialogOpen || !!isRussianRoulette} onClose={() => !isRussianRoulette && setGuessDialogOpen(false)} slotProps={{ paper: { className: "!bg-white !text-slate-900 !rounded-2xl min-w-[300px]" } }}>
+                <DialogTitle className="text-center font-bold">
+                    {isRussianRoulette ? "💀 RUS RULETİ: TAHMİN ETMEK ZORUNDASIN!" : "Kimin Nesin Sen?"}
+                </DialogTitle>
                 <DialogContent>
-                    <p className="text-slate-600 mb-4 text-sm text-center">Yanlış bilirsen 1 canın (❤️) gider. 3 yanlışta elenirsin!</p>
+                    <p className="text-slate-600 mb-4 text-sm text-center">
+                        {isRussianRoulette ? "Eğer yanlış bilirsen masadan elenirsin ve 3 canın birden gider!" : "Yanlış bilirsen 1 canın (❤️) gider. 3 yanlışta elenirsin!"}
+                    </p>
                     <TextField 
-                        autoFocus
-                        fullWidth
-                        label="Tahminin"
-                        variant="outlined"
-                        value={guessInput}
-                        onChange={e => setGuessInput(e.target.value)}
+                        autoFocus fullWidth label="Tahminin" variant="outlined" value={guessInput} onChange={e => setGuessInput(e.target.value)}
                         onKeyDown={e => { if(e.key === 'Enter') handleGuess(); }}
                     />
                 </DialogContent>
                 <DialogActions className="p-4 pt-0">
-                    <Button onClick={() => setGuessDialogOpen(false)} className="!text-slate-500">İptal</Button>
+                    {!isRussianRoulette && <Button onClick={() => setGuessDialogOpen(false)} className="!text-slate-500">İptal</Button>}
                     <Button onClick={handleGuess} variant="contained" color="success" className="px-6 font-bold">Dene</Button>
                 </DialogActions>
             </Dialog>
@@ -3128,23 +2927,7 @@ export default function GameScene({
                 <DialogTitle className="text-center font-bold">Herkes İçin Soru Sor</DialogTitle>
                 <DialogContent>
                     <p className="text-slate-600 mb-4 text-sm text-center">Diğer oyuncular bu soruya Evet, Hayır veya Bazen oyu verecek.</p>
-                    <TextField 
-                        autoFocus
-                        fullWidth
-                        label="Sorunuz" slotProps={{ htmlInput: { maxLength: 120 } }} placeholder="Örn: Gerçek bir insan mıyım?"
-                        variant="outlined"
-                        value={questionInput}
-                        onChange={e => setQuestionInput(e.target.value)}
-                        onKeyDown={e => { 
-                            if(e.key === 'Enter') { 
-                                e.preventDefault();
-                                if (!questionInput.trim()) return;
-                                onAskQuestion(questionInput); 
-                                setQuestionDialogOpen(false); 
-                                setQuestionInput(""); 
-                            } 
-                        }}
-                    />
+                    <TextField autoFocus fullWidth label="Sorunuz" slotProps={{ htmlInput: { maxLength: 120 } }} placeholder="Örn: Gerçek bir insan mıyım?" variant="outlined" value={questionInput} onChange={e => setQuestionInput(e.target.value)} onKeyDown={e => { if(e.key === 'Enter') { e.preventDefault(); if (!questionInput.trim()) return; onAskQuestion(questionInput); setQuestionDialogOpen(false); setQuestionInput(""); } }} />
                 </DialogContent>
                 <DialogActions className="p-4 pt-0">
                     <Button onClick={() => setQuestionDialogOpen(false)} className="!text-slate-500">İptal</Button>
@@ -3163,18 +2946,12 @@ export default function GameScene({
                             <p className="text-green-400 font-bold text-xl animate-pulse">Oy verdin, diğerleri bekleniyor...</p>
                         ) : (
                             <div className="flex gap-4 justify-center">
-                                <Button variant="contained" color="error" size="medium" onClick={() => onVoteObjection(true)} className="flex-1 py-3 font-bold text-lg">
-                                    EVET, ŞİKE VAR!
-                                </Button>
-                                <Button variant="outlined" color="inherit" size="medium" onClick={() => onVoteObjection(false)} className="flex-1 py-3 font-bold text-lg border-slate-600 text-slate-300">
-                                    HAYIR, TEMİZ
-                                </Button>
+                                <Button variant="contained" color="error" size="medium" onClick={() => onVoteObjection(true)} className="flex-1 py-3 font-bold text-lg">EVET, ŞİKE VAR!</Button>
+                                <Button variant="outlined" color="inherit" size="medium" onClick={() => onVoteObjection(false)} className="flex-1 py-3 font-bold text-lg border-slate-600 text-slate-300">HAYIR, TEMİZ</Button>
                             </div>
                         )}
                         
-                        <div className="mt-6 text-slate-400">
-                            İtiraz oylaması devam ediyor... ({Object.keys(gameState.objection.votes).length} oy verildi)
-                        </div>
+                        <div className="mt-6 text-slate-400">İtiraz oylaması devam ediyor... ({Object.keys(gameState.objection.votes).length} oy verildi)</div>
                     </div>
                 </div>
             )}
@@ -3182,31 +2959,18 @@ export default function GameScene({
         
             <AnimatePresence>
                 {gameState.activeQuestion && (
-                    <motion.div 
-                        initial={{ opacity: 0, scale: 0.8, y: "-50%", x: "-50%" }}
-                        animate={{ opacity: 1, scale: 1, y: "-50%", x: "-50%" }}
-                        exit={{ opacity: 0, scale: 0.8, y: "-50%", x: "-50%" }}
-                        className="absolute top-1/2 left-1/2 z-[100] glass p-6 rounded-3xl border border-slate-600 shadow-[0_0_50px_rgba(0,0,0,0.8)] text-center w-[95%] max-w-lg backdrop-blur-2xl bg-slate-900/90 pointer-events-auto"
-                    >
+                    <motion.div initial={{ opacity: 0, scale: 0.8, y: "-50%", x: "-50%" }} animate={{ opacity: 1, scale: 1, y: "-50%", x: "-50%" }} exit={{ opacity: 0, scale: 0.8, y: "-50%", x: "-50%" }} className="absolute top-1/2 left-1/2 z-[100] glass p-6 rounded-3xl border border-slate-600 shadow-[0_0_50px_rgba(0,0,0,0.8)] text-center w-[95%] max-w-lg backdrop-blur-2xl bg-slate-900/90 pointer-events-auto">
                         <div className="absolute -top-4 -right-4 bg-red-500 text-white font-black rounded-full w-12 h-12 flex items-center justify-center border-4 border-slate-900 shadow-xl animate-pulse">
                             {questionTimeLeft}s
                         </div>
-                        <h4 className="text-lg font-bold mb-2 text-cyan-400">
-                            {gameState.users.find((u:User) => u.id === gameState.activeQuestion!.askerId)?.name} soruyor:
-                        </h4>
+                        <h4 className="text-lg font-bold mb-2 text-cyan-400">{gameState.users.find((u:User) => u.id === gameState.activeQuestion!.askerId)?.name} soruyor:</h4>
                         <p className="text-3xl font-black mb-8 leading-tight break-words break-all">"{gameState.activeQuestion.question}"</p>
                         
                         {gameState.activeQuestion.askerId !== myId && me?.status === 'playing' ? (
                             <div className="flex justify-center gap-4">
-                                <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-                                    <Button variant={gameState.activeQuestion.votes[myId] === 'yes' ? 'contained' : (gameState.activeQuestion.votes[myId] ? 'outlined' : 'contained')} color="success" size="medium" onClick={() => onSubmitVote("yes")} className="text-xl py-3 px-6 rounded-xl font-black">Evet 👍</Button>
-                                </motion.div>
-                                <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-                                    <Button variant={gameState.activeQuestion.votes[myId] === 'no' ? 'contained' : (gameState.activeQuestion.votes[myId] ? 'outlined' : 'contained')} color="error" size="medium" onClick={() => onSubmitVote("no")} className="text-xl py-3 px-6 rounded-xl font-black">Hayır 👎</Button>
-                                </motion.div>
-                                <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-                                    <Button variant={gameState.activeQuestion.votes[myId] === 'sometimes' ? 'contained' : (gameState.activeQuestion.votes[myId] ? 'outlined' : 'contained')} color="warning" size="medium" onClick={() => onSubmitVote("sometimes")} className="text-xl py-3 px-6 rounded-xl font-black">Bazen 🤔</Button>
-                                </motion.div>
+                                <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}><Button variant={gameState.activeQuestion.votes[myId] === 'yes' ? 'contained' : (gameState.activeQuestion.votes[myId] ? 'outlined' : 'contained')} color="success" size="medium" onClick={() => onSubmitVote("yes")} className="text-xl py-3 px-6 rounded-xl font-black">Evet 👍</Button></motion.div>
+                                <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}><Button variant={gameState.activeQuestion.votes[myId] === 'no' ? 'contained' : (gameState.activeQuestion.votes[myId] ? 'outlined' : 'contained')} color="error" size="medium" onClick={() => onSubmitVote("no")} className="text-xl py-3 px-6 rounded-xl font-black">Hayır 👎</Button></motion.div>
+                                <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}><Button variant={gameState.activeQuestion.votes[myId] === 'sometimes' ? 'contained' : (gameState.activeQuestion.votes[myId] ? 'outlined' : 'contained')} color="warning" size="medium" onClick={() => onSubmitVote("sometimes")} className="text-xl py-3 px-6 rounded-xl font-black">Bazen 🤔</Button></motion.div>
                             </div>
                         ) : (
                             <p className="text-slate-400 animate-pulse text-lg mb-4">Diğer oyuncuların oylaması bekleniyor...</p>
@@ -3215,17 +2979,8 @@ export default function GameScene({
                         <div className="mt-6 pt-4 border-t border-slate-700 flex flex-wrap justify-center gap-3">
                             <AnimatePresence>
                                 {Object.entries(gameState.activeQuestion.votes).map(([voterId, vote]) => (
-                                    <motion.div
-                                        key={voterId}
-                                        initial={{ opacity: 0, y: 20, scale: 0 }}
-                                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                                    >
-                                        <Chip 
-                                            label={`${gameState.users.find((u:User) => u.id === voterId)?.name}: ${vote === 'yes' ? '👍' : vote === 'no' ? '👎' : '🤔'}`} 
-                                            color={vote === 'yes' ? "success" : vote === 'no' ? "error" : "warning"}
-                                            variant="outlined"
-                                            className="font-bold bg-slate-900"
-                                        />
+                                    <motion.div key={voterId} initial={{ opacity: 0, y: 20, scale: 0 }} animate={{ opacity: 1, y: 0, scale: 1 }}>
+                                        <Chip label={`${gameState.users.find((u:User) => u.id === voterId)?.name}: ${vote === 'yes' ? '👍' : vote === 'no' ? '👎' : '🤔'}`} color={vote === 'yes' ? "success" : vote === 'no' ? "error" : "warning"} variant="outlined" className="font-bold bg-slate-900" />
                                     </motion.div>
                                 ))}
                             </AnimatePresence>
@@ -3233,6 +2988,102 @@ export default function GameScene({
                     </motion.div>
                 )}
             </AnimatePresence>
+        </main>
+    );
+}
+
+
+=========================
+DOSYA: client\components\game\JokerDraft.tsx
+=========================
+
+import React, { useState, useEffect } from 'react';
+import { User, GameState, JOKERS } from './types';
+import { motion } from 'framer-motion';
+import { Button } from '@mui/material';
+
+interface JokerDraftProps {
+    gameState: GameState;
+    me: User;
+    onSelectJoker: (jokerId: number) => void;
+}
+
+export default function JokerDraft({ gameState, me, onSelectJoker }: JokerDraftProps) {
+    const [timeLeft, setTimeLeft] = useState(15);
+    const [selected, setSelected] = useState<number | null>(null);
+
+    useEffect(() => {
+        if (!gameState.jokerDraftEndTime) return;
+        const interval = setInterval(() => {
+            const left = Math.max(0, Math.floor(((gameState.jokerDraftEndTime || 0) - Date.now()) / 1000));
+            setTimeLeft(left);
+            if (left <= 0) clearInterval(interval);
+        }, 1000);
+        return () => clearInterval(interval);
+    }, [gameState.jokerDraftEndTime]);
+
+    const handleSelect = (jokerId: number) => {
+        if (selected !== null || me.hasDrafted) return;
+        setSelected(jokerId);
+        onSelectJoker(jokerId);
+    };
+
+    if (me.hasDrafted || selected !== null) {
+        return (
+            <main className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center p-4">
+                <div className="glass p-8 rounded-3xl text-center shadow-2xl animate-pulse">
+                    <h2 className="text-3xl font-bold text-cyan-400 mb-4">Seçim Yapıldı!</h2>
+                    <p className="text-slate-300">Diğer oyuncuların seçimi tamamlaması bekleniyor... ({timeLeft}s)</p>
+                </div>
+            </main>
+        );
+    }
+
+    return (
+        <main className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center p-4 relative overflow-hidden">
+            <div className="text-center mb-8 z-10">
+                <h1 className="text-5xl font-black text-cyan-400 mb-2 drop-shadow-lg">KADERİNİ SEÇ</h1>
+                <p className="text-xl text-slate-300">Oyun boyunca kullanacağın özel yeteneğini belirle.</p>
+                <div className="text-4xl font-black text-amber-400 mt-4 animate-pulse">{timeLeft} sn</div>
+            </div>
+
+            <div className="flex flex-col md:flex-row gap-8 z-10">
+                {me?.jokerChoices?.map((jokerId, index) => {
+                    const jMeta = JOKERS.find(j => j.id === jokerId);
+                    if (!jMeta) return null;
+
+                    let borderGlow = "border-slate-400 shadow-[0_0_15px_rgba(148,163,184,0.5)]";
+                    let titleColor = "text-slate-200";
+                    if (jMeta.rarity === 'gold') {
+                        borderGlow = "border-amber-400 shadow-[0_0_30px_rgba(251,191,36,0.6)]";
+                        titleColor = "text-amber-400";
+                    } else if (jMeta.rarity === 'prismatic') {
+                        borderGlow = "border-fuchsia-500 shadow-[0_0_40px_rgba(217,70,239,0.8)] animate-pulse";
+                        titleColor = "text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-400 to-cyan-400";
+                    }
+
+                    return (
+                        <motion.div 
+                            key={index}
+                            initial={{ rotateY: 180, opacity: 0, scale: 0.5 }}
+                            animate={{ rotateY: 0, opacity: 1, scale: 1 }}
+                            transition={{ duration: 0.8, delay: index * 0.2, type: "spring" }}
+                            whileHover={{ scale: 1.05, translateY: -10 }}
+                            onClick={() => handleSelect(jokerId)}
+                            className={`w-72 h-96 bg-slate-800/90 backdrop-blur-xl rounded-2xl border-4 ${borderGlow} flex flex-col items-center justify-between p-6 cursor-pointer relative overflow-hidden group`}
+                        >
+                            <div className="absolute top-2 right-2 text-xs font-black uppercase tracking-widest text-slate-500 opacity-50">{jMeta.rarity}</div>
+                            <div className="flex-1 flex flex-col items-center justify-center text-center">
+                                <h3 className={`text-3xl font-black mb-4 ${titleColor}`}>{jMeta.name}</h3>
+                                <p className="text-slate-300 text-lg leading-relaxed">{jMeta.desc}</p>
+                            </div>
+                            <Button variant="contained" className={`w-full font-bold py-3 ${jMeta.rarity === 'prismatic' ? 'bg-fuchsia-600 hover:bg-fuchsia-500' : jMeta.rarity === 'gold' ? 'bg-amber-600 hover:bg-amber-500' : 'bg-slate-600 hover:bg-slate-500'}`}>
+                                BU YETENEĞİ SEÇ
+                            </Button>
+                        </motion.div>
+                    );
+                })}
+            </div>
         </main>
     );
 }
@@ -3940,7 +3791,11 @@ export type User = {
     hasPlacedBet?: boolean;
     isVoiceEnabled: boolean;
     joker?: number | null;
+    jokerChoices?: number[];
+    hasDrafted?: boolean;
     hasUsedJoker?: boolean;
+    russianRouletteActive?: boolean;
+    bloodTieTarget?: string | null;
     silencedTurns?: number;
     extraQuestions?: number;
     questionsAskedThisTurn?: number;
@@ -3951,8 +3806,10 @@ export type User = {
 };
 
 export type GameState = {
-    gameState: "LOBBY" | "BETTING" | "WORD_SELECTION" | "PLAYING" | "ROUND_END";
+    gameState: "LOBBY" | "BETTING" | "WORD_SELECTION" | "JOKER_DRAFT" | "PLAYING" | "ROUND_END";
     bettingEndTime?: number;
+    jokerDraftEndTime?: number;
+    roundCount?: number;
     objection?: {
         initiator: string;
         votes: { [userId: string]: boolean };
@@ -3979,6 +3836,16 @@ export type GameState = {
     winners: string[];
     hasObjectionUsed?: boolean;
 };
+
+export const JOKERS = [
+    { id: 0, name: "Zaman Bükücü", rarity: "silver", desc: "Sıran geldiğinde sürene +1 Dakika ekler.", requiresTarget: false, requiresWord: false },
+    { id: 1, name: "Harf Açıcı", rarity: "gold", desc: "Kendi kelimenden rastgele 1 harfi açar.", requiresTarget: false, requiresWord: false },
+    { id: 2, name: "Çift Şarjör", rarity: "gold", desc: "Sıran geldiğinde 3 ekstra soru hakkı verir.", requiresTarget: false, requiresWord: false },
+    { id: 3, name: "Susturucu", rarity: "gold", desc: "Seçtiğin bir oyuncuyu 2 tur susturur.", requiresTarget: true, requiresWord: false },
+    { id: 4, name: "Hafıza Silici", rarity: "gold", desc: "Seçtiğin kişinin kelimesini değiştirir.", requiresTarget: true, requiresWord: true },
+    { id: 5, name: "Kan Bağı", rarity: "prismatic", desc: "Biriyle bağlan. O 'Evet' alırsa harfin açılır, 'Hayır' alırsa canın gider.", requiresTarget: true, requiresWord: false },
+    { id: 6, name: "Rus Ruleti", rarity: "prismatic", desc: "Hemen tahmin zorunlu olur. Bilirsen tüm kasayı alırsın, bilemezsen elenirsin!", requiresTarget: false, requiresWord: false }
+];
 
 export const AVATARS = [
     { id: 'Warrior', color: "bg-red-600", icon: <GiBroadsword />, label: "Savaşçı", model: "Warrior.gltf" },
@@ -4198,6 +4065,7 @@ class GameManager {
         socket.on("game:set_word", ({ word }) => this.handleSetWord(socket, word));
         socket.on("game:edit_word", () => this.handleEditWord(socket));
         socket.on("game:shuffle_targets", () => this.handleShuffleTargets(socket));
+        socket.on("game:select_joker", ({ jokerId }) => this.handleSelectJoker(socket, jokerId));
         socket.on("game:chat", ({ message }) => this.handleChat(socket, message));
         socket.on("game:ask_question", ({ question }) => this.handleAskQuestion(socket, question));
         socket.on("game:submit_vote", ({ vote }) => this.handleSubmitVote(socket, vote));
@@ -4212,6 +4080,11 @@ class GameManager {
         socket.on("game:taunt", ({ type }) => this.handleTaunt(socket, type));
         socket.on("game:leave", () => this.handleLeave(socket));
         socket.on("disconnect", () => this.handleDisconnect(socket));
+    }
+
+    handleSelectJoker(socket, jokerId) {
+        const room = this.getRoomBySocket(socket);
+        if (room) room.selectJoker(socket.id, jokerId);
     }
 
     handleLeave(socket) {
@@ -4438,6 +4311,7 @@ class Room {
         this.timer = null;
         this.turnTimeLeft = 0;
         this.currentTurnIndex = 0;
+        this.roundCount = 1;
 
         this.chatHistory = [];
         this.winners = []; 
@@ -4496,7 +4370,11 @@ class Room {
             lives: 3,
             disconnected: false,
             joker: null,
+            jokerChoices: [],
+            hasDrafted: false,
             hasUsedJoker: false,
+            russianRouletteActive: false,
+            bloodTieTarget: null,
             silencedTurns: 0,
             extraQuestions: 0
         });
@@ -4536,12 +4414,10 @@ class Room {
         }
 
         const playingUsers = this.users.filter(u => u.status === 'playing' && !u.disconnected);
-        if (playingUsers.length < 2 && (this.gameState === "PLAYING" || this.gameState === "WORD_SELECTION")) {
+        if (playingUsers.length < 2 && (this.gameState === "PLAYING" || this.gameState === "WORD_SELECTION" || this.gameState === "JOKER_DRAFT")) {
             this.endGame();
         } else if (wasCurrentTurn && this.gameState === "PLAYING") {
-            
             this.currentTurnIndex = this.currentTurnIndex % this.users.length;
-            
             this.nextTurn();
         }
 
@@ -4576,10 +4452,10 @@ class Room {
         this.bets = {};
         this.hasObjectionUsed = false;
         this.objection = null;
+        this.roundCount = 1;
 
         if (this.isBettingEnabled) {
             const User = require('../models/User');
-            // Check if all players have enough gold
             for (let u of this.users) {
                 if (u.dbId) {
                     const userDb = await User.findById(u.dbId);
@@ -4593,7 +4469,6 @@ class Room {
                 }
             }
             
-            // Deduct gold from all
             for (let u of this.users) {
                 await User.findByIdAndUpdate(u.dbId, { $inc: { gold: -this.betAmount } });
             }
@@ -4629,19 +4504,17 @@ class Room {
         this.roundLogs = [];
         this.winners = [];
 
-        const availableJokers = [0, 1, 2, 3, 4];
-        for(let i = availableJokers.length - 1; i > 0; i--){
-            const j = Math.floor(Math.random() * (i + 1));
-            [availableJokers[i], availableJokers[j]] = [availableJokers[j], availableJokers[i]];
-        }
-        
         for (let i = 0; i < this.users.length; i++) {
             this.users[i].status = 'playing';
             this.users[i].lives = 3;
             this.users[i].assignedWord = null;
             this.users[i].hasSubmittedWord = false;
-            this.users[i].joker = this.isJokersEnabled ? availableJokers[i % availableJokers.length] : null;
+            this.users[i].joker = null;
+            this.users[i].hasDrafted = false;
+            this.users[i].jokerChoices = [];
             this.users[i].hasUsedJoker = false;
+            this.users[i].russianRouletteActive = false;
+            this.users[i].bloodTieTarget = null;
             this.users[i].silencedTurns = 0;
             this.users[i].extraQuestions = 0;
             this.users[i].questionsAskedThisTurn = 0;
@@ -4652,6 +4525,64 @@ class Room {
         }
 
         this.broadcastState();
+    }
+
+    startJokerDraft() {
+        this.gameState = "JOKER_DRAFT";
+        
+        const getRandomJoker = () => {
+            const r = Math.random() * 100;
+            if (r < 10) return [5, 6][Math.floor(Math.random() * 2)];
+            if (r < 40) return [2, 3, 4][Math.floor(Math.random() * 3)];
+            return [0, 1][Math.floor(Math.random() * 2)];
+        };
+
+        for (let u of this.users) {
+            if (u.status === 'playing') {
+                if (this.isJokersEnabled) {
+                    let j1 = getRandomJoker();
+                    let j2 = getRandomJoker();
+                    while (j1 === j2) j2 = getRandomJoker();
+                    u.jokerChoices = [j1, j2];
+                    u.hasDrafted = false;
+                } else {
+                    u.hasDrafted = true; 
+                }
+                u.joker = null;
+            }
+        }
+        
+        this.jokerDraftEndTime = Date.now() + 15000;
+        this.jokerDraftTimer = setTimeout(() => {
+            for (let u of this.users) {
+                if (u.status === 'playing' && !u.hasDrafted && this.isJokersEnabled) {
+                    u.joker = u.jokerChoices ? u.jokerChoices[0] : null;
+                    u.hasDrafted = true;
+                }
+            }
+            this.startPlaying();
+        }, 15000);
+        
+        this.broadcastState();
+    }
+
+    selectJoker(userId, jokerId) {
+        if(this.gameState !== "JOKER_DRAFT") return;
+        const user = this.users.find(u => u.id === userId);
+        if(!user || user.hasDrafted || !this.isJokersEnabled) return;
+        
+        if(user.jokerChoices.includes(jokerId)) {
+            user.joker = jokerId;
+            user.hasDrafted = true;
+        }
+
+        const allDrafted = this.users.filter(u => u.status === 'playing').every(u => u.hasDrafted);
+        if(allDrafted) {
+            if(this.jokerDraftTimer) clearTimeout(this.jokerDraftTimer);
+            this.startPlaying();
+        } else {
+            this.broadcastState();
+        }
     }
 
     placeBet(userId, targetId) {
@@ -4752,7 +4683,7 @@ class Room {
 
         const allAssigned = this.users.every(u => u.hasSubmittedWord);
         if (allAssigned) {
-            this.startPlaying();
+            this.startJokerDraft();
         } else {
             this.broadcastState();
         }
@@ -4809,6 +4740,7 @@ class Room {
     startPlaying() {
         this.gameState = "PLAYING";
         this.currentTurnIndex = 0;
+        this.roundCount = 1;
         this.activeQuestion = null;
         this.resolvedQuestionsThisTurn = [];
         this.startTimer();
@@ -4854,6 +4786,8 @@ class Room {
                          (normalizedTarget.includes(normalizedGuess) && normalizedGuess.length > 3) ||
                          (normalizedGuess.includes(normalizedTarget) && normalizedTarget.length > 3);
 
+        const isRussianRoulette = user.russianRouletteActive;
+
         if (isCorrect) {
             user.status = 'spectator';
             this.winners.push(user.id);
@@ -4868,26 +4802,31 @@ class Room {
                 const totalPot = playersCount * this.betAmount;
                 let pct = 0;
                 
-                if (playersCount <= 2) {
-                    pct = rank === 1 ? 1.0 : 0;
-                } else if (playersCount === 3) {
-                    pct = rank === 1 ? 0.60 : (rank === 2 ? 0.40 : 0);
-                } else if (playersCount === 4) {
-                    pct = rank === 1 ? 0.50 : (rank === 2 ? 0.30 : (rank === 3 ? 0.20 : 0));
+                if (isRussianRoulette) {
+                    winnerReward = totalPot; 
+                    bettorReward = 0;
                 } else {
-                    if (rank === 1) pct = 0.40;
-                    else if (rank === 2) pct = 0.30;
-                    else if (rank === 3) pct = 0.20;
-                    else if (rank === 4) pct = 0.10;
-                    else pct = 0;
+                    if (playersCount <= 2) {
+                        pct = rank === 1 ? 1.0 : 0;
+                    } else if (playersCount === 3) {
+                        pct = rank === 1 ? 0.60 : (rank === 2 ? 0.40 : 0);
+                    } else if (playersCount === 4) {
+                        pct = rank === 1 ? 0.50 : (rank === 2 ? 0.30 : (rank === 3 ? 0.20 : 0));
+                    } else {
+                        if (rank === 1) pct = 0.40;
+                        else if (rank === 2) pct = 0.30;
+                        else if (rank === 3) pct = 0.20;
+                        else if (rank === 4) pct = 0.10;
+                        else pct = 0;
+                    }
+                    winnerReward = Math.floor(totalPot * pct);
+                    bettorReward = Math.max(1, Math.floor(winnerReward / 2));
                 }
-                
-                winnerReward = Math.floor(totalPot * pct);
-                bettorReward = Math.max(1, Math.floor(winnerReward / 2));
             }
             
             let repReward = 5;
-            if (rank === 1) repReward = 50;
+            if (isRussianRoulette) repReward = 200;
+            else if (rank === 1) repReward = 50;
             else if (rank === 2) repReward = 20;
             else if (rank === 3) repReward = 10;
             
@@ -4904,7 +4843,9 @@ class Room {
             addReward(user.dbId, winnerReward, repReward, 'win');
 
             let winMsg = "";
-            if (this.isBettingEnabled) {
+            if (isRussianRoulette) {
+                winMsg = `💀👑 RUS RULETİ BAŞARILI! ${user.name} hayatını riske attı ve tüm kasayı (${winnerReward || repReward} Ödül) TEK BAŞINA ALDI!`;
+            } else if (this.isBettingEnabled) {
                 winMsg = `🏆 ${user.name} doğru tahmin etti! (${rank}. oldu) -> Oyun kazancı: ${winnerReward} Altın. (Kelimesi: ${user.assignedWord})`;
             } else {
                 winMsg = `🏆 ${user.name} doğru tahmin etti! (${rank}. oldu) -> Oyun kazancı: ${repReward} İtibar. (Kelimesi: ${user.assignedWord})`;
@@ -4912,7 +4853,7 @@ class Room {
             this.chatHistory.push({ system: true, message: winMsg, timestamp: Date.now() });
             this.roundLogs.push(winMsg);
 
-            if (this.isBettingEnabled && bettorReward > 0) {
+            if (this.isBettingEnabled && bettorReward > 0 && !isRussianRoulette) {
                 const bettors = Object.keys(this.bets || {}).filter(uid => this.bets[uid] === user.id);
                 let bettorNames = [];
                 
@@ -4949,6 +4890,11 @@ class Room {
                 }).catch(err => console.error("Aggregated reward update error:", err));
             }
 
+            if (isRussianRoulette) {
+                this.endGame();
+                return;
+            }
+
             const playingUsers = this.users.filter(u => u.status === 'playing');
             if (playingUsers.length <= 1) { 
                 this.endGame();
@@ -4961,12 +4907,19 @@ class Room {
                 this.broadcastState();
             }
         } else {
-            user.lives--;
+            if (isRussianRoulette) {
+                user.lives = 0;
+            } else {
+                user.lives--;
+            }
+
             if (user.lives <= 0) {
                 user.status = 'spectator';
                 this.chatHistory.push({
                     system: true,
-                    message: `${user.name} tüm tahmin haklarını kaybetti ve izleyici oldu! Kelimesi: ${user.assignedWord}`,
+                    message: isRussianRoulette 
+                        ? `💀 RUS RULETİ PATLADI! ${user.name} yanlış bildi ve anında elendi! Kelimesi: ${user.assignedWord}`
+                        : `${user.name} tüm tahmin haklarını kaybetti ve izleyici oldu! Kelimesi: ${user.assignedWord}`,
                     timestamp: Date.now()
                 });
             } else {
@@ -4991,8 +4944,36 @@ class Room {
         }
     }
 
+    openLettersForUser(user, count) {
+        if (!user.assignedWord) return;
+        if (!user.hintStr) {
+            user.hintStr = user.assignedWord.split('').map(c => c === ' ' ? ' ' : '_').join('');
+        }
+        const word = user.assignedWord;
+        for (let k = 0; k < count; k++) {
+            let hiddenIndices = [];
+            for(let i = 0; i < word.length; i++) {
+                if(user.hintStr[i] === '_') hiddenIndices.push(i);
+            }
+            if(hiddenIndices.length > 0) {
+                const randomIdx = hiddenIndices[Math.floor(Math.random() * hiddenIndices.length)];
+                let newHintStr = "";
+                for(let i = 0; i < word.length; i++) {
+                    if (i === randomIdx) newHintStr += word[i];
+                    else newHintStr += user.hintStr[i];
+                }
+                user.hintStr = newHintStr;
+            }
+        }
+    }
+
     useJoker(userId, payload) {
         if (this.gameState !== "PLAYING") return;
+        if (this.roundCount < 3) {
+            this.io.to(userId).emit("game:error", { message: "Jokerler 3. turdan itibaren kullanılabilir!" });
+            return;
+        }
+
         const user = this.users.find(u => u.id === userId);
         if (!user || user.status !== 'playing' || user.hasUsedJoker || user.joker === null) return;
 
@@ -5013,65 +4994,47 @@ class Room {
                         }
                     }, newTime * 1000);
                     
-                    this.chatHistory.push({ system: true, message: `${user.name} joker kullanarak süresine 1 dakika ekledi!`, timestamp: Date.now() });
+                    this.chatHistory.push({ system: true, message: `⏳ ${user.name} Zaman Bükücü kullanarak süresine 1 dakika ekledi!`, timestamp: Date.now() });
                 }
                 break;
             case 1: 
-                if (payload && payload.targetId && payload.newWord) {
-                    const target = this.users.find(u => u.id === payload.targetId);
-                    if (target) {
-                        target.assignedWord = payload.newWord;
-                        this.chatHistory.push({ system: true, message: `${user.name}, bir oyuncunun kelimesini değiştirdi!`, timestamp: Date.now() });
-                    }
-                }
+                this.openLettersForUser(user, 1);
+                const formattedHint = user.hintStr.split('').join(' ');
+                this.chatHistory.push({ system: true, message: `🔍 ${user.name}, Harf Açıcı kullanarak bir ipucu elde etti! Mevcut kelimesi: ${formattedHint}`, timestamp: Date.now() });
                 break;
             case 2: 
                 user.extraQuestions = 3;
-                this.chatHistory.push({ system: true, message: `${user.name}, joker kullanarak 3 ekstra soru sorma hakkı kazandı!`, timestamp: Date.now() });
+                this.chatHistory.push({ system: true, message: `🔫 ${user.name}, Çift Şarjör kullanarak 3 ekstra soru hakkı kazandı!`, timestamp: Date.now() });
                 break;
             case 3: 
-                if (user.assignedWord) {
-                    if (!user.hintStr) {
-                        let hint = "";
-                        for (let i = 0; i < user.assignedWord.length; i++) {
-                            hint += (user.assignedWord[i] === ' ') ? ' ' : '_';
-                        }
-                        user.hintStr = hint;
-                    }
-
-                    const word = user.assignedWord;
-                    let hiddenIndices = [];
-                    for(let i = 0; i < word.length; i++) {
-                        if(user.hintStr[i] === '_') hiddenIndices.push(i);
-                    }
-                    if(hiddenIndices.length > 0) {
-                        const randomIdx = hiddenIndices[Math.floor(Math.random() * hiddenIndices.length)];
-                        
-                        let newHintStr = "";
-                        for(let i = 0; i < word.length; i++) {
-                            if (i === randomIdx) newHintStr += word[i];
-                            else newHintStr += user.hintStr[i];
-                        }
-                        user.hintStr = newHintStr;
-                        
-                        const formattedHint = user.hintStr.split('').join(' ');
-                        this.chatHistory.push({ 
-                            system: true, 
-                            message: `${user.name}, joker kullanarak bir ipucu aldı! Mevcut kelimesi: ${formattedHint}`, 
-                            timestamp: Date.now() 
-                        });
-                        this.broadcastState();
-                    }
-                }
-                break;
-            case 4: 
                 if (payload && payload.targetId) {
                     const silenceTarget = this.users.find(u => u.id === payload.targetId);
                     if (silenceTarget) {
                         silenceTarget.silencedTurns = 2;
-                        this.chatHistory.push({ system: true, message: `${user.name}, bir oyuncuyu 2 tur susturdu!`, timestamp: Date.now() });
+                        this.chatHistory.push({ system: true, message: `🤫 ${user.name}, Susturucu kullanarak ${silenceTarget.name}'i 2 tur susturdu!`, timestamp: Date.now() });
                     }
                 }
+                break;
+            case 4: 
+                if (payload && payload.targetId && payload.newWord) {
+                    const target = this.users.find(u => u.id === payload.targetId);
+                    if (target) {
+                        target.assignedWord = payload.newWord;
+                        target.hintStr = null;
+                        this.chatHistory.push({ system: true, message: `🧠 ${user.name}, Hafıza Silici ile bir oyuncunun kelimesini acımasızca değiştirdi!`, timestamp: Date.now() });
+                    }
+                }
+                break;
+            case 5:
+                if (payload && payload.targetId) {
+                    user.bloodTieTarget = payload.targetId;
+                    this.chatHistory.push({ system: true, message: `🩸 Kan Bağı: ${user.name} jokerini kullanarak hedefini seçti! Onun kaderi artık ${user.name}'in kaderi.`, timestamp: Date.now() });
+                }
+                break;
+            case 6:
+                user.russianRouletteActive = true;
+                this.openLettersForUser(user, 2);
+                this.chatHistory.push({ system: true, message: `💀 RUS RULETİ! ${user.name}'in 2 harfi açıldı ve hemen tahmin etmek zorunda!`, timestamp: Date.now() });
                 break;
         }
         
@@ -5097,11 +5060,11 @@ class Room {
         if (!question || question.length > 150) return;
         const currentUser = this.users[this.currentTurnIndex];
         if (currentUser.id !== userId) return;
+        if (currentUser.russianRouletteActive) return; 
 
         const asked = currentUser.questionsAskedThisTurn || 0;
         
         if (asked >= 1) {
-            
             if (currentUser.extraQuestions > 0) {
                 currentUser.extraQuestions--;
             } else {
@@ -5145,11 +5108,44 @@ class Room {
     resolveQuestion() {
         if (!this.activeQuestion) return;
         
-        if (!this.resolvedQuestionsThisTurn) this.resolvedQuestionsThisTurn = []; this.resolvedQuestionsThisTurn.push(this.activeQuestion);
+        const playingUsers = this.users.filter(u => u.status === 'playing');
+        let yesCount = 0, noCount = 0;
+        for (let vote of Object.values(this.activeQuestion.votes)) {
+            if(vote === 'yes') yesCount++;
+            else if(vote === 'no') noCount++;
+        }
+        const isYesMajority = yesCount > noCount;
+        const isNoMajority = noCount > yesCount;
+
+        for (let u of this.users) {
+            if (u.bloodTieTarget === this.activeQuestion.askerId && u.status === 'playing') {
+                if (isYesMajority) {
+                    this.openLettersForUser(u, 1);
+                    this.chatHistory.push({ system: true, message: `🩸 Kan Bağı: Bağlı olduğun oyuncu EVET aldı! ${u.name}'in bir harfi açıldı.`, timestamp: Date.now() });
+                } else if (isNoMajority) {
+                    u.lives -= 1;
+                    if (u.lives <= 0) {
+                        u.status = 'spectator';
+                        this.chatHistory.push({ system: true, message: `🩸 Kan Bağı: Bağlı olduğun oyuncu HAYIR aldı! ${u.name} tüm canlarını kaybetti ve elendi!`, timestamp: Date.now() });
+                    } else {
+                        this.chatHistory.push({ system: true, message: `🩸 Kan Bağı: Bağlı olduğun oyuncu HAYIR aldı! ${u.name} 1 can kaybetti!`, timestamp: Date.now() });
+                    }
+                }
+            }
+        }
+
+        if (!this.resolvedQuestionsThisTurn) this.resolvedQuestionsThisTurn = []; 
+        this.resolvedQuestionsThisTurn.push(this.activeQuestion);
         this.activeQuestion = null;
         if (this.questionTimer) {
             clearTimeout(this.questionTimer);
             this.questionTimer = null;
+        }
+
+        const activePlayers = this.users.filter(x => x.status === 'playing');
+        if (activePlayers.length <= 1) {
+            this.endGame();
+            return;
         }
         
         this.turnStartTime = Date.now() - ((this.turnTime * 1000) - this.pausedRemainingMs);
@@ -5168,9 +5164,26 @@ class Room {
         this.resolvedQuestionsThisTurn = [];
         if (this.gameState !== "PLAYING") return;
 
+        const prevUser = this.users[this.currentTurnIndex];
+        if (prevUser && prevUser.russianRouletteActive && prevUser.status === 'playing') {
+            prevUser.lives = 0;
+            prevUser.status = 'spectator';
+            this.chatHistory.push({ system: true, message: `💀 ${prevUser.name} Rus Ruleti süresini aştı ve elendi!`, timestamp: Date.now() });
+            
+            const activePlayers = this.users.filter(x => x.status === 'playing');
+            if (activePlayers.length <= 1) {
+                this.endGame();
+                return;
+            }
+        }
+
         let attempts = 0;
         do {
             this.currentTurnIndex = (this.currentTurnIndex + 1) % this.users.length;
+            if (this.currentTurnIndex === 0) {
+                this.roundCount++;
+            }
+
             attempts++;
             if (attempts > this.users.length) {
                 this.endGame();
@@ -5183,7 +5196,7 @@ class Room {
                     nextUser.silencedTurns--;
                     this.chatHistory.push({
                         system: true,
-                        message: `${nextUser.name} susturulduğu için sırasını atlıyor.`,
+                        message: `🤐 ${nextUser.name} susturulduğu için sırasını atlıyor.`,
                         timestamp: Date.now()
                     });
                     continue; 
@@ -5252,7 +5265,11 @@ class Room {
                 isVoiceEnabled: u.isVoiceEnabled,
                 lives: u.lives,
                 joker: u.id === user.id ? u.joker : null,
+                jokerChoices: u.id === user.id ? u.jokerChoices : undefined,
+                hasDrafted: u.hasDrafted,
                 hasUsedJoker: u.hasUsedJoker,
+                russianRouletteActive: u.russianRouletteActive,
+                bloodTieTarget: u.bloodTieTarget,
                 silencedTurns: u.silencedTurns,
                 extraQuestions: u.extraQuestions || 0,
                 questionsAskedThisTurn: u.questionsAskedThisTurn || 0,
@@ -5276,6 +5293,8 @@ class Room {
                 objection: this.objection,
                 hasObjectionUsed: this.hasObjectionUsed,
                 bettingEndTime: this.bettingEndTime,
+                jokerDraftEndTime: this.jokerDraftEndTime,
+                roundCount: this.roundCount || 1,
                 roundLogs: this.gameState === "ROUND_END" ? this.roundLogs : []
             };
 
