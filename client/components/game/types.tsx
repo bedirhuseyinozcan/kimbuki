@@ -24,11 +24,12 @@ export type User = {
     bloodTieTarget?: string | null;
     timeBomb?: { casterId: string, roundsLeft: number } | null;
     mirrorRoundsLeft?: number;
+    shieldActive?: boolean;
+    extraQuestionChain?: boolean;
     silencedTurns?: number;
     extraQuestions?: number;
     questionsAskedThisTurn?: number;
     assignedWord: string | null;
-    hintStr?: string | null;
     lives: number;
     disconnected?: boolean;
 };
@@ -67,14 +68,18 @@ export type GameState = {
 
 export const JOKERS = [
     { id: 0, name: "Zaman Bükücü", rarity: "silver", desc: "Sıran geldiğinde sürene +1 Dakika ekler.", requiresTarget: false, requiresWord: false },
-    { id: 1, name: "Harf Açıcı", rarity: "silver", desc: "Kendi kelimenden rastgele 1 harfi açar.", requiresTarget: false, requiresWord: false },
-    { id: 2, name: "Çift Şarjör", rarity: "gold", desc: "Sıran geldiğinde 3 ekstra soru hakkı verir.", requiresTarget: false, requiresWord: false },
+    { id: 1, name: "Harf Açıcı", rarity: "silver", desc: "Kelimenin kaç harf olduğunu gizler, içinden 1 harf ve adedini söyler.", requiresTarget: false, requiresWord: false },
+    { id: 2, name: "Çift Şarjör", rarity: "gold", desc: "+1 soru hakkı verir. Sorduğun soru 'Evet' alırsa sonsuz +1 hak kazanmaya devam edersin.", requiresTarget: false, requiresWord: false },
     { id: 3, name: "Susturucu", rarity: "gold", desc: "Seçtiğin bir oyuncuyu 2 tur susturur.", requiresTarget: true, requiresWord: false },
-    { id: 4, name: "Hafıza Silici", rarity: "gold", desc: "Seçtiğin kişinin kelimesini değiştirir.", requiresTarget: true, requiresWord: true },
+    { id: 4, name: "Hafıza Silici", rarity: "prismatic", desc: "Seçtiğin kişinin kelimesini değiştirir. Tüm emeği çöp olur.", requiresTarget: true, requiresWord: true },
     { id: 5, name: "Kan Bağı", rarity: "prismatic", desc: "Biriyle bağlan. O 'Evet' alırsa harfin açılır, 'Hayır' alırsa canın gider.", requiresTarget: true, requiresWord: false },
     { id: 6, name: "Rus Ruleti", rarity: "prismatic", desc: "Hemen tahmin zorunlu olur. Bilirsen tüm kasayı alırsın, bilemezsen elenirsin!", requiresTarget: false, requiresWord: false },
     { id: 7, name: "Saatli Bomba", rarity: "prismatic", desc: "Birine bomba kur. 3 tur içinde bilemezse 2 canı gider. Bilirse sana döner!", requiresTarget: true, requiresWord: false },
-    { id: 8, name: "Ayna (Kalkan)", rarity: "silver", desc: "3 tur aktif gizli kalkan. Sana atılan kötü jokerleri atan kişiye geri yansıtır.", requiresTarget: false, requiresWord: false }
+    { id: 8, name: "Ayna (Kalkan)", rarity: "gold", desc: "Gizlice basılır. 3 tur boyunca sana atılan kötü jokerleri atan kişiye geri yansıtır.", requiresTarget: false, requiresWord: false },
+    { id: 9, name: "Gizli Kalkan", rarity: "silver", desc: "Gizlice basılır. Bir sonraki can kaybını (tahmin/bomba) engeller.", requiresTarget: false, requiresWord: false },
+    { id: 10, name: "İpucu Tartısı", rarity: "silver", desc: "Gizlice bir hedef seç. Senin kelimenin onun kelimesinden UZUN/KISA olduğunu söyler.", requiresTarget: true, requiresWord: false },
+    { id: 11, name: "Sürpriz Kutu (Gümüş)", rarity: "silver", desc: "Kullandığında sana anında rastgele bir ALTIN joker verir.", requiresTarget: false, requiresWord: false },
+    { id: 12, name: "Sürpriz Kutu (Altın)", rarity: "gold", desc: "Kullandığında sana anında rastgele bir PRİZMATİK joker verir.", requiresTarget: false, requiresWord: false }
 ];
 
 export const AVATARS = [

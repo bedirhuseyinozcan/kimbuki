@@ -81,8 +81,12 @@ class Room {
             bloodTieTarget: null,
             timeBomb: null,
             mirrorRoundsLeft: 0,
+            shieldActive: false,
+            extraQuestionChain: false,
+            revealedLetters: [],
             silencedTurns: 0,
-            extraQuestions: 0
+            extraQuestions: 0,
+            questionsAskedThisTurn: 0
         });
         this.broadcastState();
     }
@@ -162,6 +166,7 @@ class Room {
 
         if (this.isBettingEnabled) {
             const User = require('../models/User');
+            // Check if all players have enough gold
             for (let u of this.users) {
                 if (u.dbId) {
                     const userDb = await User.findById(u.dbId);
@@ -175,6 +180,7 @@ class Room {
                 }
             }
             
+            // Deduct gold from all
             for (let u of this.users) {
                 await User.findByIdAndUpdate(u.dbId, { $inc: { gold: -this.betAmount } });
             }
@@ -223,10 +229,12 @@ class Room {
             this.users[i].bloodTieTarget = null;
             this.users[i].timeBomb = null;
             this.users[i].mirrorRoundsLeft = 0;
+            this.users[i].shieldActive = false;
+            this.users[i].extraQuestionChain = false;
+            this.users[i].revealedLetters = [];
             this.users[i].silencedTurns = 0;
             this.users[i].extraQuestions = 0;
             this.users[i].questionsAskedThisTurn = 0;
-            this.users[i].hintStr = null;
             
             const nextIndex = (i + 1) % this.users.length;
             this.users[i].targetId = this.users[nextIndex].id;
@@ -240,9 +248,9 @@ class Room {
         
         const getRandomJoker = () => {
             const r = Math.random() * 100;
-            if (r < 10) return [5, 6, 7][Math.floor(Math.random() * 3)];
-            if (r < 40) return [2, 3, 4][Math.floor(Math.random() * 3)];
-            return [0, 1, 8][Math.floor(Math.random() * 3)];
+            if (r < 10) return [4, 5, 6, 7][Math.floor(Math.random() * 4)];
+            if (r < 40) return [2, 3, 8, 12][Math.floor(Math.random() * 4)];
+            return [0, 1, 9, 10, 11][Math.floor(Math.random() * 5)];
         };
 
         for (let u of this.users) {
@@ -377,6 +385,7 @@ class Room {
             this.broadcastState();
         }
     }
+
     setWord(userId, word) {
         if (this.gameState !== "WORD_SELECTION") return;
 
@@ -505,13 +514,18 @@ class Room {
             if (user.timeBomb) {
                 const caster = this.users.find(c => c.id === user.timeBomb.casterId);
                 if (caster && caster.status === 'playing') {
-                    caster.lives -= 2;
-                    this.chatHistory.push({ system: true, message: `🔄💥 İADE! ${user.name} kelimesini bildi ve bombayı ${caster.name}'e geri fırlatarak patlattı! (-2 Can)`, timestamp: Date.now() });
-                    if (caster.lives <= 0) {
-                        caster.status = 'spectator';
-                        caster.timeBomb = null;
-                        caster.bloodTieTarget = null;
-                        this.chatHistory.push({ system: true, message: `💀 ${caster.name} kendi bombasıyla elendi! Kelimesi: ${caster.assignedWord}`, timestamp: Date.now() });
+                    if (caster.shieldActive) {
+                        caster.shieldActive = false;
+                        this.chatHistory.push({ system: true, message: `🛡️ 💥 İADE! ${user.name} bombayı bildi ancak ${caster.name} kalkanı sayesinde patlamadan kurtuldu!`, timestamp: Date.now() });
+                    } else {
+                        caster.lives -= 2;
+                        this.chatHistory.push({ system: true, message: `🔄💥 İADE! ${user.name} kelimesini bildi ve bombayı ${caster.name}'e geri fırlatarak patlattı! (-2 Can)`, timestamp: Date.now() });
+                        if (caster.lives <= 0) {
+                            caster.status = 'spectator';
+                            caster.timeBomb = null;
+                            caster.bloodTieTarget = null;
+                            this.chatHistory.push({ system: true, message: `💀 ${caster.name} kendi bombasıyla elendi! Kelimesi: ${caster.assignedWord}`, timestamp: Date.now() });
+                        }
                     }
                 }
                 user.timeBomb = null;
@@ -634,7 +648,12 @@ class Room {
             if (isRussianRoulette) {
                 user.lives = 0;
             } else {
-                user.lives--;
+                if (user.shieldActive) {
+                    user.shieldActive = false;
+                    this.chatHistory.push({ system: true, message: `🛡️ ${user.name} yanlış bildiği için can kaybedecekti ancak Gizli Kalkanı onu korudu!`, timestamp: Date.now() });
+                } else {
+                    user.lives -= 1;
+                }
             }
 
             if (user.lives <= 0) {
@@ -648,7 +667,7 @@ class Room {
                         : `${user.name} tüm tahmin haklarını kaybetti ve izleyici oldu! Kelimesi: ${user.assignedWord}`,
                     timestamp: Date.now()
                 });
-            } else {
+            } else if (!user.shieldActive) {
                 this.chatHistory.push({
                     system: true,
                     message: `${user.name} yanlış tahminde bulundu! (${guess}) (Kalan Can: ${user.lives})`,
@@ -672,24 +691,17 @@ class Room {
 
     openLettersForUser(user, count) {
         if (!user.assignedWord) return;
-        if (!user.hintStr) {
-            user.hintStr = user.assignedWord.split('').map(c => c === ' ' ? ' ' : '_').join('');
-        }
-        const word = user.assignedWord;
-        for (let k = 0; k < count; k++) {
-            let hiddenIndices = [];
-            for(let i = 0; i < word.length; i++) {
-                if(user.hintStr[i] === '_') hiddenIndices.push(i);
+        const word = user.assignedWord.toUpperCase().replace(/[^A-ZÇĞİÖŞÜ]/g, "");
+        for(let k=0; k<count; k++) {
+            const unrevealed = word.split('').filter(c => !user.revealedLetters.includes(c));
+            if (unrevealed.length === 0) {
+                this.chatHistory.push({ system: true, privateTo: user.id, message: "Sistem (Özel): Açılacak başka harf kalmadı!", timestamp: Date.now() });
+                break;
             }
-            if(hiddenIndices.length > 0) {
-                const randomIdx = hiddenIndices[Math.floor(Math.random() * hiddenIndices.length)];
-                let newHintStr = "";
-                for(let i = 0; i < word.length; i++) {
-                    if (i === randomIdx) newHintStr += word[i];
-                    else newHintStr += user.hintStr[i];
-                }
-                user.hintStr = newHintStr;
-            }
+            const randomChar = unrevealed[Math.floor(Math.random() * unrevealed.length)];
+            user.revealedLetters.push(randomChar);
+            const countChar = word.split('').filter(c => c === randomChar).length;
+            this.chatHistory.push({ system: true, privateTo: user.id, message: `Sistem (Özel): Kelimen '${randomChar}' harfi içeriyor (${countChar} adet).`, timestamp: Date.now() });
         }
     }
 
@@ -703,6 +715,11 @@ class Room {
         const user = this.users.find(u => u.id === userId);
         if (!user || user.status !== 'playing' || user.hasUsedJoker || user.joker === null) return;
 
+        if (this.users[this.currentTurnIndex].id !== userId) {
+            this.io.to(userId).emit("game:error", { message: "Jokerini sadece kendi sıranda kullanabilirsin!" });
+            return;
+        }
+
         user.hasUsedJoker = true;
         const jokerType = user.joker;
 
@@ -711,8 +728,8 @@ class Room {
         if (targetId && [3, 4, 5, 7].includes(jokerType)) {
             const targetUser = this.users.find(u => u.id === targetId);
             if (targetUser && targetUser.mirrorRoundsLeft > 0 && targetUser.id !== user.id) {
-                this.chatHistory.push({ system: true, message: `🛡️ YANSIMA! ${targetUser.name}'in gizli Aynası devreye girdi. Kötü niyetli joker, ${user.name}'e geri sekti!`, timestamp: Date.now() });
-                targetId = user.id;
+                this.chatHistory.push({ system: true, message: `🛡️ YANSIMA! Kötü niyetli joker, gizli Ayna Kalkanı'na çarpıp ${user.name}'e geri sekti!`, timestamp: Date.now() });
+                targetId = user.id; 
             }
         }
 
@@ -723,24 +740,18 @@ class Room {
                     this.turnTimeLeft = (this.turnStartTime + (this.turnTime * 1000) - Date.now()) / 1000;
                     const newTime = this.turnTimeLeft + 60;
                     this.turnStartTime = Date.now() - (this.turnTime * 1000 - newTime * 1000); 
-                    
-                    this.timer = setTimeout(() => {
-                        if (this.gameState === "PLAYING") {
-                            this.nextTurn();
-                        }
-                    }, newTime * 1000);
-                    
+                    this.timer = setTimeout(() => { if (this.gameState === "PLAYING") this.nextTurn(); }, newTime * 1000);
                     this.chatHistory.push({ system: true, message: `⏳ ${user.name} Zaman Bükücü kullanarak süresine 1 dakika ekledi!`, timestamp: Date.now() });
                 }
                 break;
             case 1: 
+                this.chatHistory.push({ system: true, message: `🔍 ${user.name}, Harf Açıcı kullanarak gizli bir ipucu elde etti!`, timestamp: Date.now() });
                 this.openLettersForUser(user, 1);
-                const formattedHint = user.hintStr.split('').join(' ');
-                this.chatHistory.push({ system: true, message: `🔍 ${user.name}, Harf Açıcı kullanarak bir ipucu elde etti! Mevcut kelimesi: ${formattedHint}`, timestamp: Date.now() });
                 break;
             case 2: 
-                user.extraQuestions = 3;
-                this.chatHistory.push({ system: true, message: `🔫 ${user.name}, Çift Şarjör kullanarak 3 ekstra soru hakkı kazandı!`, timestamp: Date.now() });
+                user.extraQuestions = 1;
+                user.extraQuestionChain = true;
+                this.chatHistory.push({ system: true, message: `🔫 ${user.name}, Çift Şarjör kullandı! (Ekstra +1 soru hakkı kazandı ve aldığı her 'Evet' oyunda yeni bir hak kazanacak!)`, timestamp: Date.now() });
                 break;
             case 3: 
                 if (targetId) {
@@ -756,7 +767,7 @@ class Room {
                     const target = this.users.find(u => u.id === targetId);
                     if (target) {
                         target.assignedWord = payload.newWord;
-                        target.hintStr = null;
+                        target.revealedLetters = [];
                         this.chatHistory.push({ system: true, message: `🧠 Hafıza Silici kullanıldı! ${target.name}'in kelimesi acımasızca değiştirildi!`, timestamp: Date.now() });
                     }
                 }
@@ -769,8 +780,8 @@ class Room {
                 break;
             case 6:
                 user.russianRouletteActive = true;
+                this.chatHistory.push({ system: true, message: `💀 RUS RULETİ! ${user.name} hemen tahmin etmek zorunda!`, timestamp: Date.now() });
                 this.openLettersForUser(user, 2);
-                this.chatHistory.push({ system: true, message: `💀 RUS RULETİ! ${user.name}'in 2 harfi açıldı ve hemen tahmin etmek zorunda!`, timestamp: Date.now() });
                 break;
             case 7: 
                 if (targetId) {
@@ -783,7 +794,34 @@ class Room {
                 break;
             case 8: 
                 user.mirrorRoundsLeft = 3;
-                this.chatHistory.push({ system: true, message: `✨ ${user.name}, gizemli bir savunma jokeri kullandı...`, timestamp: Date.now() });
+                this.chatHistory.push({ system: true, privateTo: user.id, message: "Sistem (Özel): Ayna (Kalkan) aktif! 3 tur boyunca sana atılan kötü niyetli jokerler atan kişiye geri sekecek.", timestamp: Date.now() });
+                break;
+            case 9:
+                user.shieldActive = true;
+                this.chatHistory.push({ system: true, privateTo: user.id, message: "Sistem (Özel): Gizli Kalkan aktif! Bir sonraki ölümcül hatanı veya bombayı engelleyecek.", timestamp: Date.now() });
+                break;
+            case 10:
+                if (targetId) {
+                    const target = this.users.find(u => u.id === targetId);
+                    if (target && user.assignedWord && target.assignedWord) {
+                        const mLen = user.assignedWord.length;
+                        const tLen = target.assignedWord.length;
+                        const cmp = mLen > tLen ? "DAHA UZUN" : mLen < tLen ? "DAHA KISA" : "AYNI UZUNLUKTA";
+                        this.chatHistory.push({ system: true, privateTo: user.id, message: `Sistem (Özel): Senin kelimen ${target.name}'in kelimesinden ${cmp}.`, timestamp: Date.now() });
+                    }
+                }
+                break;
+            case 11:
+                const goldJokers = [2, 3, 8, 12];
+                user.joker = goldJokers[Math.floor(Math.random() * goldJokers.length)];
+                user.hasUsedJoker = false; 
+                this.chatHistory.push({ system: true, privateTo: user.id, message: "Sistem (Özel): Gümüş Sürpriz Kutu'yu açtın ve içinden ALTIN joker çıktı!", timestamp: Date.now() });
+                break;
+            case 12:
+                const prisJokers = [4, 5, 6, 7];
+                user.joker = prisJokers[Math.floor(Math.random() * prisJokers.length)];
+                user.hasUsedJoker = false;
+                this.chatHistory.push({ system: true, privateTo: user.id, message: "Sistem (Özel): Altın Sürpriz Kutu'yu açtın ve içinden PRİZMATİK joker çıktı!", timestamp: Date.now() });
                 break;
         }
         
@@ -857,6 +895,8 @@ class Room {
     resolveQuestion() {
         if (!this.activeQuestion) return;
         
+        const asker = this.users.find(u => u.id === this.activeQuestion.askerId);
+        
         const playingUsers = this.users.filter(u => u.status === 'playing');
         let yesCount = 0, noCount = 0;
         for (let vote of Object.values(this.activeQuestion.votes)) {
@@ -866,20 +906,30 @@ class Room {
         const isYesMajority = yesCount > noCount;
         const isNoMajority = noCount > yesCount;
 
+        if (asker && asker.extraQuestionChain && isYesMajority) {
+            asker.extraQuestions += 1;
+            this.chatHistory.push({ system: true, privateTo: asker.id, message: "Sistem (Özel): Sorun 'Evet' oyu aldığı için +1 Soru Hakkı daha kazandın!", timestamp: Date.now() });
+        }
+
         for (let u of this.users) {
             if (u.bloodTieTarget === this.activeQuestion.askerId && u.status === 'playing') {
                 if (isYesMajority) {
+                    this.chatHistory.push({ system: true, message: `🩸 Kan Bağı: Bağlı olduğun oyuncu EVET aldı! ${u.name}'in gizli bir harfi açıldı.`, timestamp: Date.now() });
                     this.openLettersForUser(u, 1);
-                    this.chatHistory.push({ system: true, message: `🩸 Kan Bağı: Bağlı olduğun oyuncu EVET aldı! ${u.name}'in bir harfi açıldı.`, timestamp: Date.now() });
                 } else if (isNoMajority) {
-                    u.lives -= 1;
-                    if (u.lives <= 0) {
-                        u.status = 'spectator';
-                        u.bloodTieTarget = null;
-                        u.timeBomb = null;
-                        this.chatHistory.push({ system: true, message: `🩸 Kan Bağı: Bağlı olduğun oyuncu HAYIR aldı! ${u.name} tüm canlarını kaybetti ve elendi!`, timestamp: Date.now() });
+                    if (u.shieldActive) {
+                        u.shieldActive = false;
+                        this.chatHistory.push({ system: true, message: `🛡️ 🩸 Kan Bağı: ${u.name} can kaybedecekti ancak Gizli Kalkanı onu korudu!`, timestamp: Date.now() });
                     } else {
-                        this.chatHistory.push({ system: true, message: `🩸 Kan Bağı: Bağlı olduğun oyuncu HAYIR aldı! ${u.name} 1 can kaybetti!`, timestamp: Date.now() });
+                        u.lives -= 1;
+                        if (u.lives <= 0) {
+                            u.status = 'spectator';
+                            u.bloodTieTarget = null;
+                            u.timeBomb = null;
+                            this.chatHistory.push({ system: true, message: `🩸 Kan Bağı: Bağlı olduğun oyuncu HAYIR aldı! ${u.name} tüm canlarını kaybetti ve elendi!`, timestamp: Date.now() });
+                        } else {
+                            this.chatHistory.push({ system: true, message: `🩸 Kan Bağı: Bağlı olduğun oyuncu HAYIR aldı! ${u.name} 1 can kaybetti!`, timestamp: Date.now() });
+                        }
                     }
                 }
             }
@@ -911,23 +961,32 @@ class Room {
     }
 
     nextTurn() {
+        if (this.questionTimer) {
+            clearTimeout(this.questionTimer);
+            this.questionTimer = null;
+        }
         this.activeQuestion = null;
         this.resolvedQuestionsThisTurn = [];
         if (this.gameState !== "PLAYING") return;
 
         const prevUser = this.users[this.currentTurnIndex];
-        if (prevUser && prevUser.russianRouletteActive && prevUser.status === 'playing') {
-            prevUser.lives = 0;
-            prevUser.status = 'spectator';
-            prevUser.bloodTieTarget = null;
-            prevUser.timeBomb = null;
-            this.chatHistory.push({ system: true, message: `💀 ${prevUser.name} Rus Ruleti süresini aştı ve elendi!`, timestamp: Date.now() });
-            
-            const activePlayers = this.users.filter(x => x.status === 'playing');
-            if (activePlayers.length <= 1) {
-                this.endGame();
-                return;
+        if (prevUser && prevUser.status === 'playing') {
+            if (prevUser.russianRouletteActive) {
+                prevUser.lives = 0;
+                prevUser.status = 'spectator';
+                prevUser.bloodTieTarget = null;
+                prevUser.timeBomb = null;
+                this.chatHistory.push({ system: true, message: `💀 ${prevUser.name} Rus Ruleti süresini aştı ve elendi!`, timestamp: Date.now() });
+                
+                const activePlayers = this.users.filter(x => x.status === 'playing');
+                if (activePlayers.length <= 1) {
+                    this.endGame();
+                    return;
+                }
             }
+            // SIRA BİTİMİNDE ZİNCİRLEME SORU HAKKINI SIFIRLA
+            prevUser.extraQuestionChain = false;
+            prevUser.extraQuestions = 0;
         }
 
         let attempts = 0;
@@ -944,13 +1003,19 @@ class Room {
                         if (u.timeBomb) {
                             u.timeBomb.roundsLeft--;
                             if (u.timeBomb.roundsLeft <= 0) {
-                                u.lives -= 2;
-                                u.timeBomb = null;
-                                this.chatHistory.push({ system: true, message: `💥 GÜM! Süre doldu. ${u.name}'in üzerindeki Saatli Bomba patladı! (-2 Can)`, timestamp: Date.now() });
-                                if (u.lives <= 0) {
-                                    u.status = 'spectator';
-                                    u.bloodTieTarget = null;
-                                    this.chatHistory.push({ system: true, message: `💀 ${u.name} bombanın etkisiyle elendi! Kelimesi: ${u.assignedWord}`, timestamp: Date.now() });
+                                if (u.shieldActive) {
+                                    u.shieldActive = false;
+                                    u.timeBomb = null;
+                                    this.chatHistory.push({ system: true, message: `🛡️ 💥 GÜM! Saatli Bomba patladı ancak ${u.name}'in Gizli Kalkanı hasarı tamamen emdi!`, timestamp: Date.now() });
+                                } else {
+                                    u.lives -= 2;
+                                    u.timeBomb = null;
+                                    this.chatHistory.push({ system: true, message: `💥 GÜM! Süre doldu. ${u.name}'in üzerindeki Saatli Bomba patladı! (-2 Can)`, timestamp: Date.now() });
+                                    if (u.lives <= 0) {
+                                        u.status = 'spectator';
+                                        u.bloodTieTarget = null;
+                                        this.chatHistory.push({ system: true, message: `💀 ${u.name} bombanın etkisiyle elendi! Kelimesi: ${u.assignedWord}`, timestamp: Date.now() });
+                                    }
                                 }
                             }
                         }
@@ -1006,6 +1071,10 @@ class Room {
     endGame() {
         this.gameState = "ROUND_END";
         if (this.timer) clearTimeout(this.timer);
+        if (this.questionTimer) {
+            clearTimeout(this.questionTimer);
+            this.questionTimer = null;
+        }
         
         const User = require('../models/User');
         for (let u of this.users) {
@@ -1051,12 +1120,13 @@ class Room {
                 russianRouletteActive: u.russianRouletteActive,
                 bloodTieTarget: u.bloodTieTarget,
                 timeBomb: u.timeBomb,
-                mirrorRoundsLeft: (u.id === user.id) ? u.mirrorRoundsLeft : 0, 
+                mirrorRoundsLeft: 0, 
+                shieldActive: false, 
+                extraQuestionChain: (u.id === user.id) ? u.extraQuestionChain : false,
                 silencedTurns: u.silencedTurns,
                 extraQuestions: u.extraQuestions || 0,
                 questionsAskedThisTurn: u.questionsAskedThisTurn || 0,
-                assignedWord: (this.gameState === "ROUND_END" || u.id !== user.id) ? u.assignedWord : null,
-                hintStr: (u.id === user.id) ? u.hintStr : null
+                assignedWord: (this.gameState === "ROUND_END" || u.id !== user.id) ? u.assignedWord : null
             }));
 
             const payload = {
@@ -1070,7 +1140,14 @@ class Room {
                 users: usersPayload,
                 currentTurnUserId: this.gameState === "PLAYING" ? this.users[this.currentTurnIndex]?.id : null,
                 turnEndsAt: this.gameState === "PLAYING" ? (this.activeQuestion ? Date.now() + this.pausedRemainingMs : this.turnStartTime + (this.turnTime * 1000)) : null,
-                chatHistory: this.chatHistory,
+                chatHistory: this.chatHistory.filter(c => !c.privateTo || c.privateTo === user.id).map(c => ({
+                    system: c.system,
+                    userId: c.userId,
+                    name: c.name,
+                    nameColor: c.nameColor,
+                    message: c.message,
+                    timestamp: c.timestamp
+                })),
                 winners: this.winners,
                 objection: this.objection,
                 hasObjectionUsed: this.hasObjectionUsed,
