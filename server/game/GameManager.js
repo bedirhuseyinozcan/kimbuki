@@ -25,6 +25,7 @@ class GameManager {
         socket.on("game:set_word", ({ word }) => this.handleSetWord(socket, word));
         socket.on("game:edit_word", () => this.handleEditWord(socket));
         socket.on("game:shuffle_targets", () => this.handleShuffleTargets(socket));
+        socket.on("game:select_joker", ({ jokerId }) => this.handleSelectJoker(socket, jokerId));
         socket.on("game:chat", ({ message }) => this.handleChat(socket, message));
         socket.on("game:ask_question", ({ question }) => this.handleAskQuestion(socket, question));
         socket.on("game:submit_vote", ({ vote }) => this.handleSubmitVote(socket, vote));
@@ -39,6 +40,11 @@ class GameManager {
         socket.on("game:taunt", ({ type }) => this.handleTaunt(socket, type));
         socket.on("game:leave", () => this.handleLeave(socket));
         socket.on("disconnect", () => this.handleDisconnect(socket));
+    }
+
+    handleSelectJoker(socket, jokerId) {
+        const room = this.getRoomBySocket(socket);
+        if (room) room.selectJoker(socket.id, jokerId);
     }
 
     handleLeave(socket) {
