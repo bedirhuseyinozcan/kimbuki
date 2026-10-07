@@ -3307,8 +3307,6 @@ import { OrbitControls, Html, ContactShadows, useGLTF } from '@react-three/drei'
 import { SkeletonUtils } from 'three-stdlib';
 import { User, GameState, AVATARS, getRankInfo, NAME_COLORS, TITLES } from './types';
 import * as THREE from 'three';
-import { Avatar as MuiAvatar } from '@mui/material';
-import HelpIcon from '@mui/icons-material/Help';
 import { motion, AnimatePresence } from "framer-motion";
 
 const PLAYER_CENTER = [2, 0, -1]; 
@@ -3319,7 +3317,6 @@ const MAP_CONFIGS: { [key: string]: { position: [number, number, number], scale:
 };
 const PLAYER_CIRCLE_RADIUS_SMALL = 3.5;
 const PLAYER_CIRCLE_RADIUS_LARGE = 4.5;
-// -----------------------------------
 
 function FirstPersonCamera({ myId, users, radius, onHeadRotation }: any) {
     const { camera } = useThree();
@@ -3371,7 +3368,6 @@ function FirstPersonCamera({ myId, users, radius, onHeadRotation }: any) {
     useFrame((state, delta) => {
         const myIndex = users.findIndex((u: any) => u.id === myId);
         if (myIndex === -1) {
-            
             camera.position.lerp(new THREE.Vector3(PLAYER_CENTER[0], 5, PLAYER_CENTER[2] + 8), 2 * delta);
             camera.lookAt(PLAYER_CENTER[0], 0, PLAYER_CENTER[2]);
             return;
@@ -3528,10 +3524,20 @@ function PlayerNode({ u, index, totalUsers, isCurrentTurn, isMe, isWinner, activ
 
     const targetRot = headRotations?.[u.id];
     
+    const bomb = u.timeBomb;
+    const hasMirror = isMe && (u.mirrorRoundsLeft && u.mirrorRoundsLeft > 0);
+    
     return (
         <group ref={groupRef} position={[x, 0, z]} rotation={[0, -angle - Math.PI / 2, 0]}>
             
             <PedestalNode type={u.pedestal || 'default_stone'} />
+
+            {hasMirror && (
+                <mesh position={[0, 1.2, 0]}>
+                    <sphereGeometry args={[1.5, 32, 32]} />
+                    <meshPhysicalMaterial color="#38bdf8" transmission={0.9} opacity={0.3} transparent roughness={0.1} />
+                </mesh>
+            )}
 
             {!isMe && (
                 <group ref={bodyRef}>
@@ -3549,6 +3555,18 @@ function PlayerNode({ u, index, totalUsers, isCurrentTurn, isMe, isWinner, activ
                     )}
                 </group>
             )}
+            
+            {bomb && (
+                <Html position={[0, 4.5, 0]} center zIndexRange={[95, 0]} style={{ pointerEvents: 'none' }}>
+                    <div className="flex flex-col items-center animate-bounce">
+                        <span className="text-4xl drop-shadow-[0_0_15px_rgba(239,68,68,0.8)]">💣</span>
+                        <span className="text-[10px] font-black text-red-400 bg-black/80 px-2 py-0.5 rounded-full mt-1 border border-red-500/50">
+                            {bomb.roundsLeft} TUR
+                        </span>
+                    </div>
+                </Html>
+            )}
+
             {taunt && (
                 <Html position={[0, 3.5, 0]} center zIndexRange={[95, 0]} style={{ pointerEvents: 'none' }}>
                     <AnimatePresence>
@@ -3796,6 +3814,8 @@ export type User = {
     hasUsedJoker?: boolean;
     russianRouletteActive?: boolean;
     bloodTieTarget?: string | null;
+    timeBomb?: { casterId: string, roundsLeft: number } | null;
+    mirrorRoundsLeft?: number;
     silencedTurns?: number;
     extraQuestions?: number;
     questionsAskedThisTurn?: number;
@@ -3839,12 +3859,14 @@ export type GameState = {
 
 export const JOKERS = [
     { id: 0, name: "Zaman Bükücü", rarity: "silver", desc: "Sıran geldiğinde sürene +1 Dakika ekler.", requiresTarget: false, requiresWord: false },
-    { id: 1, name: "Harf Açıcı", rarity: "gold", desc: "Kendi kelimenden rastgele 1 harfi açar.", requiresTarget: false, requiresWord: false },
+    { id: 1, name: "Harf Açıcı", rarity: "silver", desc: "Kendi kelimenden rastgele 1 harfi açar.", requiresTarget: false, requiresWord: false },
     { id: 2, name: "Çift Şarjör", rarity: "gold", desc: "Sıran geldiğinde 3 ekstra soru hakkı verir.", requiresTarget: false, requiresWord: false },
     { id: 3, name: "Susturucu", rarity: "gold", desc: "Seçtiğin bir oyuncuyu 2 tur susturur.", requiresTarget: true, requiresWord: false },
     { id: 4, name: "Hafıza Silici", rarity: "gold", desc: "Seçtiğin kişinin kelimesini değiştirir.", requiresTarget: true, requiresWord: true },
     { id: 5, name: "Kan Bağı", rarity: "prismatic", desc: "Biriyle bağlan. O 'Evet' alırsa harfin açılır, 'Hayır' alırsa canın gider.", requiresTarget: true, requiresWord: false },
-    { id: 6, name: "Rus Ruleti", rarity: "prismatic", desc: "Hemen tahmin zorunlu olur. Bilirsen tüm kasayı alırsın, bilemezsen elenirsin!", requiresTarget: false, requiresWord: false }
+    { id: 6, name: "Rus Ruleti", rarity: "prismatic", desc: "Hemen tahmin zorunlu olur. Bilirsen tüm kasayı alırsın, bilemezsen elenirsin!", requiresTarget: false, requiresWord: false },
+    { id: 7, name: "Saatli Bomba", rarity: "prismatic", desc: "Birine bomba kur. 3 tur içinde bilemezse 2 canı gider. Bilirse sana döner!", requiresTarget: true, requiresWord: false },
+    { id: 8, name: "Ayna (Kalkan)", rarity: "silver", desc: "3 tur aktif gizli kalkan. Sana atılan kötü jokerleri atan kişiye geri yansıtır.", requiresTarget: false, requiresWord: false }
 ];
 
 export const AVATARS = [
@@ -4336,6 +4358,8 @@ class Room {
                 
                 this.users.forEach(u => {
                     if (u.targetId === oldId) u.targetId = socketId;
+                    if (u.bloodTieTarget === oldId) u.bloodTieTarget = socketId;
+                    if (u.timeBomb && u.timeBomb.casterId === oldId) u.timeBomb.casterId = socketId;
                 });
                 const winnerIndex = this.winners.indexOf(oldId);
                 if (winnerIndex !== -1) this.winners[winnerIndex] = socketId;
@@ -4375,6 +4399,8 @@ class Room {
             hasUsedJoker: false,
             russianRouletteActive: false,
             bloodTieTarget: null,
+            timeBomb: null,
+            mirrorRoundsLeft: 0,
             silencedTurns: 0,
             extraQuestions: 0
         });
@@ -4515,6 +4541,8 @@ class Room {
             this.users[i].hasUsedJoker = false;
             this.users[i].russianRouletteActive = false;
             this.users[i].bloodTieTarget = null;
+            this.users[i].timeBomb = null;
+            this.users[i].mirrorRoundsLeft = 0;
             this.users[i].silencedTurns = 0;
             this.users[i].extraQuestions = 0;
             this.users[i].questionsAskedThisTurn = 0;
@@ -4532,9 +4560,9 @@ class Room {
         
         const getRandomJoker = () => {
             const r = Math.random() * 100;
-            if (r < 10) return [5, 6][Math.floor(Math.random() * 2)];
+            if (r < 10) return [5, 6, 7][Math.floor(Math.random() * 3)];
             if (r < 40) return [2, 3, 4][Math.floor(Math.random() * 3)];
-            return [0, 1][Math.floor(Math.random() * 2)];
+            return [0, 1, 8][Math.floor(Math.random() * 3)];
         };
 
         for (let u of this.users) {
@@ -4790,8 +4818,24 @@ class Room {
 
         if (isCorrect) {
             user.status = 'spectator';
+            user.bloodTieTarget = null;
             this.winners.push(user.id);
             const User = require('../models/User');
+            
+            if (user.timeBomb) {
+                const caster = this.users.find(c => c.id === user.timeBomb.casterId);
+                if (caster && caster.status === 'playing') {
+                    caster.lives -= 2;
+                    this.chatHistory.push({ system: true, message: `🔄💥 İADE! ${user.name} kelimesini bildi ve bombayı ${caster.name}'e geri fırlatarak patlattı! (-2 Can)`, timestamp: Date.now() });
+                    if (caster.lives <= 0) {
+                        caster.status = 'spectator';
+                        caster.timeBomb = null;
+                        caster.bloodTieTarget = null;
+                        this.chatHistory.push({ system: true, message: `💀 ${caster.name} kendi bombasıyla elendi! Kelimesi: ${caster.assignedWord}`, timestamp: Date.now() });
+                    }
+                }
+                user.timeBomb = null;
+            }
             
             let winnerReward = 0; 
             let bettorReward = 0;
@@ -4915,6 +4959,8 @@ class Room {
 
             if (user.lives <= 0) {
                 user.status = 'spectator';
+                user.bloodTieTarget = null;
+                user.timeBomb = null;
                 this.chatHistory.push({
                     system: true,
                     message: isRussianRoulette 
@@ -4980,6 +5026,16 @@ class Room {
         user.hasUsedJoker = true;
         const jokerType = user.joker;
 
+        let targetId = payload?.targetId;
+
+        if (targetId && [3, 4, 5, 7].includes(jokerType)) {
+            const targetUser = this.users.find(u => u.id === targetId);
+            if (targetUser && targetUser.mirrorRoundsLeft > 0 && targetUser.id !== user.id) {
+                this.chatHistory.push({ system: true, message: `🛡️ YANSIMA! ${targetUser.name}'in gizli Aynası devreye girdi. Kötü niyetli joker, ${user.name}'e geri sekti!`, timestamp: Date.now() });
+                targetId = user.id;
+            }
+        }
+
         switch (jokerType) {
             case 0: 
                 if (this.currentTurnIndex !== -1 && this.users[this.currentTurnIndex].id === userId) {
@@ -5007,34 +5063,47 @@ class Room {
                 this.chatHistory.push({ system: true, message: `🔫 ${user.name}, Çift Şarjör kullanarak 3 ekstra soru hakkı kazandı!`, timestamp: Date.now() });
                 break;
             case 3: 
-                if (payload && payload.targetId) {
-                    const silenceTarget = this.users.find(u => u.id === payload.targetId);
+                if (targetId) {
+                    const silenceTarget = this.users.find(u => u.id === targetId);
                     if (silenceTarget) {
                         silenceTarget.silencedTurns = 2;
-                        this.chatHistory.push({ system: true, message: `🤫 ${user.name}, Susturucu kullanarak ${silenceTarget.name}'i 2 tur susturdu!`, timestamp: Date.now() });
+                        this.chatHistory.push({ system: true, message: `🤫 Susturucu kullanıldı! ${silenceTarget.name}, 2 tur boyunca susturuldu.`, timestamp: Date.now() });
                     }
                 }
                 break;
             case 4: 
-                if (payload && payload.targetId && payload.newWord) {
-                    const target = this.users.find(u => u.id === payload.targetId);
+                if (targetId && payload.newWord) {
+                    const target = this.users.find(u => u.id === targetId);
                     if (target) {
                         target.assignedWord = payload.newWord;
                         target.hintStr = null;
-                        this.chatHistory.push({ system: true, message: `🧠 ${user.name}, Hafıza Silici ile bir oyuncunun kelimesini acımasızca değiştirdi!`, timestamp: Date.now() });
+                        this.chatHistory.push({ system: true, message: `🧠 Hafıza Silici kullanıldı! ${target.name}'in kelimesi acımasızca değiştirildi!`, timestamp: Date.now() });
                     }
                 }
                 break;
             case 5:
-                if (payload && payload.targetId) {
-                    user.bloodTieTarget = payload.targetId;
-                    this.chatHistory.push({ system: true, message: `🩸 Kan Bağı: ${user.name} jokerini kullanarak hedefini seçti! Onun kaderi artık ${user.name}'in kaderi.`, timestamp: Date.now() });
+                if (targetId) {
+                    user.bloodTieTarget = targetId;
+                    this.chatHistory.push({ system: true, message: `🩸 Kan Bağı kullanıldı! ${user.name} hedefini seçti, kaderleri artık bir!`, timestamp: Date.now() });
                 }
                 break;
             case 6:
                 user.russianRouletteActive = true;
                 this.openLettersForUser(user, 2);
                 this.chatHistory.push({ system: true, message: `💀 RUS RULETİ! ${user.name}'in 2 harfi açıldı ve hemen tahmin etmek zorunda!`, timestamp: Date.now() });
+                break;
+            case 7: 
+                if (targetId) {
+                    const target = this.users.find(u => u.id === targetId);
+                    if (target) {
+                        target.timeBomb = { casterId: user.id, roundsLeft: 3 };
+                        this.chatHistory.push({ system: true, message: `💣 SAATLİ BOMBA! ${target.name}'in üzerine bomba yerleştirildi. 3 tur içinde bilemezse patlayacak!`, timestamp: Date.now() });
+                    }
+                }
+                break;
+            case 8: 
+                user.mirrorRoundsLeft = 3;
+                this.chatHistory.push({ system: true, message: `✨ ${user.name}, gizemli bir savunma jokeri kullandı...`, timestamp: Date.now() });
                 break;
         }
         
@@ -5126,6 +5195,8 @@ class Room {
                     u.lives -= 1;
                     if (u.lives <= 0) {
                         u.status = 'spectator';
+                        u.bloodTieTarget = null;
+                        u.timeBomb = null;
                         this.chatHistory.push({ system: true, message: `🩸 Kan Bağı: Bağlı olduğun oyuncu HAYIR aldı! ${u.name} tüm canlarını kaybetti ve elendi!`, timestamp: Date.now() });
                     } else {
                         this.chatHistory.push({ system: true, message: `🩸 Kan Bağı: Bağlı olduğun oyuncu HAYIR aldı! ${u.name} 1 can kaybetti!`, timestamp: Date.now() });
@@ -5168,6 +5239,8 @@ class Room {
         if (prevUser && prevUser.russianRouletteActive && prevUser.status === 'playing') {
             prevUser.lives = 0;
             prevUser.status = 'spectator';
+            prevUser.bloodTieTarget = null;
+            prevUser.timeBomb = null;
             this.chatHistory.push({ system: true, message: `💀 ${prevUser.name} Rus Ruleti süresini aştı ve elendi!`, timestamp: Date.now() });
             
             const activePlayers = this.users.filter(x => x.status === 'playing');
@@ -5180,8 +5253,35 @@ class Room {
         let attempts = 0;
         do {
             this.currentTurnIndex = (this.currentTurnIndex + 1) % this.users.length;
+            
             if (this.currentTurnIndex === 0) {
                 this.roundCount++;
+                
+                for (let u of this.users) {
+                    if (u.status === 'playing') {
+                        if (u.mirrorRoundsLeft > 0) u.mirrorRoundsLeft--;
+                        
+                        if (u.timeBomb) {
+                            u.timeBomb.roundsLeft--;
+                            if (u.timeBomb.roundsLeft <= 0) {
+                                u.lives -= 2;
+                                u.timeBomb = null;
+                                this.chatHistory.push({ system: true, message: `💥 GÜM! Süre doldu. ${u.name}'in üzerindeki Saatli Bomba patladı! (-2 Can)`, timestamp: Date.now() });
+                                if (u.lives <= 0) {
+                                    u.status = 'spectator';
+                                    u.bloodTieTarget = null;
+                                    this.chatHistory.push({ system: true, message: `💀 ${u.name} bombanın etkisiyle elendi! Kelimesi: ${u.assignedWord}`, timestamp: Date.now() });
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                const activePlayers = this.users.filter(x => x.status === 'playing');
+                if (activePlayers.length <= 1) {
+                    this.endGame();
+                    return;
+                }
             }
 
             attempts++;
@@ -5270,6 +5370,8 @@ class Room {
                 hasUsedJoker: u.hasUsedJoker,
                 russianRouletteActive: u.russianRouletteActive,
                 bloodTieTarget: u.bloodTieTarget,
+                timeBomb: u.timeBomb,
+                mirrorRoundsLeft: (u.id === user.id) ? u.mirrorRoundsLeft : 0, 
                 silencedTurns: u.silencedTurns,
                 extraQuestions: u.extraQuestions || 0,
                 questionsAskedThisTurn: u.questionsAskedThisTurn || 0,

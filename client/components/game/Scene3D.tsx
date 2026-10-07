@@ -4,8 +4,6 @@ import { OrbitControls, Html, ContactShadows, useGLTF } from '@react-three/drei'
 import { SkeletonUtils } from 'three-stdlib';
 import { User, GameState, AVATARS, getRankInfo, NAME_COLORS, TITLES } from './types';
 import * as THREE from 'three';
-import { Avatar as MuiAvatar } from '@mui/material';
-import HelpIcon from '@mui/icons-material/Help';
 import { motion, AnimatePresence } from "framer-motion";
 
 const PLAYER_CENTER = [2, 0, -1]; 
@@ -16,7 +14,6 @@ const MAP_CONFIGS: { [key: string]: { position: [number, number, number], scale:
 };
 const PLAYER_CIRCLE_RADIUS_SMALL = 3.5;
 const PLAYER_CIRCLE_RADIUS_LARGE = 4.5;
-// -----------------------------------
 
 function FirstPersonCamera({ myId, users, radius, onHeadRotation }: any) {
     const { camera } = useThree();
@@ -68,7 +65,6 @@ function FirstPersonCamera({ myId, users, radius, onHeadRotation }: any) {
     useFrame((state, delta) => {
         const myIndex = users.findIndex((u: any) => u.id === myId);
         if (myIndex === -1) {
-            
             camera.position.lerp(new THREE.Vector3(PLAYER_CENTER[0], 5, PLAYER_CENTER[2] + 8), 2 * delta);
             camera.lookAt(PLAYER_CENTER[0], 0, PLAYER_CENTER[2]);
             return;
@@ -225,10 +221,20 @@ function PlayerNode({ u, index, totalUsers, isCurrentTurn, isMe, isWinner, activ
 
     const targetRot = headRotations?.[u.id];
     
+    const bomb = u.timeBomb;
+    const hasMirror = isMe && (u.mirrorRoundsLeft && u.mirrorRoundsLeft > 0);
+    
     return (
         <group ref={groupRef} position={[x, 0, z]} rotation={[0, -angle - Math.PI / 2, 0]}>
             
             <PedestalNode type={u.pedestal || 'default_stone'} />
+
+            {hasMirror && (
+                <mesh position={[0, 1.2, 0]}>
+                    <sphereGeometry args={[1.5, 32, 32]} />
+                    <meshPhysicalMaterial color="#38bdf8" transmission={0.9} opacity={0.3} transparent roughness={0.1} />
+                </mesh>
+            )}
 
             {!isMe && (
                 <group ref={bodyRef}>
@@ -246,6 +252,18 @@ function PlayerNode({ u, index, totalUsers, isCurrentTurn, isMe, isWinner, activ
                     )}
                 </group>
             )}
+            
+            {bomb && (
+                <Html position={[0, 4.5, 0]} center zIndexRange={[95, 0]} style={{ pointerEvents: 'none' }}>
+                    <div className="flex flex-col items-center animate-bounce">
+                        <span className="text-4xl drop-shadow-[0_0_15px_rgba(239,68,68,0.8)]">💣</span>
+                        <span className="text-[10px] font-black text-red-400 bg-black/80 px-2 py-0.5 rounded-full mt-1 border border-red-500/50">
+                            {bomb.roundsLeft} TUR
+                        </span>
+                    </div>
+                </Html>
+            )}
+
             {taunt && (
                 <Html position={[0, 3.5, 0]} center zIndexRange={[95, 0]} style={{ pointerEvents: 'none' }}>
                     <AnimatePresence>
