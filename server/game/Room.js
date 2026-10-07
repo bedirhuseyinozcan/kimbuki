@@ -21,6 +21,12 @@ class Room {
         this.pendingMirrorWordTarget = null;
         this.mirrorWordTimer = null;
     }
+    addChatLog(logObj) {
+        this.chatHistory.push(logObj);
+        if (this.chatHistory.length > 60) {
+            this.chatHistory.shift();
+        }
+    }
 
     addUser(socketId, name, dbId, avatar, pedestal = 'default_stone', reputation = 0, nameColor = 'text-white', title = '') {
         if (dbId) {
@@ -147,6 +153,7 @@ class Room {
     }
 
     updateVoice(userId, enabled) {
+        if (typeof enabled !== 'boolean') return;
         const user = this.users.find(u => u.id === userId);
         if (user) {
             user.isVoiceEnabled = enabled;
@@ -303,7 +310,7 @@ class Room {
     }
 
     placeBet(userId, targetId) {
-        if (this.gameState !== "BETTING") return;
+        if (this.gameState !== "BETTING" || typeof targetId !== 'string') return;
         const user = this.users.find(u => u.id === userId);
         if (!user || user.hasPlacedBet) return;
 
@@ -342,7 +349,7 @@ class Room {
     }
 
     voteObjection(userId, vote) {
-        if (!this.objection) return;
+        if (!this.objection || typeof vote !== 'boolean') return;
         this.objection.votes[userId] = vote;
         
         const playingUsers = this.users.filter(u => u.status === 'playing' && !u.disconnected);
@@ -388,7 +395,7 @@ class Room {
     }
 
     setWord(userId, word) {
-        if (this.gameState !== "WORD_SELECTION") return;
+        if (this.gameState !== "WORD_SELECTION" || typeof word !== 'string') return;
 
         const user = this.users.find(u => u.id === userId);
         if (!user || !user.targetId || user.hasSubmittedWord) return;
@@ -474,8 +481,9 @@ class Room {
     }
 
     handleChat(userId, message) {
+        if (typeof message !== 'string' || message.length > 150) return;
         const user = this.users.find(u => u.id === userId);
-        if (!user || !message || message.length > 150) return;
+        if (!user) return;
 
         if (message.toLowerCase().startsWith('/kelime ')) {
             if (this.pendingMirrorWordOwner === userId) {
@@ -491,7 +499,7 @@ class Room {
                         clearTimeout(this.mirrorWordTimer);
                         this.mirrorWordTimer = null;
                     }
-                    this.chatHistory.push({ system: true, message: `🧠 Ayna sahibi ${user.name}, geri seken jokerle ${target.name}'in yeni kelimesini acımasızca belirledi!`, timestamp: Date.now() });
+                    this.addChatLog({ system: true, message: `🧠 Ayna sahibi ${user.name}, geri seken jokerle ${target.name}'in yeni kelimesini acımasızca belirledi!`, timestamp: Date.now() });
                     this.broadcastState();
                 } else {
                     this.io.to(userId).emit("game:error", { message: "Geçerli bir kelime girmelisiniz!" });
@@ -500,7 +508,7 @@ class Room {
             }
         }
 
-        this.chatHistory.push({
+        this.addChatLog({
             userId: user.id,
             name: user.name,
             nameColor: user.nameColor,
@@ -522,7 +530,7 @@ class Room {
     }
 
     guessWord(userId, guess) {
-        if (this.gameState !== "PLAYING") return;
+        if (this.gameState !== "PLAYING" || typeof guess !== 'string') return;
         
         const currentUser = this.users[this.currentTurnIndex];
         if (currentUser.id !== userId) return;
@@ -551,19 +559,19 @@ class Room {
                 if (caster && caster.status === 'playing' && caster.id !== user.id) {
                     if (caster.shieldActive) {
                         caster.shieldActive = false;
-                        this.chatHistory.push({ system: true, message: `🛡️ 💥 İADE! ${user.name} bombayı bildi ancak ${caster.name} kalkanı sayesinde patlamadan kurtuldu!`, timestamp: Date.now() });
+                        this.addChatLog({ system: true, message: `🛡️ 💥 İADE! ${user.name} bombayı bildi ancak ${caster.name} kalkanı sayesinde patlamadan kurtuldu!`, timestamp: Date.now() });
                     } else {
                         caster.lives -= 2;
-                        this.chatHistory.push({ system: true, message: `🔄💥 İADE! ${user.name} kelimesini bildi ve bombayı ${caster.name}'e geri fırlatarak patlattı! (-2 Can)`, timestamp: Date.now() });
+                        this.addChatLog({ system: true, message: `🔄💥 İADE! ${user.name} kelimesini bildi ve bombayı ${caster.name}'e geri fırlatarak patlattı! (-2 Can)`, timestamp: Date.now() });
                         if (caster.lives <= 0) {
                             caster.status = 'spectator';
                             caster.timeBomb = null;
                             caster.bloodTieTarget = null;
-                            this.chatHistory.push({ system: true, message: `💀 ${caster.name} kendi bombasıyla elendi! Kelimesi: ${caster.assignedWord}`, timestamp: Date.now() });
+                            this.addChatLog({ system: true, message: `💀 ${caster.name} kendi bombasıyla elendi! Kelimesi: ${caster.assignedWord}`, timestamp: Date.now() });
                         }
                     }
                 } else if (caster && caster.id === user.id) {
-                    this.chatHistory.push({ system: true, message: `💣 ${user.name} kalkanından seken kendi bombasını başarıyla imha etti!`, timestamp: Date.now() });
+                    this.addChatLog({ system: true, message: `💣 ${user.name} kalkanından seken kendi bombasını başarıyla imha etti!`, timestamp: Date.now() });
                 }
                 user.timeBomb = null;
             }
@@ -625,7 +633,7 @@ class Room {
             } else {
                 winMsg = `🏆 ${user.name} doğru tahmin etti! (${rank}. oldu) -> Oyun kazancı: ${repReward} İtibar. (Kelimesi: ${user.assignedWord})`;
             }
-            this.chatHistory.push({ system: true, message: winMsg, timestamp: Date.now() });
+            this.addChatLog({ system: true, message: winMsg, timestamp: Date.now() });
             this.roundLogs.push(winMsg);
 
             if (this.isBettingEnabled && bettorReward > 0 && !isRussianRoulette) {
@@ -642,7 +650,7 @@ class Room {
                 
                 if (bettorNames.length > 0) {
                     const betMsg = `🎲 Bahis Kazananları (${user.name} üzerine oynayanlar): ${bettorNames.join(', ')} -> Bahis kazancı: Ekstra ${bettorReward} Altın!`;
-                    this.chatHistory.push({ system: true, message: betMsg, timestamp: Date.now() });
+                    this.addChatLog({ system: true, message: betMsg, timestamp: Date.now() });
                     this.roundLogs.push(betMsg);
                 }
             }
@@ -686,14 +694,14 @@ class Room {
                 if (user.shieldActive) {
                     user.shieldActive = false;
                     user.russianRouletteActive = false;
-                    this.chatHistory.push({ system: true, message: `🛡️ ${user.name} Rus Ruleti'nde yanlış tahminde bulundu ama Gizli Kalkanı hayatını kurtardı!`, timestamp: Date.now() });
+                    this.addChatLog({ system: true, message: `🛡️ ${user.name} Rus Ruleti'nde yanlış tahminde bulundu ama Gizli Kalkanı hayatını kurtardı!`, timestamp: Date.now() });
                 } else {
                     user.lives = 0;
                 }
             } else {
                 if (user.shieldActive) {
                     user.shieldActive = false;
-                    this.chatHistory.push({ system: true, message: `🛡️ ${user.name} yanlış bildiği için can kaybedecekti ancak Gizli Kalkanı onu korudu!`, timestamp: Date.now() });
+                    this.addChatLog({ system: true, message: `🛡️ ${user.name} yanlış bildiği için can kaybedecekti ancak Gizli Kalkanı onu korudu!`, timestamp: Date.now() });
                 } else {
                     user.lives -= 1;
                 }
@@ -703,7 +711,7 @@ class Room {
                 user.status = 'spectator';
                 user.bloodTieTarget = null;
                 user.timeBomb = null;
-                this.chatHistory.push({
+                this.addChatLog({
                     system: true,
                     message: (isRussianRoulette && !user.shieldActive)
                         ? `💀 RUS RULETİ PATLADI! ${user.name} yanlış bildi ve anında elendi! Kelimesi: ${user.assignedWord}`
@@ -711,7 +719,7 @@ class Room {
                     timestamp: Date.now()
                 });
             } else if (!user.shieldActive) {
-                this.chatHistory.push({
+                this.addChatLog({
                     system: true,
                     message: `${user.name} yanlış tahminde bulundu! (${guess}) (Kalan Can: ${user.lives})`,
                     timestamp: Date.now()
@@ -738,18 +746,18 @@ class Room {
         for(let k=0; k<count; k++) {
             const unrevealed = word.split('').filter(c => !user.revealedLetters.includes(c));
             if (unrevealed.length === 0) {
-                this.chatHistory.push({ system: true, privateTo: user.id, message: "Sistem (Özel): Açılacak başka harf kalmadı!", timestamp: Date.now() });
+                this.addChatLog({ system: true, privateTo: user.id, message: "Sistem (Özel): Açılacak başka harf kalmadı!", timestamp: Date.now() });
                 break;
             }
             const randomChar = unrevealed[Math.floor(Math.random() * unrevealed.length)];
             user.revealedLetters.push(randomChar);
             const countChar = word.split('').filter(c => c === randomChar).length;
-            this.chatHistory.push({ system: true, privateTo: user.id, message: `Sistem (Özel): Kelimen '${randomChar}' karakterini içeriyor (${countChar} adet).`, timestamp: Date.now() });
+            this.addChatLog({ system: true, privateTo: user.id, message: `Sistem (Özel): Kelimen '${randomChar}' karakterini içeriyor (${countChar} adet).`, timestamp: Date.now() });
         }
     }
 
     useJoker(userId, payload) {
-        if (this.gameState !== "PLAYING") return;
+        if (this.gameState !== "PLAYING" || !payload || typeof payload !== 'object') return;
         if (this.roundCount < 3) {
             this.io.to(userId).emit("game:error", { message: "Jokerler 3. turdan itibaren kullanılabilir!" });
             return;
@@ -764,10 +772,10 @@ class Room {
         }
 
         const jokerType = user.joker;
-        let targetId = payload?.targetId;
+        let targetId = payload.targetId;
         let originalTargetId = targetId; 
 
-        if (jokerType === 7 && targetId) {
+        if (jokerType === 7 && targetId && typeof targetId === 'string') {
             const targetForBomb = this.users.find(u => u.id === targetId);
             if (targetForBomb && targetForBomb.timeBomb) {
                  this.io.to(userId).emit("game:error", { message: "Bu oyuncunun üzerinde zaten aktif bir bomba var!" });
@@ -780,7 +788,7 @@ class Room {
         if (targetId && [3, 4, 5, 7].includes(jokerType)) {
             const targetUser = this.users.find(u => u.id === targetId);
             if (targetUser && targetUser.mirrorRoundsLeft > 0 && targetUser.id !== user.id) {
-                this.chatHistory.push({ system: true, message: `🛡️ YANSIMA! Kötü niyetli joker, gizli Ayna Kalkanı'na çarpıp ${user.name}'e geri sekti!`, timestamp: Date.now() });
+                this.addChatLog({ system: true, message: `🛡️ YANSIMA! Kötü niyetli joker, gizli Ayna Kalkanı'na çarpıp ${user.name}'e geri sekti!`, timestamp: Date.now() });
                 targetId = user.id; 
             }
         }
@@ -793,24 +801,24 @@ class Room {
                     const newTime = this.turnTimeLeft + 60;
                     this.turnStartTime = Date.now() - (this.turnTime * 1000 - newTime * 1000); 
                     this.timer = setTimeout(() => { if (this.gameState === "PLAYING") this.nextTurn(); }, newTime * 1000);
-                    this.chatHistory.push({ system: true, message: `⏳ ${user.name} Zaman Bükücü kullanarak süresine 1 dakika ekledi!`, timestamp: Date.now() });
+                    this.addChatLog({ system: true, message: `⏳ ${user.name} Zaman Bükücü kullanarak süresine 1 dakika ekledi!`, timestamp: Date.now() });
                 }
                 break;
             case 1: 
-                this.chatHistory.push({ system: true, message: `🔍 ${user.name}, Harf Açıcı kullanarak gizli bir ipucu elde etti!`, timestamp: Date.now() });
+                this.addChatLog({ system: true, message: `🔍 ${user.name}, Harf Açıcı kullanarak gizli bir ipucu elde etti!`, timestamp: Date.now() });
                 this.openLettersForUser(user, 1);
                 break;
             case 2: 
                 user.extraQuestions = 1;
                 user.extraQuestionChain = true;
-                this.chatHistory.push({ system: true, message: `🔫 ${user.name}, Çift Şarjör kullandı! (Ekstra +1 soru hakkı kazandı ve aldığı her 'Evet' oyunda yeni bir hak kazanacak!)`, timestamp: Date.now() });
+                this.addChatLog({ system: true, message: `🔫 ${user.name}, Çift Şarjör kullandı! (Ekstra +1 soru hakkı kazandı ve aldığı her 'Evet' oyunda yeni bir hak kazanacak!)`, timestamp: Date.now() });
                 break;
             case 3: 
-                if (targetId) {
+                if (targetId && typeof targetId === 'string') {
                     const silenceTarget = this.users.find(u => u.id === targetId);
                     if (silenceTarget) {
                         silenceTarget.silencedTurns = 2;
-                        this.chatHistory.push({ system: true, message: `🤫 Susturucu kullanıldı! ${silenceTarget.name}, 2 tur boyunca susturuldu.`, timestamp: Date.now() });
+                        this.addChatLog({ system: true, message: `🤫 Susturucu kullanıldı! ${silenceTarget.name}, 2 tur boyunca susturuldu.`, timestamp: Date.now() });
                     }
                 }
                 break;
@@ -826,9 +834,9 @@ class Room {
                             
                             const mirrorOwner = this.users.find(u => u.id === originalTargetId);
                             
-                            this.chatHistory.push({ system: true, message: `🧠 Hafıza Silici geri tepti! ${target.name}'in kelimesi silindi! Ayna sahibi ${mirrorOwner ? mirrorOwner.name : ''} yeni kelimeyi belirliyor...`, timestamp: Date.now() });
+                            this.addChatLog({ system: true, message: `🧠 Hafıza Silici geri tepti! ${target.name}'in kelimesi silindi! Ayna sahibi ${mirrorOwner ? mirrorOwner.name : ''} yeni kelimeyi belirliyor...`, timestamp: Date.now() });
                             
-                            this.chatHistory.push({ system: true, privateTo: originalTargetId, message: `Sistem (Özel): Ayna ile Hafıza Siliciyi yansıttın! Lütfen 30 saniye içinde chat alanına "/kelime YENIKELIME" yazarak rakibinin yeni kelimesini belirle (Örn: /kelime Karpuz).`, timestamp: Date.now() });
+                            this.addChatLog({ system: true, privateTo: originalTargetId, message: `Sistem (Özel): Ayna ile Hafıza Siliciyi yansıttın! Lütfen 30 saniye içinde chat alanına "/kelime YENIKELIME" yazarak rakibinin yeni kelimesini belirle (Örn: /kelime Karpuz).`, timestamp: Date.now() });
 
                             if (this.mirrorWordTimer) clearTimeout(this.mirrorWordTimer);
                             this.mirrorWordTimer = setTimeout(() => {
@@ -836,7 +844,7 @@ class Room {
                                     const t = this.users.find(u => u.id === this.pendingMirrorWordTarget);
                                     if (t) {
                                         t.assignedWord = Math.random().toString(36).substring(2, 8).toUpperCase();
-                                        this.chatHistory.push({ system: true, message: `⏳ Ayna sahibi süresinde kelime belirlemedi! ${t.name}'in kelimesi rastgele harflere dönüştü!`, timestamp: Date.now() });
+                                        this.addChatLog({ system: true, message: `⏳ Ayna sahibi süresinde kelime belirlemedi! ${t.name}'in kelimesi rastgele harflere dönüştü!`, timestamp: Date.now() });
                                         this.broadcastState();
                                     }
                                     this.pendingMirrorWordOwner = null;
@@ -845,48 +853,48 @@ class Room {
                             }, 30000);
                         } else {
                             target.assignedWord = payload.newWord.substring(0, 30); 
-                            this.chatHistory.push({ system: true, message: `🧠 Hafıza Silici kullanıldı! ${target.name}'in kelimesi acımasızca değiştirildi!`, timestamp: Date.now() });
+                            this.addChatLog({ system: true, message: `🧠 Hafıza Silici kullanıldı! ${target.name}'in kelimesi acımasızca değiştirildi!`, timestamp: Date.now() });
                             target.revealedLetters = [];
                         }
                     }
                 }
                 break;
             case 5:
-                if (targetId) {
+                if (targetId && typeof targetId === 'string') {
                     user.bloodTieTarget = targetId;
-                    this.chatHistory.push({ system: true, message: `🩸 Kan Bağı kullanıldı! ${user.name} hedefini seçti, kaderleri artık bir!`, timestamp: Date.now() });
+                    this.addChatLog({ system: true, message: `🩸 Kan Bağı kullanıldı! ${user.name} hedefini seçti, kaderleri artık bir!`, timestamp: Date.now() });
                 }
                 break;
             case 6:
                 user.russianRouletteActive = true;
-                this.chatHistory.push({ system: true, message: `💀 RUS RULETİ! ${user.name} hemen tahmin etmek zorunda!`, timestamp: Date.now() });
+                this.addChatLog({ system: true, message: `💀 RUS RULETİ! ${user.name} hemen tahmin etmek zorunda!`, timestamp: Date.now() });
                 this.openLettersForUser(user, 2);
                 break;
             case 7: 
-                if (targetId) {
+                if (targetId && typeof targetId === 'string') {
                     const target = this.users.find(u => u.id === targetId);
                     if (target) {
                         target.timeBomb = { casterId: originalTargetId, roundsLeft: 3 };
-                        this.chatHistory.push({ system: true, message: `💣 SAATLİ BOMBA! ${target.name}'in üzerine bomba yerleştirildi. 3 tur içinde bilemezse patlayacak!`, timestamp: Date.now() });
+                        this.addChatLog({ system: true, message: `💣 SAATLİ BOMBA! ${target.name}'in üzerine bomba yerleştirildi. 3 tur içinde bilemezse patlayacak!`, timestamp: Date.now() });
                     }
                 }
                 break;
             case 8: 
                 user.mirrorRoundsLeft = 3;
-                this.chatHistory.push({ system: true, privateTo: user.id, message: "Sistem (Özel): Ayna (Kalkan) aktif! 3 tur boyunca sana atılan kötü niyetli jokerler atan kişiye geri sekecek.", timestamp: Date.now() });
+                this.addChatLog({ system: true, privateTo: user.id, message: "Sistem (Özel): Ayna (Kalkan) aktif! 3 tur boyunca sana atılan kötü niyetli jokerler atan kişiye geri sekecek.", timestamp: Date.now() });
                 break;
             case 9:
                 user.shieldActive = true;
-                this.chatHistory.push({ system: true, privateTo: user.id, message: "Sistem (Özel): Gizli Kalkan aktif! Bir sonraki ölümcül hatanı veya bombayı engelleyecek.", timestamp: Date.now() });
+                this.addChatLog({ system: true, privateTo: user.id, message: "Sistem (Özel): Gizli Kalkan aktif! Bir sonraki ölümcül hatanı veya bombayı engelleyecek.", timestamp: Date.now() });
                 break;
             case 10:
-                if (targetId) {
+                if (targetId && typeof targetId === 'string') {
                     const target = this.users.find(u => u.id === targetId);
                     if (target && user.assignedWord && target.assignedWord) {
                         const mLen = user.assignedWord.replace(/\s/g, '').length;
                         const tLen = target.assignedWord.replace(/\s/g, '').length;
                         const cmp = mLen > tLen ? "DAHA UZUN" : mLen < tLen ? "DAHA KISA" : "AYNI UZUNLUKTA";
-                        this.chatHistory.push({ system: true, privateTo: user.id, message: `Sistem (Özel): Senin kelimen ${target.name}'in kelimesinden ${cmp}.`, timestamp: Date.now() });
+                        this.addChatLog({ system: true, privateTo: user.id, message: `Sistem (Özel): Senin kelimen ${target.name}'in kelimesinden ${cmp}.`, timestamp: Date.now() });
                     }
                 }
                 break;
@@ -894,13 +902,13 @@ class Room {
                 const goldJokers = [2, 3, 8, 12];
                 user.joker = goldJokers[Math.floor(Math.random() * goldJokers.length)];
                 user.hasUsedJoker = false; 
-                this.chatHistory.push({ system: true, privateTo: user.id, message: "Sistem (Özel): Gümüş Sürpriz Kutu'yu açtın ve içinden ALTIN joker çıktı!", timestamp: Date.now() });
+                this.addChatLog({ system: true, privateTo: user.id, message: "Sistem (Özel): Gümüş Sürpriz Kutu'yu açtın ve içinden ALTIN joker çıktı!", timestamp: Date.now() });
                 break;
             case 12:
                 const prisJokers = [4, 5, 6, 7];
                 user.joker = prisJokers[Math.floor(Math.random() * prisJokers.length)];
                 user.hasUsedJoker = false;
-                this.chatHistory.push({ system: true, privateTo: user.id, message: "Sistem (Özel): Altın Sürpriz Kutu'yu açtın ve içinden PRİZMATİK joker çıktı!", timestamp: Date.now() });
+                this.addChatLog({ system: true, privateTo: user.id, message: "Sistem (Özel): Altın Sürpriz Kutu'yu açtın ve içinden PRİZMATİK joker çıktı!", timestamp: Date.now() });
                 break;
         }
         
@@ -923,7 +931,7 @@ class Room {
     askQuestion(userId, question) {
         if (this.gameState !== "PLAYING") return;
         if (this.activeQuestion) return;
-        if (!question || question.length > 150) return;
+        if (typeof question !== 'string' || question.length > 150) return;
         const currentUser = this.users[this.currentTurnIndex];
         if (currentUser.id !== userId) return;
         if (currentUser.russianRouletteActive) return; 
@@ -964,10 +972,11 @@ class Room {
     }
 
     submitVote(userId, voteType) {
-        if (this.gameState !== "PLAYING" || !this.activeQuestion) return;
+        if (this.gameState !== "PLAYING" || !this.activeQuestion || typeof voteType !== 'string') return;
         if (this.activeQuestion.askerId === userId) return; 
 
         this.activeQuestion.votes[userId] = voteType;
+        
         const playingUsers = this.users.filter(u => u.status === 'playing' && !u.disconnected && u.id !== this.activeQuestion.askerId);
         if (Object.keys(this.activeQuestion.votes).length >= playingUsers.length) {
             this.resolveQuestion();
@@ -993,32 +1002,32 @@ class Room {
         if (asker && asker.extraQuestionChain) {
             if (isYesMajority) {
                 asker.extraQuestions += 1;
-                this.chatHistory.push({ system: true, privateTo: asker.id, message: "Sistem (Özel): Sorun çoğunluktan 'Evet' oyu aldığı için +1 Soru Hakkı daha kazandın!", timestamp: Date.now() });
+                this.addChatLog({ system: true, privateTo: asker.id, message: "Sistem (Özel): Sorun çoğunluktan 'Evet' oyu aldığı için +1 Soru Hakkı daha kazandın!", timestamp: Date.now() });
             } else {
                 asker.extraQuestions = 0;
                 asker.extraQuestionChain = false;
-                this.chatHistory.push({ system: true, privateTo: asker.id, message: "Sistem (Özel): Sorun 'Evet' çoğunluğunu sağlayamadığı için Çift Şarjör serin kırıldı!", timestamp: Date.now() });
+                this.addChatLog({ system: true, privateTo: asker.id, message: "Sistem (Özel): Sorun 'Evet' çoğunluğunu sağlayamadığı için Çift Şarjör serin kırıldı!", timestamp: Date.now() });
             }
         }
 
         for (let u of this.users) {
             if (u.bloodTieTarget === this.activeQuestion.askerId && u.status === 'playing') {
                 if (isYesMajority) {
-                    this.chatHistory.push({ system: true, message: `🩸 Kan Bağı: Bağlı olduğun oyuncu EVET aldı! ${u.name}'in gizli bir harfi açıldı.`, timestamp: Date.now() });
+                    this.addChatLog({ system: true, message: `🩸 Kan Bağı: Bağlı olduğun oyuncu EVET aldı! ${u.name}'in gizli bir harfi açıldı.`, timestamp: Date.now() });
                     this.openLettersForUser(u, 1);
                 } else if (isNoMajority) {
                     if (u.shieldActive) {
                         u.shieldActive = false;
-                        this.chatHistory.push({ system: true, message: `🛡️ 🩸 Kan Bağı: ${u.name} can kaybedecekti ancak Gizli Kalkanı onu korudu!`, timestamp: Date.now() });
+                        this.addChatLog({ system: true, message: `🛡️ 🩸 Kan Bağı: ${u.name} can kaybedecekti ancak Gizli Kalkanı onu korudu!`, timestamp: Date.now() });
                     } else {
                         u.lives -= 1;
                         if (u.lives <= 0) {
                             u.status = 'spectator';
                             u.bloodTieTarget = null;
                             u.timeBomb = null;
-                            this.chatHistory.push({ system: true, message: `🩸 Kan Bağı: Bağlı olduğun oyuncu HAYIR aldı! ${u.name} tüm canlarını kaybetti ve elendi!`, timestamp: Date.now() });
+                            this.addChatLog({ system: true, message: `🩸 Kan Bağı: Bağlı olduğun oyuncu HAYIR aldı! ${u.name} tüm canlarını kaybetti ve elendi!`, timestamp: Date.now() });
                         } else {
-                            this.chatHistory.push({ system: true, message: `🩸 Kan Bağı: Bağlı olduğun oyuncu HAYIR aldı! ${u.name} 1 can kaybetti!`, timestamp: Date.now() });
+                            this.addChatLog({ system: true, message: `🩸 Kan Bağı: Bağlı olduğun oyuncu HAYIR aldı! ${u.name} 1 can kaybetti!`, timestamp: Date.now() });
                         }
                     }
                 }
@@ -1066,13 +1075,13 @@ class Room {
                     if (prevUser.shieldActive) {
                         prevUser.shieldActive = false;
                         prevUser.russianRouletteActive = false;
-                        this.chatHistory.push({ system: true, message: `🛡️ ${prevUser.name} Rus Ruleti süresini aştı ama Gizli Kalkanı onu ipten aldı!`, timestamp: Date.now() });
+                        this.addChatLog({ system: true, message: `🛡️ ${prevUser.name} Rus Ruleti süresini aştı ama Gizli Kalkanı onu ipten aldı!`, timestamp: Date.now() });
                     } else {
                         prevUser.lives = 0;
                         prevUser.status = 'spectator';
                         prevUser.bloodTieTarget = null;
                         prevUser.timeBomb = null;
-                        this.chatHistory.push({ system: true, message: `💀 ${prevUser.name} Rus Ruleti süresini aştı ve elendi!`, timestamp: Date.now() });
+                        this.addChatLog({ system: true, message: `💀 ${prevUser.name} Rus Ruleti süresini aştı ve elendi!`, timestamp: Date.now() });
                         
                         const activePlayers = this.users.filter(x => x.status === 'playing');
                         if (activePlayers.length <= 1) {
@@ -1106,15 +1115,15 @@ class Room {
                                     if (u.shieldActive) {
                                         u.shieldActive = false;
                                         u.timeBomb = null;
-                                        this.chatHistory.push({ system: true, message: `🛡️ 💥 GÜM! Saatli Bomba patladı ancak ${u.name}'in Gizli Kalkanı hasarı tamamen emdi!`, timestamp: Date.now() });
+                                        this.addChatLog({ system: true, message: `🛡️ 💥 GÜM! Saatli Bomba patladı ancak ${u.name}'in Gizli Kalkanı hasarı tamamen emdi!`, timestamp: Date.now() });
                                     } else {
                                         u.lives -= 2;
                                         u.timeBomb = null;
-                                        this.chatHistory.push({ system: true, message: `💥 GÜM! Süre doldu. ${u.name}'in üzerindeki Saatli Bomba patladı! (-2 Can)`, timestamp: Date.now() });
+                                        this.addChatLog({ system: true, message: `💥 GÜM! Süre doldu. ${u.name}'in üzerindeki Saatli Bomba patladı! (-2 Can)`, timestamp: Date.now() });
                                         if (u.lives <= 0) {
                                             u.status = 'spectator';
                                             u.bloodTieTarget = null;
-                                            this.chatHistory.push({ system: true, message: `💀 ${u.name} bombanın etkisiyle elendi! Kelimesi: ${u.assignedWord}`, timestamp: Date.now() });
+                                            this.addChatLog({ system: true, message: `💀 ${u.name} bombanın etkisiyle elendi! Kelimesi: ${u.assignedWord}`, timestamp: Date.now() });
                                         }
                                     }
                                 }
@@ -1137,7 +1146,7 @@ class Room {
             if (nextUser && nextUser.status === 'playing') {
                 if (nextUser.silencedTurns > 0) {
                     nextUser.silencedTurns--;
-                    this.chatHistory.push({
+                    this.addChatLog({
                         system: true,
                         message: `🤐 ${nextUser.name} susturulduğu için sırasını atlıyor.`,
                         timestamp: Date.now()

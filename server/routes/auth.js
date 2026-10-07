@@ -67,6 +67,11 @@ function generateDailyQuests() {
 router.post("/register", async (req, res) => {
     try {
         const { username, email, password } = req.body;
+        
+        if (typeof username !== 'string' || typeof email !== 'string' || typeof password !== 'string') {
+            return res.status(400).json({ error: "Geçersiz veri formatı." });
+        }
+
         if (!username || !email || !password) {
             return res.status(400).json({ error: "Lütfen kullanıcı adı, e-posta ve şifre girin." });
         }
@@ -126,7 +131,7 @@ router.post("/register", async (req, res) => {
                 avatar: user.avatar,
                 gold: user.gold,
                 unlockedAvatars: user.unlockedAvatars,
-rankInfo: getRankInfo(user.reputation || 0)
+                rankInfo: getRankInfo(user.reputation || 0)
             }
         });
     } catch (error) {
@@ -138,6 +143,11 @@ rankInfo: getRankInfo(user.reputation || 0)
 router.post("/login", async (req, res) => {
     try {
         const { email, password } = req.body;
+        
+        if (typeof email !== 'string' || typeof password !== 'string') {
+            return res.status(400).json({ error: "Geçersiz veri formatı." });
+        }
+
         if (!email || !password) {
             return res.status(400).json({ error: "Lütfen e-posta ve şifre girin." });
         }
@@ -353,6 +363,9 @@ router.post("/daily-reward", authMiddleware, async (req, res) => {
 router.put("/profile", authMiddleware, async (req, res) => {
     try {
         const { username, avatar, pedestal, nameColor, title } = req.body;
+        
+        if (username && typeof username !== 'string') return res.status(400).json({ error: "Geçersiz format" });
+
         const user = await User.findById(req.user.id);
         
         if (!user) return res.status(404).json({ error: "Kullanıcı bulunamadı." });
@@ -368,19 +381,19 @@ router.put("/profile", authMiddleware, async (req, res) => {
         if (!user.unlockedNameColors) user.unlockedNameColors = ['text-white'];
         if (!user.unlockedTitles) user.unlockedTitles = [];
 
-        if (avatar && user.unlockedAvatars.includes(avatar)) {
+        if (avatar && typeof avatar === 'string' && user.unlockedAvatars.includes(avatar)) {
             user.avatar = avatar;
         }
 
-        if (pedestal && user.unlockedPedestals.includes(pedestal)) {
+        if (pedestal && typeof pedestal === 'string' && user.unlockedPedestals.includes(pedestal)) {
             user.pedestal = pedestal;
         }
 
-        if (nameColor && user.unlockedNameColors.includes(nameColor)) {
+        if (nameColor && typeof nameColor === 'string' && user.unlockedNameColors.includes(nameColor)) {
             user.nameColor = nameColor;
         }
 
-        if (title !== undefined && (title === '' || user.unlockedTitles.includes(title))) {
+        if (title !== undefined && typeof title === 'string' && (title === '' || user.unlockedTitles.includes(title))) {
             user.title = title;
         }
 
@@ -407,6 +420,8 @@ router.put("/profile", authMiddleware, async (req, res) => {
 router.post("/claim-quest", authMiddleware, async (req, res) => {
     try {
         const { questId } = req.body;
+        if (typeof questId !== 'string') return res.status(400).json({ error: "Geçersiz format" });
+
         const user = await User.findById(req.user.id);
         
         if (!user || !user.quests || !user.quests.active) return res.status(400).json({ error: "Görev bulunamadı." });
