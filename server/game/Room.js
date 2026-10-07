@@ -113,9 +113,31 @@ class Room {
             revealedLetters: [],
             silencedTurns: 0,
             extraQuestions: 0,
-            questionsAskedThisTurn: 0
+            questionsAskedThisTurn: 0,
+            lastTauntTime: 0,
+            lastHeadRotTime: 0
         });
         this.broadcastState();
+    }
+
+    checkPhaseProgression() {
+        const playingUsers = this.users.filter(u => u.status === 'playing' && !u.disconnected);
+        if (playingUsers.length < 2) return;
+
+        if (this.gameState === "BETTING") {
+            if (playingUsers.every(u => u.hasPlacedBet)) {
+                this.startWordSelection();
+            }
+        } else if (this.gameState === "WORD_SELECTION") {
+            if (playingUsers.every(u => u.hasSubmittedWord)) {
+                this.startJokerDraft();
+            }
+        } else if (this.gameState === "JOKER_DRAFT") {
+            if (playingUsers.every(u => u.hasDrafted)) {
+                if (this.jokerDraftTimer) clearTimeout(this.jokerDraftTimer);
+                this.startPlaying();
+            }
+        }
     }
 
     removeUser(socketId) {
@@ -128,6 +150,19 @@ class Room {
             user.isHost = false;
             const nextHost = this.users.find(u => !u.disconnected);
             if (nextHost) nextHost.isHost = true;
+        }
+
+        if (this.gameState === "WORD_SELECTION") {
+            const active = this.users.filter(u => !u.disconnected);
+            if (active.length >= 2) {
+                for (let i = 0; i < active.length; i++) {
+                    const next = (i + 1) % active.length;
+                    active[i].targetId = active[next].id;
+                    active[i].hasSubmittedWord = false;
+                    active[i].assignedWord = null;
+                }
+                this.addChatLog({ system: true, message: `⚠️ Bir oyuncu koptuğu için kelime hedefleri yeniden dağıtıldı!`, timestamp: Date.now() });
+            }
         }
 
         if (this.activeQuestion) {
@@ -147,6 +182,7 @@ class Room {
             }
         }
 
+        this.checkPhaseProgression();
         this.broadcastState();
 
         const allDisconnected = this.users.every(u => u.disconnected);
@@ -205,8 +241,10 @@ class Room {
             }
         }
 
+        this.checkPhaseProgression();
+
         const playingUsers = this.users.filter(u => u.status === 'playing' && !u.disconnected);
-        if (playingUsers.length < 2 && (this.gameState === "PLAYING" || this.gameState === "WORD_SELECTION" || this.gameState === "JOKER_DRAFT")) {
+        if (playingUsers.length < 2 && (this.gameState === "PLAYING" || this.gameState === "WORD_SELECTION" || this.gameState === "JOKER_DRAFT" || this.gameState === "BETTING")) {
             this.endGame();
         } else if (wasCurrentTurn && this.gameState === "PLAYING") {
             this.currentTurnIndex = this.currentTurnIndex % Math.max(1, this.users.length);
@@ -255,10 +293,20 @@ class Room {
                     const userDb = await User.findById(u.dbId);
                     if (!userDb || userDb.gold < this.betAmount) {
                         this.io.to(this.code).emit("game:error", { message: `${u.name} isimli oyuncunun yeterli altını (${this.betAmount}) yok!` });
+                        
+                        if (this.gameState === "ROUND_END") {
+                            this.gameState = "LOBBY";
+                            this.broadcastState();
+                        }
                         return;
                     }
                 } else {
                     this.io.to(this.code).emit("game:error", { message: `${u.name} giriş yapmadığı için bahisli moda katılamaz!` });
+                    
+                    if (this.gameState === "ROUND_END") {
+                        this.gameState = "LOBBY";
+                        this.broadcastState();
+                    }
                     return;
                 }
             }
@@ -380,13 +428,7 @@ class Room {
             user.hasDrafted = true;
         }
 
-        const allDrafted = this.users.filter(u => u.status === 'playing' && !u.disconnected).every(u => u.hasDrafted);
-        if(allDrafted) {
-            if(this.jokerDraftTimer) clearTimeout(this.jokerDraftTimer);
-            this.startPlaying();
-        } else {
-            this.broadcastState();
-        }
+        this.checkPhaseProgression();
     }
 
     placeBet(userId, targetId) {
@@ -397,12 +439,8 @@ class Room {
         this.bets[userId] = targetId;
         user.hasPlacedBet = true;
 
-        const allBet = this.users.filter(u => u.status === 'playing' && !u.disconnected).every(u => u.hasPlacedBet);
-        if (allBet) {
-            this.startWordSelection();
-        } else {
-            this.broadcastState();
-        }
+        this.checkPhaseProgression();
+        this.broadcastState();
     }
 
     startObjection(userId) {
@@ -469,7 +507,7 @@ class Room {
             this.io.to(this.code).emit("game:error", { message: `🚨 Şike itirazı kabul edildi! Oyun iptal edildi, herkese ${this.betAmount} Altın iade edildi.` });
             
             this.objection = null;
-            if (this.timer) clearInterval(this.timer);
+            if (this.timer) clearTimeout(this.timer);
             this.gameState = "LOBBY";
             this.chatHistory = [];
             this.broadcastState();
@@ -504,12 +542,8 @@ class Room {
             user.hasSubmittedWord = true;
         }
 
-        const allAssigned = this.users.filter(u => u.status === 'playing' && !u.disconnected).every(u => u.hasSubmittedWord);
-        if (allAssigned) {
-            this.startJokerDraft();
-        } else {
-            this.broadcastState();
-        }
+        this.checkPhaseProgression();
+        this.broadcastState();
     }
 
     editWord(userId) {
@@ -724,6 +758,9 @@ class Room {
             };
 
             addReward(user.dbId, winnerReward, repReward, 'win');
+            
+            // ZAFİYET YAMASI: Reputasyonun oda içi eşzamanlanması
+            user.reputation += repReward;
 
             let winMsg = "";
             if (isRussianRoulette) {
@@ -744,6 +781,7 @@ class Room {
                     const bettorUser = this.users.find(u => u.id === uid);
                     if (bettorUser) {
                         addReward(bettorUser.dbId, bettorReward, 5, 'bet_win');
+                        bettorUser.reputation += 5; 
                         bettorNames.push(bettorUser.name);
                     }
                 }
@@ -1324,6 +1362,9 @@ class Room {
         const User = require('../models/User');
         for (let u of this.users) {
             if (u.dbId && !this.winners.includes(u.id)) {
+                
+                u.reputation += 5; 
+                
                 User.findById(u.dbId).then(userDb => {
                     if (userDb) {
                         userDb.reputation += 5;
@@ -1409,6 +1450,13 @@ class Room {
     broadcastHeadRotation(userId, payload) {
         if (!payload || typeof payload.pitch !== 'number' || typeof payload.yaw !== 'number') return;
         
+        const user = this.users.find(u => u.id === userId);
+        if (!user) return;
+
+        const now = Date.now();
+        if (now - user.lastHeadRotTime < 50) return; 
+        user.lastHeadRotTime = now;
+
         this.io.to(this.code).emit("game:head_update", {
             userId,
             pitch: payload.pitch,
@@ -1417,6 +1465,13 @@ class Room {
     }
 
     playTaunt(userId, type) {
+        const user = this.users.find(u => u.id === userId);
+        if (!user) return;
+
+        const now = Date.now();
+        if (now - user.lastTauntTime < 1500) return; 
+        user.lastTauntTime = now;
+
         this.io.to(this.code).emit("game:play_taunt", { userId, type });
     }
 }
