@@ -4446,8 +4446,8 @@ class Room {
         if (playingUsers.length < 2 && (this.gameState === "PLAYING" || this.gameState === "WORD_SELECTION" || this.gameState === "JOKER_DRAFT")) {
             this.endGame();
         } else if (wasCurrentTurn && this.gameState === "PLAYING") {
-            this.currentTurnIndex = this.currentTurnIndex % this.users.length;
-            this.nextTurn();
+            this.currentTurnIndex = this.currentTurnIndex % Math.max(1, this.users.length);
+            this.nextTurn(true);
         }
 
         this.broadcastState();
@@ -4711,7 +4711,7 @@ class Room {
 
         const targetUser = this.users.find(u => u.id === user.targetId);
         if (targetUser) {
-            targetUser.assignedWord = word.trim().substring(0, 50); // Savunma: Çok uzun kelime engeli
+            targetUser.assignedWord = word.trim().substring(0, 50); 
             user.hasSubmittedWord = true;
         }
 
@@ -4795,10 +4795,11 @@ class Room {
 
         if (message.toLowerCase().startsWith('/kelime ')) {
             if (this.pendingMirrorWordOwner === userId) {
-                const newWord = message.substring(8).trim();
+                const newWord = message.substring(8).trim().toLocaleUpperCase("tr-TR").replace(/[^A-ZÇĞİÖŞÜ0-9 ]/g, "");
                 const target = this.users.find(u => u.id === this.pendingMirrorWordTarget);
-                if (target && newWord) {
-                    target.assignedWord = newWord.substring(0, 50);
+                
+                if (target && newWord.length > 0) {
+                    target.assignedWord = newWord.substring(0, 30);
                     target.revealedLetters = [];
                     this.pendingMirrorWordOwner = null;
                     this.pendingMirrorWordTarget = null;
@@ -4808,6 +4809,8 @@ class Room {
                     }
                     this.chatHistory.push({ system: true, message: `🧠 Ayna sahibi ${user.name}, geri seken jokerle ${target.name}'in yeni kelimesini acımasızca belirledi!`, timestamp: Date.now() });
                     this.broadcastState();
+                } else {
+                    this.io.to(userId).emit("game:error", { message: "Geçerli bir kelime girmelisiniz!" });
                 }
                 return;
             }
@@ -4843,9 +4846,9 @@ class Room {
         const user = this.users.find(u => u.id === userId);
         if (!user || user.status !== 'playing') return;
 
-        // BUG FIX: Türkçe karakter eşleşme sorunu çözüldü
         const normalizedTarget = (user.assignedWord || "").toLocaleLowerCase("tr-TR").replace(/[^a-z0-9çğıöşü]/g, "");
         const normalizedGuess = (guess || "").toLocaleLowerCase("tr-TR").replace(/[^a-z0-9çğıöşü]/g, "");
+        if (!normalizedGuess || normalizedGuess.length === 0) return;
 
         const isCorrect = normalizedTarget === normalizedGuess || 
                          (normalizedTarget.includes(normalizedGuess) && normalizedGuess.length > 3) ||
@@ -4861,7 +4864,7 @@ class Room {
             
             if (user.timeBomb) {
                 const caster = this.users.find(c => c.id === user.timeBomb.casterId);
-                if (caster && caster.status === 'playing') {
+                if (caster && caster.status === 'playing' && caster.id !== user.id) {
                     if (caster.shieldActive) {
                         caster.shieldActive = false;
                         this.chatHistory.push({ system: true, message: `🛡️ 💥 İADE! ${user.name} bombayı bildi ancak ${caster.name} kalkanı sayesinde patlamadan kurtuldu!`, timestamp: Date.now() });
@@ -4875,6 +4878,8 @@ class Room {
                             this.chatHistory.push({ system: true, message: `💀 ${caster.name} kendi bombasıyla elendi! Kelimesi: ${caster.assignedWord}`, timestamp: Date.now() });
                         }
                     }
+                } else if (caster && caster.id === user.id) {
+                    this.chatHistory.push({ system: true, message: `💣 ${user.name} kalkanından seken kendi bombasını başarıyla imha etti!`, timestamp: Date.now() });
                 }
                 user.timeBomb = null;
             }
@@ -5074,13 +5079,20 @@ class Room {
             return;
         }
 
-        user.hasUsedJoker = true;
         const jokerType = user.joker;
-
         let targetId = payload?.targetId;
         let originalTargetId = targetId; 
 
-        // BUG FIX: Kalkan yansıması Caster'ı da manipüle etmeli
+        if (jokerType === 7 && targetId) {
+            const targetForBomb = this.users.find(u => u.id === targetId);
+            if (targetForBomb && targetForBomb.timeBomb) {
+                 this.io.to(userId).emit("game:error", { message: "Bu oyuncunun üzerinde zaten aktif bir bomba var!" });
+                 return;
+            }
+        }
+
+        user.hasUsedJoker = true;
+
         if (targetId && [3, 4, 5, 7].includes(jokerType)) {
             const targetUser = this.users.find(u => u.id === targetId);
             if (targetUser && targetUser.mirrorRoundsLeft > 0 && targetUser.id !== user.id) {
@@ -5119,7 +5131,7 @@ class Room {
                 }
                 break;
             case 4: 
-                if (targetId && payload.newWord) {
+                if (targetId && payload.newWord && typeof payload.newWord === 'string') {
                     const target = this.users.find(u => u.id === targetId);
                     if (target) {
                         if (target.id === user.id && originalTargetId !== user.id) {
@@ -5170,7 +5182,6 @@ class Room {
                 if (targetId) {
                     const target = this.users.find(u => u.id === targetId);
                     if (target) {
-                        
                         target.timeBomb = { casterId: originalTargetId, roundsLeft: 3 };
                         this.chatHistory.push({ system: true, message: `💣 SAATLİ BOMBA! ${target.name}'in üzerine bomba yerleştirildi. 3 tur içinde bilemezse patlayacak!`, timestamp: Date.now() });
                     }
@@ -5350,7 +5361,7 @@ class Room {
         this.broadcastState();
     }
 
-    nextTurn() {
+    nextTurn(isDisconnect = false) {
         if (this.questionTimer) {
             clearTimeout(this.questionTimer);
             this.questionTimer = null;
@@ -5359,19 +5370,68 @@ class Room {
         this.resolvedQuestionsThisTurn = [];
         if (this.gameState !== "PLAYING") return;
 
-        const prevUser = this.users[this.currentTurnIndex];
-        if (prevUser && prevUser.status === 'playing') {
-            if (prevUser.russianRouletteActive) {
-                if (prevUser.shieldActive) {
-                    prevUser.shieldActive = false;
-                    prevUser.russianRouletteActive = false;
-                    this.chatHistory.push({ system: true, message: `🛡️ ${prevUser.name} Rus Ruleti süresini aştı ama Gizli Kalkanı onu ipten aldı!`, timestamp: Date.now() });
-                } else {
-                    prevUser.lives = 0;
-                    prevUser.status = 'spectator';
-                    prevUser.bloodTieTarget = null;
-                    prevUser.timeBomb = null;
-                    this.chatHistory.push({ system: true, message: `💀 ${prevUser.name} Rus Ruleti süresini aştı ve elendi!`, timestamp: Date.now() });
+        if (!isDisconnect) {
+            const prevUser = this.users[this.currentTurnIndex];
+            if (prevUser && prevUser.status === 'playing') {
+                if (prevUser.russianRouletteActive) {
+                    if (prevUser.shieldActive) {
+                        prevUser.shieldActive = false;
+                        prevUser.russianRouletteActive = false;
+                        this.chatHistory.push({ system: true, message: `🛡️ ${prevUser.name} Rus Ruleti süresini aştı ama Gizli Kalkanı onu ipten aldı!`, timestamp: Date.now() });
+                    } else {
+                        prevUser.lives = 0;
+                        prevUser.status = 'spectator';
+                        prevUser.bloodTieTarget = null;
+                        prevUser.timeBomb = null;
+                        this.chatHistory.push({ system: true, message: `💀 ${prevUser.name} Rus Ruleti süresini aştı ve elendi!`, timestamp: Date.now() });
+                        
+                        const activePlayers = this.users.filter(x => x.status === 'playing');
+                        if (activePlayers.length <= 1) {
+                            this.endGame();
+                            return;
+                        }
+                    }
+                }
+                prevUser.extraQuestionChain = false;
+                prevUser.extraQuestions = 0;
+            }
+        }
+
+        let attempts = 0;
+        let foundNext = false;
+        
+        while (attempts < this.users.length) {
+            if (!isDisconnect || attempts > 0) {
+                this.currentTurnIndex = (this.currentTurnIndex + 1) % this.users.length;
+                
+                if (this.currentTurnIndex === 0) {
+                    this.roundCount++;
+                    
+                    for (let u of this.users) {
+                        if (u.status === 'playing') {
+                            if (u.mirrorRoundsLeft > 0) u.mirrorRoundsLeft--;
+                            
+                            if (u.timeBomb) {
+                                u.timeBomb.roundsLeft--;
+                                if (u.timeBomb.roundsLeft <= 0) {
+                                    if (u.shieldActive) {
+                                        u.shieldActive = false;
+                                        u.timeBomb = null;
+                                        this.chatHistory.push({ system: true, message: `🛡️ 💥 GÜM! Saatli Bomba patladı ancak ${u.name}'in Gizli Kalkanı hasarı tamamen emdi!`, timestamp: Date.now() });
+                                    } else {
+                                        u.lives -= 2;
+                                        u.timeBomb = null;
+                                        this.chatHistory.push({ system: true, message: `💥 GÜM! Süre doldu. ${u.name}'in üzerindeki Saatli Bomba patladı! (-2 Can)`, timestamp: Date.now() });
+                                        if (u.lives <= 0) {
+                                            u.status = 'spectator';
+                                            u.bloodTieTarget = null;
+                                            this.chatHistory.push({ system: true, message: `💀 ${u.name} bombanın etkisiyle elendi! Kelimesi: ${u.assignedWord}`, timestamp: Date.now() });
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                     
                     const activePlayers = this.users.filter(x => x.status === 'playing');
                     if (activePlayers.length <= 1) {
@@ -5380,58 +5440,12 @@ class Room {
                     }
                 }
             }
-            prevUser.extraQuestionChain = false;
-            prevUser.extraQuestions = 0;
-        }
-
-        let attempts = 0;
-        do {
-            this.currentTurnIndex = (this.currentTurnIndex + 1) % this.users.length;
             
-            if (this.currentTurnIndex === 0) {
-                this.roundCount++;
-                
-                for (let u of this.users) {
-                    if (u.status === 'playing') {
-                        if (u.mirrorRoundsLeft > 0) u.mirrorRoundsLeft--;
-                        
-                        if (u.timeBomb) {
-                            u.timeBomb.roundsLeft--;
-                            if (u.timeBomb.roundsLeft <= 0) {
-                                if (u.shieldActive) {
-                                    u.shieldActive = false;
-                                    u.timeBomb = null;
-                                    this.chatHistory.push({ system: true, message: `🛡️ 💥 GÜM! Saatli Bomba patladı ancak ${u.name}'in Gizli Kalkanı hasarı tamamen emdi!`, timestamp: Date.now() });
-                                } else {
-                                    u.lives -= 2;
-                                    u.timeBomb = null;
-                                    this.chatHistory.push({ system: true, message: `💥 GÜM! Süre doldu. ${u.name}'in üzerindeki Saatli Bomba patladı! (-2 Can)`, timestamp: Date.now() });
-                                    if (u.lives <= 0) {
-                                        u.status = 'spectator';
-                                        u.bloodTieTarget = null;
-                                        this.chatHistory.push({ system: true, message: `💀 ${u.name} bombanın etkisiyle elendi! Kelimesi: ${u.assignedWord}`, timestamp: Date.now() });
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                
-                const activePlayers = this.users.filter(x => x.status === 'playing');
-                if (activePlayers.length <= 1) {
-                    this.endGame();
-                    return;
-                }
-            }
-
+            isDisconnect = false; 
             attempts++;
-            if (attempts > this.users.length) {
-                this.endGame();
-                return;
-            }
             
             const nextUser = this.users[this.currentTurnIndex];
-            if (nextUser.status === 'playing') {
+            if (nextUser && nextUser.status === 'playing') {
                 if (nextUser.silencedTurns > 0) {
                     nextUser.silencedTurns--;
                     this.chatHistory.push({
@@ -5442,10 +5456,16 @@ class Room {
                     continue; 
                 } else {
                     nextUser.questionsAskedThisTurn = 0;
+                    foundNext = true;
                     break; 
                 }
             }
-        } while (true);
+        } 
+
+        if (!foundNext) {
+            this.endGame();
+            return;
+        }
 
         this.startTimer();
         this.broadcastState();
@@ -5466,14 +5486,10 @@ class Room {
     endGame() {
         this.gameState = "ROUND_END";
         if (this.timer) clearTimeout(this.timer);
-        if (this.questionTimer) {
-            clearTimeout(this.questionTimer);
-            this.questionTimer = null;
-        }
-        if (this.mirrorWordTimer) {
-            clearTimeout(this.mirrorWordTimer);
-            this.mirrorWordTimer = null;
-        }
+        if (this.questionTimer) clearTimeout(this.questionTimer);
+        if (this.mirrorWordTimer) clearTimeout(this.mirrorWordTimer);
+        if (this.betTimer) clearTimeout(this.betTimer);
+        if (this.jokerDraftTimer) clearTimeout(this.jokerDraftTimer);
         
         const User = require('../models/User');
         for (let u of this.users) {
