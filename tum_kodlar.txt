@@ -1821,11 +1821,16 @@ export default function GamePage() {
     
     const [token, setToken] = useState("");
 
+    // HATA DÜZELTMESİ (MİMARİ): LiveKit identity olarak `me.id` (socket.id) kullanılıyordu.
+    // Oyuncu internet kopup geldiğinde socket id'si değiştiği için LiveKit'te "hayalet (ghost)"
+    // oturumlar asılı kalıyor ve yankıya sebep oluyordu.
+    // Çözüm olarak sessionlar arası kalıcı olan veritabanı ID'si (`me.dbId`) kullanıldı.
     useEffect(() => {
         if (!me?.id || !code) return;
         (async () => {
             try {
-                const resp = await fetch(`/api/livekit?room=${code}&username=${me.id}`);
+                const livekitIdentity = me.dbId || me.id;
+                const resp = await fetch(`/api/livekit?room=${code}&username=${livekitIdentity}`);
                 const data = await resp.json();
                 if (data.token) {
                     setToken(data.token);
@@ -1834,7 +1839,7 @@ export default function GamePage() {
                 console.error("LiveKit token fetch error", e);
             }
         })();
-    }, [me?.id, code]);
+    }, [me?.id, me?.dbId, code]);
 
     const [checkingAuth, setCheckingAuth] = useState(true);
 
@@ -5284,7 +5289,14 @@ class Room {
         if (this.activeQuestion.askerId === userId) return; 
 
         this.activeQuestion.votes[userId] = voteType;
-        this.broadcastState();
+        
+        // HATA DÜZELTMESİ (OYUN AKICILIĞI): Tüm oyuncular oy verdiyse 15 saniyeyi beklemeden anında soruyu çöz!
+        const playingUsers = this.users.filter(u => u.status === 'playing' && !u.disconnected && u.id !== this.activeQuestion.askerId);
+        if (Object.keys(this.activeQuestion.votes).length >= playingUsers.length) {
+            this.resolveQuestion();
+        } else {
+            this.broadcastState();
+        }
     }
 
     resolveQuestion() {
