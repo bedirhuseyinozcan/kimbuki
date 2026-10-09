@@ -1811,11 +1811,26 @@ export default function GamePage() {
     const [wordInput, setWordInput] = useState("");
     const [chatInput, setChatInput] = useState("");
     const [notepad, setNotepad] = useState("");
+    const [isNotepadLoaded, setIsNotepadLoaded] = useState(false);
     const [guessDialogOpen, setGuessDialogOpen] = useState(false);
     const [guessInput, setGuessInput] = useState("");
     const [headRotations, setHeadRotations] = useState<{ [key: string]: { pitch: number, yaw: number } }>({});
     const [taunts, setTaunts] = useState<{[key: string]: { type: string, id: number }}>({});
     const [visualEffects, setVisualEffects] = useState<any[]>([]);
+
+    useEffect(() => {
+        if (code && typeof window !== 'undefined') {
+            const saved = localStorage.getItem(`kimbuki_notepad_${code}`);
+            if (saved) setNotepad(saved);
+            setIsNotepadLoaded(true);
+        }
+    }, [code]);
+
+    useEffect(() => {
+        if (isNotepadLoaded && code && typeof window !== 'undefined') {
+            localStorage.setItem(`kimbuki_notepad_${code}`, notepad);
+        }
+    }, [notepad, code, isNotepadLoaded]);
 
     const myId = socket?.id || "";
     const me = gameState?.users.find((u: User) => u.id === myId);
