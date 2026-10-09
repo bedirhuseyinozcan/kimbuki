@@ -146,7 +146,7 @@ function AvatarModel({ url, isWinner, targetRot }: { url: string, isWinner: bool
                 }
                 const initRot = bone.userData.initialRotation;
                 bone.rotation.y = THREE.MathUtils.lerp(bone.rotation.y, initRot.y + targetRot.yaw, 5 * delta);
-                bone.rotation.x = THREE.MathUtils.lerp(bone.rotation.x, initRot.x + targetRot.pitch, 5 * delta);
+                bone.rotation.x = THREE.MathUtils.lerp(bone.rotation.x, initRot.x - targetRot.pitch, 5 * delta);
             } else if (groupRef.current) {
                 groupRef.current.rotation.y = THREE.MathUtils.lerp(groupRef.current.rotation.y, targetRot.yaw, 5 * delta);
             }
