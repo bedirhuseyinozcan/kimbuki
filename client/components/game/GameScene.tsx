@@ -271,28 +271,26 @@ export default function GameScene({
                         </div>
                     )}
 
-                    {gameState.resolvedQuestionsThisTurn && gameState.resolvedQuestionsThisTurn.length > 0 && (
+                    {me?.lastQuestion && (
                         <div className="mt-4 flex flex-col gap-3 overflow-y-auto custom-scrollbar max-h-[200px] pr-2">
-                            {gameState.resolvedQuestionsThisTurn.map((q, index) => (
-                                <div key={index} className="p-3 rounded-xl border bg-cyan-900/30 border-cyan-500/30">
-                                    <h4 className="font-bold text-sm text-cyan-400 mb-1">{index + 1}. Soru</h4>
-                                    <p className="text-sm font-bold text-slate-200 mb-2 break-words break-all">"{q.question}"</p>
-                                    <div className="flex gap-2 text-xs flex-wrap">
-                                        {Object.entries(q.votes).map(([voterId, vote]) => {
-                                            const voter = gameState.users.find(u => u.id === voterId);
-                                            if (!voter) return null;
-                                            const voteColor = vote === 'yes' ? 'text-green-400' : vote === 'no' ? 'text-red-400' : 'text-yellow-400';
-                                            const voteText = vote === 'yes' ? 'Evet' : vote === 'no' ? 'Hayır' : 'Bazen';
-                                            return (
-                                                <div key={voterId} className="bg-slate-800/80 px-2 py-1 rounded border border-slate-700">
-                                                    <span className="text-slate-400 mr-1">{voter.name}:</span>
-                                                    <span className={`font-bold ${voteColor}`}>{voteText}</span>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
+                            <div className="p-3 rounded-xl border bg-cyan-900/30 border-cyan-500/30">
+                                <h4 className="font-bold text-sm text-cyan-400 mb-1">Son Sorduğum Soru</h4>
+                                <p className="text-sm font-bold text-slate-200 mb-2 break-words break-all">"{me.lastQuestion.question}"</p>
+                                <div className="flex gap-2 text-xs flex-wrap">
+                                    {Object.entries(me.lastQuestion.votes).map(([voterId, vote]) => {
+                                        const voter = gameState.users.find((u: any) => u.id === voterId);
+                                        if (!voter) return null;
+                                        const voteColor = vote === 'yes' ? 'text-green-400' : vote === 'no' ? 'text-red-400' : 'text-yellow-400';
+                                        const voteText = vote === 'yes' ? 'Evet' : vote === 'no' ? 'Hayır' : 'Bazen';
+                                        return (
+                                            <div key={voterId} className="bg-slate-800/80 px-2 py-1 rounded border border-slate-700">
+                                                <span className="text-slate-400 mr-1">{voter.name}:</span>
+                                                <span className={`font-bold ${voteColor}`}>{voteText}</span>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
-                            ))}
+                            </div>
                         </div>
                     )}
                 </div>
