@@ -693,9 +693,12 @@ class Room {
                 if (caster && caster.status === 'playing' && caster.id !== user.id) {
                     if (caster.shieldActive) {
                         caster.shieldActive = false;
+                        this.io.to(this.code).emit("game:visual_effect", { type: 'shield_cast', targetId: caster.id });
+                        this.io.to(this.code).emit("game:visual_effect", { type: 'bomb_explode', targetId: caster.id });
                         this.addChatLog({ system: true, message: `🛡️ 💥 İADE! ${user.name} bombayı bildi ancak ${caster.name} kalkanı sayesinde patlamadan kurtuldu!`, timestamp: Date.now() });
                     } else {
                         caster.lives -= 2;
+                        this.io.to(this.code).emit("game:visual_effect", { type: 'bomb_explode', targetId: caster.id });
                         this.addChatLog({ system: true, message: `🔄💥 İADE! ${user.name} kelimesini bildi ve bombayı ${caster.name}'e geri fırlatarak patlattı! (-2 Can)`, timestamp: Date.now() });
                         if (caster.lives <= 0) {
                             caster.status = 'spectator';
@@ -759,7 +762,6 @@ class Room {
 
             addReward(user.dbId, winnerReward, repReward, 'win');
             
-            // ZAFİYET YAMASI: Reputasyonun oda içi eşzamanlanması
             user.reputation += repReward;
 
             let winMsg = "";
@@ -832,13 +834,16 @@ class Room {
                 if (user.shieldActive) {
                     user.shieldActive = false;
                     user.russianRouletteActive = false;
+                    this.io.to(this.code).emit("game:visual_effect", { type: 'shield_cast', targetId: user.id });
                     this.addChatLog({ system: true, message: `🛡️ ${user.name} Rus Ruleti'nde yanlış tahminde bulundu ama Gizli Kalkanı hayatını kurtardı!`, timestamp: Date.now() });
                 } else {
                     user.lives = 0;
+                    this.io.to(this.code).emit("game:visual_effect", { type: 'roulette_die', targetId: user.id });
                 }
             } else {
                 if (user.shieldActive) {
                     user.shieldActive = false;
+                    this.io.to(this.code).emit("game:visual_effect", { type: 'shield_cast', targetId: user.id });
                     this.addChatLog({ system: true, message: `🛡️ ${user.name} yanlış bildiği için can kaybedecekti ancak Gizli Kalkanı onu korudu!`, timestamp: Date.now() });
                 } else {
                     user.lives -= 1;
@@ -945,6 +950,7 @@ class Room {
                     this.turnStartTime = Date.now() - (this.turnTime * 1000 - newTime * 1000); 
                     this.timer = setTimeout(() => { if (this.gameState === "PLAYING") this.nextTurn(); }, newTime * 1000);
                     this.addChatLog({ system: true, message: `⏳ ${user.name} Zaman Bükücü kullanarak süresine 1 dakika ekledi!`, timestamp: Date.now() });
+                    this.io.to(this.code).emit("game:visual_effect", { type: 'time_bend', targetId: user.id });
                     jokerConsumed = true;
                 }
                 break;
@@ -1021,6 +1027,7 @@ class Room {
                 user.russianRouletteActive = true;
                 this.addChatLog({ system: true, message: `💀 RUS RULETİ! ${user.name} hemen tahmin etmek zorunda!`, timestamp: Date.now() });
                 this.openLettersForUser(user, 2);
+                this.io.to(this.code).emit("game:visual_effect", { type: 'roulette_start', targetId: user.id });
                 jokerConsumed = true;
                 break;
             case 7: 
@@ -1030,6 +1037,7 @@ class Room {
                         const actualCaster = (targetId === user.id) ? initialTargetId : user.id;
                         target.timeBomb = { casterId: actualCaster, roundsLeft: 3 };
                         this.addChatLog({ system: true, message: `💣 SAATLİ BOMBA! ${target.name}'in üzerine bomba yerleştirildi. 3 tur içinde bilemezse patlayacak!`, timestamp: Date.now() });
+                        this.io.to(this.code).emit("game:visual_effect", { type: 'bomb_plant', targetId: target.id });
                         jokerConsumed = true;
                     }
                 }
@@ -1037,11 +1045,13 @@ class Room {
             case 8: 
                 user.mirrorRoundsLeft = 3;
                 this.addChatLog({ system: true, privateTo: user.id, message: "Sistem (Özel): Ayna (Kalkan) aktif! 3 tur boyunca sana atılan kötü niyetli jokerler atan kişiye geri sekecek.", timestamp: Date.now() });
+                this.io.to(userId).emit("game:visual_effect", { type: 'mirror_cast', targetId: user.id });
                 jokerConsumed = true;
                 break;
             case 9:
                 user.shieldActive = true;
                 this.addChatLog({ system: true, privateTo: user.id, message: "Sistem (Özel): Gizli Kalkan aktif! Bir sonraki ölümcül hatanı veya bombayı engelleyecek.", timestamp: Date.now() });
+                this.io.to(userId).emit("game:visual_effect", { type: 'shield_cast', targetId: user.id });
                 jokerConsumed = true;
                 break;
             case 10:
@@ -1190,6 +1200,7 @@ class Room {
                 } else if (isNoMajority) {
                     if (u.shieldActive) {
                         u.shieldActive = false;
+                        this.io.to(this.code).emit("game:visual_effect", { type: 'shield_cast', targetId: u.id });
                         this.addChatLog({ system: true, message: `🛡️ 🩸 Kan Bağı: ${u.name} can kaybedecekti ancak Gizli Kalkanı onu korudu!`, timestamp: Date.now() });
                     } else {
                         u.lives -= 1;
@@ -1247,12 +1258,14 @@ class Room {
                     if (prevUser.shieldActive) {
                         prevUser.shieldActive = false;
                         prevUser.russianRouletteActive = false;
+                        this.io.to(this.code).emit("game:visual_effect", { type: 'shield_cast', targetId: prevUser.id });
                         this.addChatLog({ system: true, message: `🛡️ ${prevUser.name} Rus Ruleti süresini aştı ama Gizli Kalkanı onu ipten aldı!`, timestamp: Date.now() });
                     } else {
                         prevUser.lives = 0;
                         prevUser.status = 'spectator';
                         prevUser.bloodTieTarget = null;
                         prevUser.timeBomb = null;
+                        this.io.to(this.code).emit("game:visual_effect", { type: 'roulette_die', targetId: prevUser.id });
                         this.addChatLog({ system: true, message: `💀 ${prevUser.name} Rus Ruleti süresini aştı ve elendi!`, timestamp: Date.now() });
                         
                         const activePlayers = this.users.filter(x => x.status === 'playing');
@@ -1289,10 +1302,13 @@ class Room {
                                     if (u.shieldActive) {
                                         u.shieldActive = false;
                                         u.timeBomb = null;
+                                        this.io.to(this.code).emit("game:visual_effect", { type: 'shield_cast', targetId: u.id });
+                                        this.io.to(this.code).emit("game:visual_effect", { type: 'bomb_explode', targetId: u.id });
                                         this.addChatLog({ system: true, message: `🛡️ 💥 GÜM! Saatli Bomba patladı ancak ${u.name}'in Gizli Kalkanı hasarı tamamen emdi!`, timestamp: Date.now() });
                                     } else {
                                         u.lives -= 2;
                                         u.timeBomb = null;
+                                        this.io.to(this.code).emit("game:visual_effect", { type: 'bomb_explode', targetId: u.id });
                                         this.addChatLog({ system: true, message: `💥 GÜM! Süre doldu. ${u.name}'in üzerindeki Saatli Bomba patladı! (-2 Can)`, timestamp: Date.now() });
                                         if (u.lives <= 0) {
                                             u.status = 'spectator';

@@ -41,12 +41,13 @@ interface GameSceneProps {
     onHeadRotation: (pitch: number, yaw: number) => void;
     taunts: { [key: string]: { type: string, id: number } };
     onTaunt: (type: string) => void;
+    visualEffects: any[];
 }
 
 export default function GameScene({
     gameState, me, myId, chatInput, setChatInput, handleChat, notepad, setNotepad, handleSkip, guessInput, setGuessInput, handleGuess,
     guessDialogOpen, setGuessDialogOpen, onLeaveRoom, onAskQuestion, onSubmitVote, onUseJoker, onToggleVoice,
-    onStartObjection, onVoteObjection, headRotations, onHeadRotation, taunts, onTaunt
+    onStartObjection, onVoteObjection, headRotations, onHeadRotation, taunts, onTaunt, visualEffects
 }: GameSceneProps) {
     const isMyTurn = gameState.currentTurnUserId === myId;
     const currentTurnUser = gameState.users.find((u: User) => u.id === gameState.currentTurnUserId);
@@ -187,6 +188,7 @@ export default function GameScene({
                 <Scene3D 
                     gameState={gameState} myId={myId} activeBubbles={activeBubbles} 
                     headRotations={headRotations} onHeadRotation={onHeadRotation} taunts={taunts}
+                    visualEffects={visualEffects}
                 />
             </div>
             

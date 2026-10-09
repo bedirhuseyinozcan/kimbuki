@@ -1815,6 +1815,7 @@ export default function GamePage() {
     const [guessInput, setGuessInput] = useState("");
     const [headRotations, setHeadRotations] = useState<{ [key: string]: { pitch: number, yaw: number } }>({});
     const [taunts, setTaunts] = useState<{[key: string]: { type: string, id: number }}>({});
+    const [visualEffects, setVisualEffects] = useState<any[]>([]);
 
     const myId = socket?.id || "";
     const me = gameState?.users.find((u: User) => u.id === myId);
@@ -1910,6 +1911,19 @@ export default function GamePage() {
                     }
                     return prev;
                 });
+            }, 2500);
+        });
+        
+        s.on("game:visual_effect", async (payload: any) => {
+            const audio = await import("@/utils/audio");
+            if (payload.type === 'bomb_explode') audio.playExplosionSound();
+            else if (payload.type === 'roulette_die') audio.playGunshotSound();
+            else if (['mirror_cast', 'shield_cast', 'time_bend'].includes(payload.type)) audio.playMagicSound();
+            
+            const effId = Date.now() + Math.random();
+            setVisualEffects(prev => [...prev, { ...payload, id: effId }]);
+            setTimeout(() => {
+                setVisualEffects(prev => prev.filter(e => e.id !== effId));
             }, 2500);
         });
     };
@@ -2044,6 +2058,7 @@ export default function GamePage() {
                 onHeadRotation={(pitch, yaw) => socket?.emit("game:head_rotation", { pitch, yaw })}
                 taunts={taunts}
                 onTaunt={(type) => socket?.emit("game:taunt", { type })}
+                visualEffects={visualEffects}
             />;
         }
         if (gameState.gameState === "ROUND_END") {
@@ -2515,12 +2530,13 @@ interface GameSceneProps {
     onHeadRotation: (pitch: number, yaw: number) => void;
     taunts: { [key: string]: { type: string, id: number } };
     onTaunt: (type: string) => void;
+    visualEffects: any[];
 }
 
 export default function GameScene({
     gameState, me, myId, chatInput, setChatInput, handleChat, notepad, setNotepad, handleSkip, guessInput, setGuessInput, handleGuess,
     guessDialogOpen, setGuessDialogOpen, onLeaveRoom, onAskQuestion, onSubmitVote, onUseJoker, onToggleVoice,
-    onStartObjection, onVoteObjection, headRotations, onHeadRotation, taunts, onTaunt
+    onStartObjection, onVoteObjection, headRotations, onHeadRotation, taunts, onTaunt, visualEffects
 }: GameSceneProps) {
     const isMyTurn = gameState.currentTurnUserId === myId;
     const currentTurnUser = gameState.users.find((u: User) => u.id === gameState.currentTurnUserId);
@@ -2661,6 +2677,7 @@ export default function GameScene({
                 <Scene3D 
                     gameState={gameState} myId={myId} activeBubbles={activeBubbles} 
                     headRotations={headRotations} onHeadRotation={onHeadRotation} taunts={taunts}
+                    visualEffects={visualEffects}
                 />
             </div>
             
@@ -3513,7 +3530,41 @@ function PedestalNode({ type }: { type: string }) {
     }
 }
 
-function PlayerNode({ u, index, totalUsers, isCurrentTurn, isMe, isWinner, activeBubble, gameState, headRotations, taunt }: any) {
+function ParticleBurst({ color }: { color: string }) {
+    const meshRef = useRef<THREE.Mesh>(null);
+    useFrame((state, delta) => {
+        if (meshRef.current) {
+            meshRef.current.scale.addScalar(delta * 20);
+            const mat = meshRef.current.material as THREE.MeshStandardMaterial;
+            mat.opacity = Math.max(0, mat.opacity - delta * 2);
+        }
+    });
+    return (
+        <mesh ref={meshRef} position={[0, 1.5, 0]}>
+            <sphereGeometry args={[0.5, 16, 16]} />
+            <meshStandardMaterial color={color} transparent opacity={0.8} emissive={color} emissiveIntensity={2} />
+        </mesh>
+    );
+}
+
+function RingBurst({ color }: { color: string }) {
+    const meshRef = useRef<THREE.Mesh>(null);
+    useFrame((state, delta) => {
+        if (meshRef.current) {
+            meshRef.current.scale.addScalar(delta * 10);
+            const mat = meshRef.current.material as THREE.MeshStandardMaterial;
+            mat.opacity = Math.max(0, mat.opacity - delta * 1.5);
+        }
+    });
+    return (
+        <mesh ref={meshRef} position={[0, 0.2, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <torusGeometry args={[1, 0.1, 16, 32]} />
+            <meshStandardMaterial color={color} transparent opacity={1} emissive={color} emissiveIntensity={2} />
+        </mesh>
+    );
+}
+
+function PlayerNode({ u, index, totalUsers, isCurrentTurn, isMe, isWinner, activeBubble, gameState, headRotations, taunt, visualEffects }: any) {
     const radius = totalUsers > 4 ? PLAYER_CIRCLE_RADIUS_LARGE : PLAYER_CIRCLE_RADIUS_SMALL;
     const angleOffset = totalUsers === 3 ? (Math.PI / 2) : -(Math.PI / 2);
     const angle = (index / totalUsers) * (2 * Math.PI) + angleOffset;
@@ -3529,10 +3580,21 @@ function PlayerNode({ u, index, totalUsers, isCurrentTurn, isMe, isWinner, activ
     const bomb = u.timeBomb;
     const hasMirror = isMe && (u.mirrorRoundsLeft && u.mirrorRoundsLeft > 0);
     
+    const myEffects = visualEffects?.filter((e: any) => e.targetId === u.id || e.userId === u.id) || [];
+    
     return (
         <group ref={groupRef} position={[x, 0, z]} rotation={[0, -angle - Math.PI / 2, 0]}>
             
             <PedestalNode type={u.pedestal || 'default_stone'} />
+
+            {myEffects.map((eff: any) => {
+                if (eff.type === 'bomb_explode') return <ParticleBurst key={eff.id} color="#ef4444" />;
+                if (eff.type === 'roulette_die') return <ParticleBurst key={eff.id} color="#000000" />;
+                if (eff.type === 'mirror_cast' || eff.type === 'shield_cast') return <ParticleBurst key={eff.id} color="#06b6d4" />;
+                if (eff.type === 'time_bend') return <RingBurst key={eff.id} color="#eab308" />;
+                if (eff.type === 'roulette_start') return <RingBurst key={eff.id} color="#dc2626" />;
+                return null;
+            })}
 
             {hasMirror && (
                 <mesh position={[0, 1.2, 0]}>
@@ -3559,7 +3621,7 @@ function PlayerNode({ u, index, totalUsers, isCurrentTurn, isMe, isWinner, activ
             )}
             
             {bomb && (
-                <Html position={[0, 4.5, 0]} center zIndexRange={[95, 0]} style={{ pointerEvents: 'none' }}>
+                <Html position={[0, 3.2, 0]} center zIndexRange={[95, 0]} style={{ pointerEvents: 'none' }}>
                     <div className="flex flex-col items-center animate-bounce">
                         <span className="text-4xl drop-shadow-[0_0_15px_rgba(239,68,68,0.8)]">💣</span>
                         <span className="text-[10px] font-black text-red-400 bg-black/80 px-2 py-0.5 rounded-full mt-1 border border-red-500/50">
@@ -3639,7 +3701,7 @@ function MapModel({ url }: { url: string }) {
     );
 }
 
-export default function Scene3D({ gameState, myId, activeBubbles, headRotations, onHeadRotation, taunts }: any) {
+export default function Scene3D({ gameState, myId, activeBubbles, headRotations, onHeadRotation, taunts, visualEffects }: any) {
     const isDay = gameState?.theme !== "night";
 
     return (
@@ -3674,6 +3736,7 @@ export default function Scene3D({ gameState, myId, activeBubbles, headRotations,
                         gameState={gameState}
                         headRotations={headRotations}
                         taunt={taunts?.[u.id]}
+                        visualEffects={visualEffects}
                     />
                 ))}
             </group>
@@ -3961,6 +4024,88 @@ export const playWinSound = () => {
             osc.start(ctx.currentTime + i * 0.1);
             osc.stop(ctx.currentTime + i * 0.1 + 0.5);
         });
+    } catch (e) {
+        console.error("Audio failed", e);
+    }
+};
+
+export const playExplosionSound = () => {
+    try {
+        const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+        if (!AudioContext) return;
+        const ctx = new AudioContext();
+        const bufferSize = ctx.sampleRate * 1.5; 
+        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+            data[i] = Math.random() * 2 - 1; 
+        }
+        const noise = ctx.createBufferSource();
+        noise.buffer = buffer;
+        const filter = ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(1000, ctx.currentTime);
+        filter.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 1.5);
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(1, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 1.5);
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(ctx.destination);
+        noise.start(ctx.currentTime);
+        noise.stop(ctx.currentTime + 1.5);
+    } catch (e) {
+        console.error("Audio failed", e);
+    }
+};
+
+export const playGunshotSound = () => {
+    try {
+        const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+        if (!AudioContext) return;
+        const ctx = new AudioContext();
+        const bufferSize = ctx.sampleRate * 0.5; 
+        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+            data[i] = Math.random() * 2 - 1; 
+        }
+        const noise = ctx.createBufferSource();
+        noise.buffer = buffer;
+        const filter = ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(3000, ctx.currentTime);
+        filter.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.3);
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(1, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(ctx.destination);
+        noise.start(ctx.currentTime);
+        noise.stop(ctx.currentTime + 0.3);
+    } catch (e) {
+        console.error("Audio failed", e);
+    }
+};
+
+export const playMagicSound = () => {
+    try {
+        const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+        if (!AudioContext) return;
+        const ctx = new AudioContext();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(300, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.5);
+        gain.gain.setValueAtTime(0, ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.3, ctx.currentTime + 0.2);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.6);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.6);
     } catch (e) {
         console.error("Audio failed", e);
     }
@@ -5020,9 +5165,12 @@ class Room {
                 if (caster && caster.status === 'playing' && caster.id !== user.id) {
                     if (caster.shieldActive) {
                         caster.shieldActive = false;
+                        this.io.to(this.code).emit("game:visual_effect", { type: 'shield_cast', targetId: caster.id });
+                        this.io.to(this.code).emit("game:visual_effect", { type: 'bomb_explode', targetId: caster.id });
                         this.addChatLog({ system: true, message: `🛡️ 💥 İADE! ${user.name} bombayı bildi ancak ${caster.name} kalkanı sayesinde patlamadan kurtuldu!`, timestamp: Date.now() });
                     } else {
                         caster.lives -= 2;
+                        this.io.to(this.code).emit("game:visual_effect", { type: 'bomb_explode', targetId: caster.id });
                         this.addChatLog({ system: true, message: `🔄💥 İADE! ${user.name} kelimesini bildi ve bombayı ${caster.name}'e geri fırlatarak patlattı! (-2 Can)`, timestamp: Date.now() });
                         if (caster.lives <= 0) {
                             caster.status = 'spectator';
@@ -5086,7 +5234,6 @@ class Room {
 
             addReward(user.dbId, winnerReward, repReward, 'win');
             
-            // ZAFİYET YAMASI: Reputasyonun oda içi eşzamanlanması
             user.reputation += repReward;
 
             let winMsg = "";
@@ -5159,13 +5306,16 @@ class Room {
                 if (user.shieldActive) {
                     user.shieldActive = false;
                     user.russianRouletteActive = false;
+                    this.io.to(this.code).emit("game:visual_effect", { type: 'shield_cast', targetId: user.id });
                     this.addChatLog({ system: true, message: `🛡️ ${user.name} Rus Ruleti'nde yanlış tahminde bulundu ama Gizli Kalkanı hayatını kurtardı!`, timestamp: Date.now() });
                 } else {
                     user.lives = 0;
+                    this.io.to(this.code).emit("game:visual_effect", { type: 'roulette_die', targetId: user.id });
                 }
             } else {
                 if (user.shieldActive) {
                     user.shieldActive = false;
+                    this.io.to(this.code).emit("game:visual_effect", { type: 'shield_cast', targetId: user.id });
                     this.addChatLog({ system: true, message: `🛡️ ${user.name} yanlış bildiği için can kaybedecekti ancak Gizli Kalkanı onu korudu!`, timestamp: Date.now() });
                 } else {
                     user.lives -= 1;
@@ -5272,6 +5422,7 @@ class Room {
                     this.turnStartTime = Date.now() - (this.turnTime * 1000 - newTime * 1000); 
                     this.timer = setTimeout(() => { if (this.gameState === "PLAYING") this.nextTurn(); }, newTime * 1000);
                     this.addChatLog({ system: true, message: `⏳ ${user.name} Zaman Bükücü kullanarak süresine 1 dakika ekledi!`, timestamp: Date.now() });
+                    this.io.to(this.code).emit("game:visual_effect", { type: 'time_bend', targetId: user.id });
                     jokerConsumed = true;
                 }
                 break;
@@ -5348,6 +5499,7 @@ class Room {
                 user.russianRouletteActive = true;
                 this.addChatLog({ system: true, message: `💀 RUS RULETİ! ${user.name} hemen tahmin etmek zorunda!`, timestamp: Date.now() });
                 this.openLettersForUser(user, 2);
+                this.io.to(this.code).emit("game:visual_effect", { type: 'roulette_start', targetId: user.id });
                 jokerConsumed = true;
                 break;
             case 7: 
@@ -5357,6 +5509,7 @@ class Room {
                         const actualCaster = (targetId === user.id) ? initialTargetId : user.id;
                         target.timeBomb = { casterId: actualCaster, roundsLeft: 3 };
                         this.addChatLog({ system: true, message: `💣 SAATLİ BOMBA! ${target.name}'in üzerine bomba yerleştirildi. 3 tur içinde bilemezse patlayacak!`, timestamp: Date.now() });
+                        this.io.to(this.code).emit("game:visual_effect", { type: 'bomb_plant', targetId: target.id });
                         jokerConsumed = true;
                     }
                 }
@@ -5364,11 +5517,13 @@ class Room {
             case 8: 
                 user.mirrorRoundsLeft = 3;
                 this.addChatLog({ system: true, privateTo: user.id, message: "Sistem (Özel): Ayna (Kalkan) aktif! 3 tur boyunca sana atılan kötü niyetli jokerler atan kişiye geri sekecek.", timestamp: Date.now() });
+                this.io.to(userId).emit("game:visual_effect", { type: 'mirror_cast', targetId: user.id });
                 jokerConsumed = true;
                 break;
             case 9:
                 user.shieldActive = true;
                 this.addChatLog({ system: true, privateTo: user.id, message: "Sistem (Özel): Gizli Kalkan aktif! Bir sonraki ölümcül hatanı veya bombayı engelleyecek.", timestamp: Date.now() });
+                this.io.to(userId).emit("game:visual_effect", { type: 'shield_cast', targetId: user.id });
                 jokerConsumed = true;
                 break;
             case 10:
@@ -5517,6 +5672,7 @@ class Room {
                 } else if (isNoMajority) {
                     if (u.shieldActive) {
                         u.shieldActive = false;
+                        this.io.to(this.code).emit("game:visual_effect", { type: 'shield_cast', targetId: u.id });
                         this.addChatLog({ system: true, message: `🛡️ 🩸 Kan Bağı: ${u.name} can kaybedecekti ancak Gizli Kalkanı onu korudu!`, timestamp: Date.now() });
                     } else {
                         u.lives -= 1;
@@ -5574,12 +5730,14 @@ class Room {
                     if (prevUser.shieldActive) {
                         prevUser.shieldActive = false;
                         prevUser.russianRouletteActive = false;
+                        this.io.to(this.code).emit("game:visual_effect", { type: 'shield_cast', targetId: prevUser.id });
                         this.addChatLog({ system: true, message: `🛡️ ${prevUser.name} Rus Ruleti süresini aştı ama Gizli Kalkanı onu ipten aldı!`, timestamp: Date.now() });
                     } else {
                         prevUser.lives = 0;
                         prevUser.status = 'spectator';
                         prevUser.bloodTieTarget = null;
                         prevUser.timeBomb = null;
+                        this.io.to(this.code).emit("game:visual_effect", { type: 'roulette_die', targetId: prevUser.id });
                         this.addChatLog({ system: true, message: `💀 ${prevUser.name} Rus Ruleti süresini aştı ve elendi!`, timestamp: Date.now() });
                         
                         const activePlayers = this.users.filter(x => x.status === 'playing');
@@ -5616,10 +5774,13 @@ class Room {
                                     if (u.shieldActive) {
                                         u.shieldActive = false;
                                         u.timeBomb = null;
+                                        this.io.to(this.code).emit("game:visual_effect", { type: 'shield_cast', targetId: u.id });
+                                        this.io.to(this.code).emit("game:visual_effect", { type: 'bomb_explode', targetId: u.id });
                                         this.addChatLog({ system: true, message: `🛡️ 💥 GÜM! Saatli Bomba patladı ancak ${u.name}'in Gizli Kalkanı hasarı tamamen emdi!`, timestamp: Date.now() });
                                     } else {
                                         u.lives -= 2;
                                         u.timeBomb = null;
+                                        this.io.to(this.code).emit("game:visual_effect", { type: 'bomb_explode', targetId: u.id });
                                         this.addChatLog({ system: true, message: `💥 GÜM! Süre doldu. ${u.name}'in üzerindeki Saatli Bomba patladı! (-2 Can)`, timestamp: Date.now() });
                                         if (u.lives <= 0) {
                                             u.status = 'spectator';
