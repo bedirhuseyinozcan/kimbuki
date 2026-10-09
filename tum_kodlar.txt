@@ -2896,13 +2896,11 @@ export default function GameScene({
                                     </motion.div>
                                 )}
 
-                                {gameState.isBettingEnabled && (
-                                    <motion.div whileHover={{ scale: !gameState.hasObjectionUsed ? 1.05 : 1 }} whileTap={{ scale: !gameState.hasObjectionUsed ? 0.95 : 1 }} className="w-full mt-4">
-                                        <Button variant="outlined" color="error" size="medium" fullWidth onClick={onStartObjection} disabled={gameState.hasObjectionUsed || isRussianRoulette} className={`py-2 rounded-xl border-2 font-bold ${!gameState.hasObjectionUsed && !isRussianRoulette ? 'border-red-500/80 text-red-400 shadow-[0_0_15px_rgba(239,68,68,0.2)] hover:bg-red-500/20' : 'opacity-50'}`}>
-                                            🚨 ŞİKEYE İTİRAZ ET {gameState.hasObjectionUsed && '(Kullanıldı)'}
-                                        </Button>
-                                    </motion.div>
-                                )}
+                                <motion.div whileHover={{ scale: !gameState.hasObjectionUsed ? 1.05 : 1 }} whileTap={{ scale: !gameState.hasObjectionUsed ? 0.95 : 1 }} className="w-full mt-4">
+                                    <Button variant="outlined" color="error" size="medium" fullWidth onClick={onStartObjection} disabled={gameState.hasObjectionUsed || isRussianRoulette} className={`py-2 rounded-xl border-2 font-bold ${!gameState.hasObjectionUsed && !isRussianRoulette ? 'border-red-500/80 text-red-400 shadow-[0_0_15px_rgba(239,68,68,0.2)] hover:bg-red-500/20' : 'opacity-50'}`}>
+                                        🚨 ŞİKEYE İTİRAZ ET {gameState.hasObjectionUsed && '(Kullanıldı)'}
+                                    </Button>
+                                </motion.div>
                             </div>
                         </div>
                     )}
@@ -5054,7 +5052,7 @@ class Room {
     }
 
     startObjection(userId) {
-        if (!this.isBettingEnabled || this.objection || this.gameState !== "PLAYING" || this.hasObjectionUsed) return;
+        if (this.objection || this.gameState !== "PLAYING" || this.hasObjectionUsed) return;
         
         const initiator = this.users.find(u => u.id === userId);
         if (!initiator) return;
@@ -5109,12 +5107,16 @@ class Room {
         
         const User = require('../models/User');
         if (yesVotes >= majority) {
-            for (let u of this.users) {
-                if (u.dbId) {
-                    await User.findByIdAndUpdate(u.dbId, { $inc: { gold: this.betAmount } }).catch(err => console.error(err));
+            if (this.isBettingEnabled) {
+                for (let u of this.users) {
+                    if (u.dbId) {
+                        await User.findByIdAndUpdate(u.dbId, { $inc: { gold: this.betAmount } }).catch(err => console.error(err));
+                    }
                 }
+                this.io.to(this.code).emit("game:error", { message: `🚨 Şike itirazı kabul edildi! Oyun iptal edildi, herkese ${this.betAmount} Altın iade edildi.` });
+            } else {
+                this.io.to(this.code).emit("game:error", { message: `🚨 Çoğunluk kararı sağlandı! Eğlenceyi sabote edenler olduğu için oyun iptal edildi.` });
             }
-            this.io.to(this.code).emit("game:error", { message: `🚨 Şike itirazı kabul edildi! Oyun iptal edildi, herkese ${this.betAmount} Altın iade edildi.` });
             
             this.objection = null;
             if (this.timer) clearTimeout(this.timer);
