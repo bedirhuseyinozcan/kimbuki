@@ -7,6 +7,7 @@ import PersonIcon from '@mui/icons-material/Person';
 import QuestionAnswerIcon from '@mui/icons-material/QuestionAnswer';
 import MicIcon from '@mui/icons-material/Mic';
 import SettingsIcon from '@mui/icons-material/Settings';
+import InfoIcon from '@mui/icons-material/Info';
 import AudioSettingsDialog from './AudioSettingsDialog';
 import MicOffIcon from '@mui/icons-material/MicOff';
 import { User, GameState, AVATARS, NAME_COLORS, JOKERS } from "./types";
@@ -44,6 +45,8 @@ interface GameSceneProps {
     visualEffects: any[];
 }
 
+import JokerGuideDialog from './JokerGuideDialog';
+
 export default function GameScene({
     gameState, me, myId, chatInput, setChatInput, handleChat, notepad, setNotepad, handleSkip, guessInput, setGuessInput, handleGuess,
     guessDialogOpen, setGuessDialogOpen, onLeaveRoom, onAskQuestion, onSubmitVote, onUseJoker, onToggleVoice,
@@ -58,6 +61,7 @@ export default function GameScene({
     const [questionDialogOpen, setQuestionDialogOpen] = useState(false);
     const [questionInput, setQuestionInput] = useState("");
     const [activeBubbles, setActiveBubbles] = useState<{[key:string]: string}>({});
+    const [jokerGuideOpen, setJokerGuideOpen] = useState(false);
 
     const [jokerDialogOpen, setJokerDialogOpen] = useState(false);
     const [jokerTarget, setJokerTarget] = useState("");
@@ -229,6 +233,7 @@ export default function GameScene({
                 </div>
 
                 <div className="flex gap-1 md:gap-3 items-center pointer-events-auto shrink-0">
+                    <button onClick={() => setJokerGuideOpen(true)} className="flex items-center justify-center p-1.5 rounded-full border border-fuchsia-500/50 bg-fuchsia-500/20 text-fuchsia-300 hover:bg-fuchsia-500/40 backdrop-blur-md transition-colors shadow-[0_0_10px_rgba(217,70,239,0.3)]"><InfoIcon fontSize="small" /></button>
                     <button onClick={() => onToggleVoice(!me?.isVoiceEnabled)} className={`flex items-center justify-center p-1.5 rounded-full border backdrop-blur-md transition-colors ${me?.isVoiceEnabled ? 'border-green-500/80 bg-green-500/40 text-white hover:bg-green-500/60' : 'border-red-500/80 bg-red-500/40 text-white hover:bg-red-500/60'}`}>
                         {me?.isVoiceEnabled ? <MicIcon fontSize="small" /> : <MicOffIcon fontSize="small" />}
                     </button>
@@ -514,6 +519,8 @@ export default function GameScene({
                     </motion.div>
                 )}
             </AnimatePresence>
+            
+            <JokerGuideDialog open={jokerGuideOpen} onClose={() => setJokerGuideOpen(false)} />
         </main>
     );
 }
