@@ -159,6 +159,11 @@ export default function GamePage() {
             if (payload.type === 'bomb_explode') audio.playExplosionSound();
             else if (payload.type === 'roulette_die') audio.playGunshotSound();
             else if (['mirror_cast', 'shield_cast', 'time_bend'].includes(payload.type)) audio.playMagicSound();
+            else if (payload.type === 'blood_tie') audio.playHeartbeatSound();
+            else if (payload.type === 'mind_wipe') audio.playGlitchSound();
+            else if (payload.type === 'silence_cast') audio.playSilenceSound();
+            else if (payload.type === 'extra_ammo') audio.playReloadSound();
+            else if (payload.type === 'letter_reveal') audio.playSparkleSound();
             
             const effId = Date.now() + Math.random();
             setVisualEffects(prev => [...prev, { ...payload, id: effId }]);
