@@ -208,7 +208,41 @@ function PedestalNode({ type }: { type: string }) {
     }
 }
 
-function PlayerNode({ u, index, totalUsers, isCurrentTurn, isMe, isWinner, activeBubble, gameState, headRotations, taunt }: any) {
+function ParticleBurst({ color }: { color: string }) {
+    const meshRef = useRef<THREE.Mesh>(null);
+    useFrame((state, delta) => {
+        if (meshRef.current) {
+            meshRef.current.scale.addScalar(delta * 20);
+            const mat = meshRef.current.material as THREE.MeshStandardMaterial;
+            mat.opacity = Math.max(0, mat.opacity - delta * 2);
+        }
+    });
+    return (
+        <mesh ref={meshRef} position={[0, 1.5, 0]}>
+            <sphereGeometry args={[0.5, 16, 16]} />
+            <meshStandardMaterial color={color} transparent opacity={0.8} emissive={color} emissiveIntensity={2} />
+        </mesh>
+    );
+}
+
+function RingBurst({ color }: { color: string }) {
+    const meshRef = useRef<THREE.Mesh>(null);
+    useFrame((state, delta) => {
+        if (meshRef.current) {
+            meshRef.current.scale.addScalar(delta * 10);
+            const mat = meshRef.current.material as THREE.MeshStandardMaterial;
+            mat.opacity = Math.max(0, mat.opacity - delta * 1.5);
+        }
+    });
+    return (
+        <mesh ref={meshRef} position={[0, 0.2, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <torusGeometry args={[1, 0.1, 16, 32]} />
+            <meshStandardMaterial color={color} transparent opacity={1} emissive={color} emissiveIntensity={2} />
+        </mesh>
+    );
+}
+
+function PlayerNode({ u, index, totalUsers, isCurrentTurn, isMe, isWinner, activeBubble, gameState, headRotations, taunt, visualEffects }: any) {
     const radius = totalUsers > 4 ? PLAYER_CIRCLE_RADIUS_LARGE : PLAYER_CIRCLE_RADIUS_SMALL;
     const angleOffset = totalUsers === 3 ? (Math.PI / 2) : -(Math.PI / 2);
     const angle = (index / totalUsers) * (2 * Math.PI) + angleOffset;
@@ -224,10 +258,21 @@ function PlayerNode({ u, index, totalUsers, isCurrentTurn, isMe, isWinner, activ
     const bomb = u.timeBomb;
     const hasMirror = isMe && (u.mirrorRoundsLeft && u.mirrorRoundsLeft > 0);
     
+    const myEffects = visualEffects?.filter((e: any) => e.targetId === u.id || e.userId === u.id) || [];
+    
     return (
         <group ref={groupRef} position={[x, 0, z]} rotation={[0, -angle - Math.PI / 2, 0]}>
             
             <PedestalNode type={u.pedestal || 'default_stone'} />
+
+            {myEffects.map((eff: any) => {
+                if (eff.type === 'bomb_explode') return <ParticleBurst key={eff.id} color="#ef4444" />;
+                if (eff.type === 'roulette_die') return <ParticleBurst key={eff.id} color="#000000" />;
+                if (eff.type === 'mirror_cast' || eff.type === 'shield_cast') return <ParticleBurst key={eff.id} color="#06b6d4" />;
+                if (eff.type === 'time_bend') return <RingBurst key={eff.id} color="#eab308" />;
+                if (eff.type === 'roulette_start') return <RingBurst key={eff.id} color="#dc2626" />;
+                return null;
+            })}
 
             {hasMirror && (
                 <mesh position={[0, 1.2, 0]}>
@@ -254,7 +299,7 @@ function PlayerNode({ u, index, totalUsers, isCurrentTurn, isMe, isWinner, activ
             )}
             
             {bomb && (
-                <Html position={[0, 4.5, 0]} center zIndexRange={[95, 0]} style={{ pointerEvents: 'none' }}>
+                <Html position={[0, 3.2, 0]} center zIndexRange={[95, 0]} style={{ pointerEvents: 'none' }}>
                     <div className="flex flex-col items-center animate-bounce">
                         <span className="text-4xl drop-shadow-[0_0_15px_rgba(239,68,68,0.8)]">💣</span>
                         <span className="text-[10px] font-black text-red-400 bg-black/80 px-2 py-0.5 rounded-full mt-1 border border-red-500/50">
@@ -334,7 +379,7 @@ function MapModel({ url }: { url: string }) {
     );
 }
 
-export default function Scene3D({ gameState, myId, activeBubbles, headRotations, onHeadRotation, taunts }: any) {
+export default function Scene3D({ gameState, myId, activeBubbles, headRotations, onHeadRotation, taunts, visualEffects }: any) {
     const isDay = gameState?.theme !== "night";
 
     return (
@@ -369,6 +414,7 @@ export default function Scene3D({ gameState, myId, activeBubbles, headRotations,
                         gameState={gameState}
                         headRotations={headRotations}
                         taunt={taunts?.[u.id]}
+                        visualEffects={visualEffects}
                     />
                 ))}
             </group>

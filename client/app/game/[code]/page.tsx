@@ -55,6 +55,7 @@ export default function GamePage() {
     const [guessInput, setGuessInput] = useState("");
     const [headRotations, setHeadRotations] = useState<{ [key: string]: { pitch: number, yaw: number } }>({});
     const [taunts, setTaunts] = useState<{[key: string]: { type: string, id: number }}>({});
+    const [visualEffects, setVisualEffects] = useState<any[]>([]);
 
     const myId = socket?.id || "";
     const me = gameState?.users.find((u: User) => u.id === myId);
@@ -150,6 +151,19 @@ export default function GamePage() {
                     }
                     return prev;
                 });
+            }, 2500);
+        });
+        
+        s.on("game:visual_effect", async (payload: any) => {
+            const audio = await import("@/utils/audio");
+            if (payload.type === 'bomb_explode') audio.playExplosionSound();
+            else if (payload.type === 'roulette_die') audio.playGunshotSound();
+            else if (['mirror_cast', 'shield_cast', 'time_bend'].includes(payload.type)) audio.playMagicSound();
+            
+            const effId = Date.now() + Math.random();
+            setVisualEffects(prev => [...prev, { ...payload, id: effId }]);
+            setTimeout(() => {
+                setVisualEffects(prev => prev.filter(e => e.id !== effId));
             }, 2500);
         });
     };
@@ -284,6 +298,7 @@ export default function GamePage() {
                 onHeadRotation={(pitch, yaw) => socket?.emit("game:head_rotation", { pitch, yaw })}
                 taunts={taunts}
                 onTaunt={(type) => socket?.emit("game:taunt", { type })}
+                visualEffects={visualEffects}
             />;
         }
         if (gameState.gameState === "ROUND_END") {
