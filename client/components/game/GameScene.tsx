@@ -192,7 +192,7 @@ export default function GameScene({
                 />
             </div>
             
-            <div className="absolute left-2 md:left-6 top-[35%] md:top-1/2 -translate-y-1/2 z-20 flex flex-col gap-2 md:gap-4 pointer-events-auto">
+            <div className="absolute left-2 md:left-[calc(25%+2.5rem)] xl:left-[450px] top-[35%] md:top-1/2 -translate-y-1/2 z-20 flex flex-col gap-2 md:gap-4 pointer-events-auto transition-all duration-300">
                 <IconButton onClick={() => handleTauntClick('fire')} disabled={tauntCooldown} className={`bg-slate-800/90 backdrop-blur-md border-2 border-red-500/60 hover:bg-red-500/30 shadow-[0_0_15px_rgba(239,68,68,0.3)] p-2 md:p-3 transition-all hover:scale-110 ${tauntCooldown ? 'opacity-50' : ''}`} title="Sinirli (Alev)"><span className="text-3xl md:text-4xl drop-shadow-lg">🔥</span></IconButton>
                 <IconButton onClick={() => handleTauntClick('party')} disabled={tauntCooldown} className={`bg-slate-800/90 backdrop-blur-md border-2 border-blue-500/60 hover:bg-blue-500/30 shadow-[0_0_15px_rgba(59,130,246,0.3)] p-2 md:p-3 transition-all hover:scale-110 ${tauntCooldown ? 'opacity-50' : ''}`} title="Sevinç (Havai Fişek)"><span className="text-3xl md:text-4xl drop-shadow-lg">🎉</span></IconButton>
                 <IconButton onClick={() => handleTauntClick('laugh')} disabled={tauntCooldown} className={`bg-slate-800/90 backdrop-blur-md border-2 border-yellow-500/60 hover:bg-yellow-500/30 shadow-[0_0_15px_rgba(234,179,8,0.3)] p-2 md:p-3 transition-all hover:scale-110 ${tauntCooldown ? 'opacity-50' : ''}`} title="Gülme"><span className="text-3xl md:text-4xl drop-shadow-lg">😂</span></IconButton>

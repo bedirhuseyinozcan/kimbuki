@@ -2686,7 +2686,7 @@ export default function GameScene({
                 />
             </div>
             
-            <div className="absolute left-2 md:left-6 top-[35%] md:top-1/2 -translate-y-1/2 z-20 flex flex-col gap-2 md:gap-4 pointer-events-auto">
+            <div className="absolute left-2 md:left-[calc(25%+2.5rem)] xl:left-[450px] top-[35%] md:top-1/2 -translate-y-1/2 z-20 flex flex-col gap-2 md:gap-4 pointer-events-auto transition-all duration-300">
                 <IconButton onClick={() => handleTauntClick('fire')} disabled={tauntCooldown} className={`bg-slate-800/90 backdrop-blur-md border-2 border-red-500/60 hover:bg-red-500/30 shadow-[0_0_15px_rgba(239,68,68,0.3)] p-2 md:p-3 transition-all hover:scale-110 ${tauntCooldown ? 'opacity-50' : ''}`} title="Sinirli (Alev)"><span className="text-3xl md:text-4xl drop-shadow-lg">🔥</span></IconButton>
                 <IconButton onClick={() => handleTauntClick('party')} disabled={tauntCooldown} className={`bg-slate-800/90 backdrop-blur-md border-2 border-blue-500/60 hover:bg-blue-500/30 shadow-[0_0_15px_rgba(59,130,246,0.3)] p-2 md:p-3 transition-all hover:scale-110 ${tauntCooldown ? 'opacity-50' : ''}`} title="Sevinç (Havai Fişek)"><span className="text-3xl md:text-4xl drop-shadow-lg">🎉</span></IconButton>
                 <IconButton onClick={() => handleTauntClick('laugh')} disabled={tauntCooldown} className={`bg-slate-800/90 backdrop-blur-md border-2 border-yellow-500/60 hover:bg-yellow-500/30 shadow-[0_0_15px_rgba(234,179,8,0.3)] p-2 md:p-3 transition-all hover:scale-110 ${tauntCooldown ? 'opacity-50' : ''}`} title="Gülme"><span className="text-3xl md:text-4xl drop-shadow-lg">😂</span></IconButton>
@@ -2765,28 +2765,26 @@ export default function GameScene({
                         </div>
                     )}
 
-                    {gameState.resolvedQuestionsThisTurn && gameState.resolvedQuestionsThisTurn.length > 0 && (
+                    {me?.lastQuestion && (
                         <div className="mt-4 flex flex-col gap-3 overflow-y-auto custom-scrollbar max-h-[200px] pr-2">
-                            {gameState.resolvedQuestionsThisTurn.map((q, index) => (
-                                <div key={index} className="p-3 rounded-xl border bg-cyan-900/30 border-cyan-500/30">
-                                    <h4 className="font-bold text-sm text-cyan-400 mb-1">{index + 1}. Soru</h4>
-                                    <p className="text-sm font-bold text-slate-200 mb-2 break-words break-all">"{q.question}"</p>
-                                    <div className="flex gap-2 text-xs flex-wrap">
-                                        {Object.entries(q.votes).map(([voterId, vote]) => {
-                                            const voter = gameState.users.find(u => u.id === voterId);
-                                            if (!voter) return null;
-                                            const voteColor = vote === 'yes' ? 'text-green-400' : vote === 'no' ? 'text-red-400' : 'text-yellow-400';
-                                            const voteText = vote === 'yes' ? 'Evet' : vote === 'no' ? 'Hayır' : 'Bazen';
-                                            return (
-                                                <div key={voterId} className="bg-slate-800/80 px-2 py-1 rounded border border-slate-700">
-                                                    <span className="text-slate-400 mr-1">{voter.name}:</span>
-                                                    <span className={`font-bold ${voteColor}`}>{voteText}</span>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
+                            <div className="p-3 rounded-xl border bg-cyan-900/30 border-cyan-500/30">
+                                <h4 className="font-bold text-sm text-cyan-400 mb-1">Son Sorduğum Soru</h4>
+                                <p className="text-sm font-bold text-slate-200 mb-2 break-words break-all">"{me.lastQuestion.question}"</p>
+                                <div className="flex gap-2 text-xs flex-wrap">
+                                    {Object.entries(me.lastQuestion.votes).map(([voterId, vote]) => {
+                                        const voter = gameState.users.find((u: any) => u.id === voterId);
+                                        if (!voter) return null;
+                                        const voteColor = vote === 'yes' ? 'text-green-400' : vote === 'no' ? 'text-red-400' : 'text-yellow-400';
+                                        const voteText = vote === 'yes' ? 'Evet' : vote === 'no' ? 'Hayır' : 'Bazen';
+                                        return (
+                                            <div key={voterId} className="bg-slate-800/80 px-2 py-1 rounded border border-slate-700">
+                                                <span className="text-slate-400 mr-1">{voter.name}:</span>
+                                                <span className={`font-bold ${voteColor}`}>{voteText}</span>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
-                            ))}
+                            </div>
                         </div>
                     )}
                 </div>
@@ -3473,7 +3471,7 @@ function AvatarModel({ url, isWinner, targetRot }: { url: string, isWinner: bool
                 }
                 const initRot = bone.userData.initialRotation;
                 bone.rotation.y = THREE.MathUtils.lerp(bone.rotation.y, initRot.y + targetRot.yaw, 5 * delta);
-                bone.rotation.x = THREE.MathUtils.lerp(bone.rotation.x, initRot.x + targetRot.pitch, 5 * delta);
+                bone.rotation.x = THREE.MathUtils.lerp(bone.rotation.x, initRot.x - targetRot.pitch, 5 * delta);
             } else if (groupRef.current) {
                 groupRef.current.rotation.y = THREE.MathUtils.lerp(groupRef.current.rotation.y, targetRot.yaw, 5 * delta);
             }
@@ -3895,6 +3893,7 @@ export type User = {
     extraQuestionChain?: boolean;
     silencedTurns?: number;
     extraQuestions?: number;
+    lastQuestion?: any;
     questionsAskedThisTurn?: number;
     assignedWord: string | null;
     lives: number;
@@ -5822,6 +5821,7 @@ class Room {
         }
 
         if (!this.resolvedQuestionsThisTurn) this.resolvedQuestionsThisTurn = []; 
+        if (asker) asker.lastQuestion = this.activeQuestion;
         this.resolvedQuestionsThisTurn.push(this.activeQuestion);
         this.activeQuestion = null;
         if (this.questionTimer) {
@@ -5959,6 +5959,7 @@ class Room {
                     });
                 } else {
                     nextUser.questionsAskedThisTurn = 0;
+                    nextUser.lastQuestion = null;
                     foundNext = true;
                     break; 
                 }
@@ -6047,6 +6048,7 @@ class Room {
                 silencedTurns: u.silencedTurns,
                 extraQuestions: u.extraQuestions || 0,
                 questionsAskedThisTurn: u.questionsAskedThisTurn || 0,
+                lastQuestion: u.lastQuestion,
                 assignedWord: (this.gameState === "ROUND_END" || u.id !== user.id) ? u.assignedWord : null
             }));
 
