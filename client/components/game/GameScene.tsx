@@ -387,13 +387,11 @@ export default function GameScene({
                                     </motion.div>
                                 )}
 
-                                {gameState.isBettingEnabled && (
-                                    <motion.div whileHover={{ scale: !gameState.hasObjectionUsed ? 1.05 : 1 }} whileTap={{ scale: !gameState.hasObjectionUsed ? 0.95 : 1 }} className="w-full mt-4">
-                                        <Button variant="outlined" color="error" size="medium" fullWidth onClick={onStartObjection} disabled={gameState.hasObjectionUsed || isRussianRoulette} className={`py-2 rounded-xl border-2 font-bold ${!gameState.hasObjectionUsed && !isRussianRoulette ? 'border-red-500/80 text-red-400 shadow-[0_0_15px_rgba(239,68,68,0.2)] hover:bg-red-500/20' : 'opacity-50'}`}>
-                                            🚨 ŞİKEYE İTİRAZ ET {gameState.hasObjectionUsed && '(Kullanıldı)'}
-                                        </Button>
-                                    </motion.div>
-                                )}
+                                <motion.div whileHover={{ scale: !gameState.hasObjectionUsed ? 1.05 : 1 }} whileTap={{ scale: !gameState.hasObjectionUsed ? 0.95 : 1 }} className="w-full mt-4">
+                                    <Button variant="outlined" color="error" size="medium" fullWidth onClick={onStartObjection} disabled={gameState.hasObjectionUsed || isRussianRoulette} className={`py-2 rounded-xl border-2 font-bold ${!gameState.hasObjectionUsed && !isRussianRoulette ? 'border-red-500/80 text-red-400 shadow-[0_0_15px_rgba(239,68,68,0.2)] hover:bg-red-500/20' : 'opacity-50'}`}>
+                                        🚨 ŞİKEYE İTİRAZ ET {gameState.hasObjectionUsed && '(Kullanıldı)'}
+                                    </Button>
+                                </motion.div>
                             </div>
                         </div>
                     )}

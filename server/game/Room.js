@@ -444,7 +444,7 @@ class Room {
     }
 
     startObjection(userId) {
-        if (!this.isBettingEnabled || this.objection || this.gameState !== "PLAYING" || this.hasObjectionUsed) return;
+        if (this.objection || this.gameState !== "PLAYING" || this.hasObjectionUsed) return;
         
         const initiator = this.users.find(u => u.id === userId);
         if (!initiator) return;
@@ -499,12 +499,16 @@ class Room {
         
         const User = require('../models/User');
         if (yesVotes >= majority) {
-            for (let u of this.users) {
-                if (u.dbId) {
-                    await User.findByIdAndUpdate(u.dbId, { $inc: { gold: this.betAmount } }).catch(err => console.error(err));
+            if (this.isBettingEnabled) {
+                for (let u of this.users) {
+                    if (u.dbId) {
+                        await User.findByIdAndUpdate(u.dbId, { $inc: { gold: this.betAmount } }).catch(err => console.error(err));
+                    }
                 }
+                this.io.to(this.code).emit("game:error", { message: `🚨 Şike itirazı kabul edildi! Oyun iptal edildi, herkese ${this.betAmount} Altın iade edildi.` });
+            } else {
+                this.io.to(this.code).emit("game:error", { message: `🚨 Çoğunluk kararı sağlandı! Eğlenceyi sabote edenler olduğu için oyun iptal edildi.` });
             }
-            this.io.to(this.code).emit("game:error", { message: `🚨 Şike itirazı kabul edildi! Oyun iptal edildi, herkese ${this.betAmount} Altın iade edildi.` });
             
             this.objection = null;
             if (this.timer) clearTimeout(this.timer);
