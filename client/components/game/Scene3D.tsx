@@ -268,9 +268,14 @@ function PlayerNode({ u, index, totalUsers, isCurrentTurn, isMe, isWinner, activ
             {myEffects.map((eff: any) => {
                 if (eff.type === 'bomb_explode') return <ParticleBurst key={eff.id} color="#ef4444" />;
                 if (eff.type === 'roulette_die') return <ParticleBurst key={eff.id} color="#000000" />;
+                if (eff.type === 'mind_wipe') return <ParticleBurst key={eff.id} color="#a855f7" />;
                 if (eff.type === 'mirror_cast' || eff.type === 'shield_cast') return <ParticleBurst key={eff.id} color="#06b6d4" />;
                 if (eff.type === 'time_bend') return <RingBurst key={eff.id} color="#eab308" />;
                 if (eff.type === 'roulette_start') return <RingBurst key={eff.id} color="#dc2626" />;
+                if (eff.type === 'blood_tie') return <RingBurst key={eff.id} color="#ef4444" />;
+                if (eff.type === 'silence_cast') return <RingBurst key={eff.id} color="#71717a" />;
+                if (eff.type === 'extra_ammo') return <ParticleBurst key={eff.id} color="#eab308" />;
+                if (eff.type === 'letter_reveal') return <RingBurst key={eff.id} color="#22c55e" />;
                 return null;
             })}
 

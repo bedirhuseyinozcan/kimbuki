@@ -956,12 +956,14 @@ class Room {
             case 1: 
                 this.addChatLog({ system: true, message: `🔍 ${user.name}, Harf Açıcı kullanarak gizli bir ipucu elde etti!`, timestamp: Date.now() });
                 this.openLettersForUser(user, 1);
+                this.io.to(this.code).emit("game:visual_effect", { type: 'letter_reveal', targetId: user.id });
                 jokerConsumed = true;
                 break;
             case 2: 
                 user.extraQuestions = 1;
                 user.extraQuestionChain = true;
                 this.addChatLog({ system: true, message: `🔫 ${user.name}, Çift Şarjör kullandı! (Ekstra +1 soru hakkı kazandı ve aldığı her 'Evet' oyunda yeni bir hak kazanacak!)`, timestamp: Date.now() });
+                this.io.to(this.code).emit("game:visual_effect", { type: 'extra_ammo', targetId: user.id });
                 jokerConsumed = true;
                 break;
             case 3: 
@@ -970,6 +972,7 @@ class Room {
                     if (silenceTarget) {
                         silenceTarget.silencedTurns = 2;
                         this.addChatLog({ system: true, message: `🤫 Susturucu kullanıldı! ${silenceTarget.name}, 2 tur boyunca susturuldu.`, timestamp: Date.now() });
+                        this.io.to(this.code).emit("game:visual_effect", { type: 'silence_cast', targetId: silenceTarget.id });
                         jokerConsumed = true;
                     }
                 }
@@ -1010,6 +1013,7 @@ class Room {
                             target.assignedWord = cleanWord; 
                             this.addChatLog({ system: true, message: `🧠 Hafıza Silici kullanıldı! ${target.name}'in kelimesi acımasızca değiştirildi!`, timestamp: Date.now() });
                             target.revealedLetters = [];
+                            this.io.to(this.code).emit("game:visual_effect", { type: 'mind_wipe', targetId: target.id });
                         }
                         jokerConsumed = true;
                     }
@@ -1019,6 +1023,8 @@ class Room {
                 if (targetId && typeof targetId === 'string') {
                     user.bloodTieTarget = targetId;
                     this.addChatLog({ system: true, message: `🩸 Kan Bağı kullanıldı! ${user.name} hedefini seçti, kaderleri artık bir!`, timestamp: Date.now() });
+                    this.io.to(this.code).emit("game:visual_effect", { type: 'blood_tie', targetId: targetId });
+                    this.io.to(this.code).emit("game:visual_effect", { type: 'blood_tie', targetId: user.id });
                     jokerConsumed = true;
                 }
                 break;
