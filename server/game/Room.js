@@ -691,21 +691,27 @@ class Room {
             if (user.timeBomb) {
                 const caster = this.users.find(c => c.id === user.timeBomb.casterId);
                 if (caster && caster.status === 'playing' && caster.id !== user.id) {
+                    let dmg = 2;
+                    let shielded = false;
                     if (caster.shieldActive) {
+                        shielded = true;
                         caster.shieldActive = false;
+                        dmg -= 1;
                         this.io.to(this.code).emit("game:visual_effect", { type: 'shield_cast', targetId: caster.id });
-                        this.io.to(this.code).emit("game:visual_effect", { type: 'bomb_explode', targetId: caster.id });
-                        this.addChatLog({ system: true, message: `🛡️ 💥 İADE! ${user.name} bombayı bildi ancak ${caster.name} kalkanı sayesinde patlamadan kurtuldu!`, timestamp: Date.now() });
+                    }
+                    caster.lives -= dmg;
+                    this.io.to(this.code).emit("game:visual_effect", { type: 'bomb_explode', targetId: caster.id });
+                    
+                    if (shielded) {
+                        this.addChatLog({ system: true, message: `🛡️ 💥 İADE! ${user.name} bombayı bildi! ${caster.name}'in kalkanı kırıldı ama yine de 1 can kaybetti!`, timestamp: Date.now() });
                     } else {
-                        caster.lives -= 2;
-                        this.io.to(this.code).emit("game:visual_effect", { type: 'bomb_explode', targetId: caster.id });
                         this.addChatLog({ system: true, message: `🔄💥 İADE! ${user.name} kelimesini bildi ve bombayı ${caster.name}'e geri fırlatarak patlattı! (-2 Can)`, timestamp: Date.now() });
-                        if (caster.lives <= 0) {
-                            caster.status = 'spectator';
-                            caster.timeBomb = null;
-                            caster.bloodTieTarget = null;
-                            this.addChatLog({ system: true, message: `💀 ${caster.name} kendi bombasıyla elendi! Kelimesi: ${caster.assignedWord}`, timestamp: Date.now() });
-                        }
+                    }
+                    if (caster.lives <= 0) {
+                        caster.status = 'spectator';
+                        caster.timeBomb = null;
+                        caster.bloodTieTarget = null;
+                        this.addChatLog({ system: true, message: `💀 ${caster.name} kendi bombasıyla elendi! Kelimesi: ${caster.assignedWord}`, timestamp: Date.now() });
                     }
                 } else if (caster && caster.id === user.id) {
                     this.addChatLog({ system: true, message: `💣 ${user.name} kalkanından seken kendi bombasını başarıyla imha etti!`, timestamp: Date.now() });
@@ -830,43 +836,36 @@ class Room {
                 this.broadcastState();
             }
         } else {
-            if (isRussianRoulette) {
-                if (user.shieldActive) {
-                    user.shieldActive = false;
-                    user.russianRouletteActive = false;
-                    this.io.to(this.code).emit("game:visual_effect", { type: 'shield_cast', targetId: user.id });
-                    this.addChatLog({ system: true, message: `🛡️ ${user.name} Rus Ruleti'nde yanlış tahminde bulundu ama Gizli Kalkanı hayatını kurtardı!`, timestamp: Date.now() });
-                } else {
-                    user.lives = 0;
-                    this.io.to(this.code).emit("game:visual_effect", { type: 'roulette_die', targetId: user.id });
-                }
-            } else {
-                if (user.shieldActive) {
-                    user.shieldActive = false;
-                    this.io.to(this.code).emit("game:visual_effect", { type: 'shield_cast', targetId: user.id });
-                    this.addChatLog({ system: true, message: `🛡️ ${user.name} yanlış bildiği için can kaybedecekti ancak Gizli Kalkanı onu korudu!`, timestamp: Date.now() });
-                } else {
-                    user.lives -= 1;
-                }
+            let dmg = isRussianRoulette ? 3 : 1;
+            let shielded = false;
+            if (user.shieldActive) {
+                shielded = true;
+                user.shieldActive = false;
+                dmg -= 1;
+                this.io.to(this.code).emit("game:visual_effect", { type: 'shield_cast', targetId: user.id });
             }
+
+            user.lives -= dmg;
+            if (isRussianRoulette) user.russianRouletteActive = false;
 
             if (user.lives <= 0) {
                 user.status = 'spectator';
                 user.bloodTieTarget = null;
                 user.timeBomb = null;
-                this.addChatLog({
-                    system: true,
-                    message: (isRussianRoulette && !user.shieldActive)
-                        ? `💀 RUS RULETİ PATLADI! ${user.name} yanlış bildi ve anında elendi! Kelimesi: ${user.assignedWord}`
-                        : `${user.name} tüm tahmin haklarını kaybetti ve izleyici oldu! Kelimesi: ${user.assignedWord}`,
-                    timestamp: Date.now()
-                });
-            } else if (!user.shieldActive) {
-                this.addChatLog({
-                    system: true,
-                    message: `${user.name} yanlış tahminde bulundu! (${guess}) (Kalan Can: ${user.lives})`,
-                    timestamp: Date.now()
-                });
+                if (isRussianRoulette) {
+                    this.io.to(this.code).emit("game:visual_effect", { type: 'roulette_die', targetId: user.id });
+                    this.addChatLog({ system: true, message: `💀 RUS RULETİ PATLADI! ${user.name} yanlış bildi ve elendi! Kelimesi: ${user.assignedWord}`, timestamp: Date.now() });
+                } else {
+                    this.addChatLog({ system: true, message: `💀 ${user.name} tüm tahmin haklarını kaybetti ve izleyici oldu! Kelimesi: ${user.assignedWord}`, timestamp: Date.now() });
+                }
+            } else {
+                if (isRussianRoulette) {
+                    this.addChatLog({ system: true, message: `🛡️ ${user.name} Rus Ruleti'nde yanlış bildi! Kalkanı parçalandı ve ağır yaralandı ama yaşıyor! (Kalan Can: ${user.lives})`, timestamp: Date.now() });
+                } else if (shielded) {
+                    this.addChatLog({ system: true, message: `🛡️ ${user.name} yanlış tahminde bulundu! Gizli Kalkanı kırılarak onu korudu!`, timestamp: Date.now() });
+                } else {
+                    this.addChatLog({ system: true, message: `${user.name} yanlış tahminde bulundu! (${guess}) (Kalan Can: ${user.lives})`, timestamp: Date.now() });
+                }
             }
 
             const playingUsers = this.users.filter(u => u.status === 'playing');
@@ -1198,12 +1197,15 @@ class Room {
                     this.addChatLog({ system: true, message: `🩸 Kan Bağı: Bağlı olduğun oyuncu EVET aldı! ${u.name}'in gizli bir harfi açıldı.`, timestamp: Date.now() });
                     this.openLettersForUser(u, 1);
                 } else if (isNoMajority) {
+                    let dmg = 1;
                     if (u.shieldActive) {
                         u.shieldActive = false;
+                        dmg -= 1;
                         this.io.to(this.code).emit("game:visual_effect", { type: 'shield_cast', targetId: u.id });
                         this.addChatLog({ system: true, message: `🛡️ 🩸 Kan Bağı: ${u.name} can kaybedecekti ancak Gizli Kalkanı onu korudu!`, timestamp: Date.now() });
-                    } else {
-                        u.lives -= 1;
+                    }
+                    u.lives -= dmg;
+                    if (dmg > 0) {
                         if (u.lives <= 0) {
                             u.status = 'spectator';
                             u.bloodTieTarget = null;
@@ -1255,24 +1257,32 @@ class Room {
             const prevUser = this.users[this.currentTurnIndex];
             if (prevUser && prevUser.status === 'playing') {
                 if (prevUser.russianRouletteActive) {
+                    let dmg = 3;
+                    let shielded = false;
                     if (prevUser.shieldActive) {
+                        shielded = true;
                         prevUser.shieldActive = false;
-                        prevUser.russianRouletteActive = false;
+                        dmg -= 1;
                         this.io.to(this.code).emit("game:visual_effect", { type: 'shield_cast', targetId: prevUser.id });
-                        this.addChatLog({ system: true, message: `🛡️ ${prevUser.name} Rus Ruleti süresini aştı ama Gizli Kalkanı onu ipten aldı!`, timestamp: Date.now() });
-                    } else {
-                        prevUser.lives = 0;
+                    }
+                    
+                    prevUser.lives -= dmg;
+                    prevUser.russianRouletteActive = false;
+                    
+                    if (prevUser.lives <= 0) {
                         prevUser.status = 'spectator';
                         prevUser.bloodTieTarget = null;
                         prevUser.timeBomb = null;
                         this.io.to(this.code).emit("game:visual_effect", { type: 'roulette_die', targetId: prevUser.id });
                         this.addChatLog({ system: true, message: `💀 ${prevUser.name} Rus Ruleti süresini aştı ve elendi!`, timestamp: Date.now() });
-                        
-                        const activePlayers = this.users.filter(x => x.status === 'playing');
-                        if (activePlayers.length <= 1) {
-                            this.endGame();
-                            return;
-                        }
+                    } else {
+                        this.addChatLog({ system: true, message: `🛡️ ${prevUser.name} Rus Ruleti süresini aştı! Kalkanı parçalandı ve ağır hasar aldı ama yaşıyor!`, timestamp: Date.now() });
+                    }
+                    
+                    const activePlayers = this.users.filter(x => x.status === 'playing');
+                    if (activePlayers.length <= 1) {
+                        this.endGame();
+                        return;
                     }
                 }
                 prevUser.extraQuestionChain = false;
@@ -1299,22 +1309,29 @@ class Room {
                             if (u.timeBomb) {
                                 u.timeBomb.roundsLeft--;
                                 if (u.timeBomb.roundsLeft <= 0) {
+                                    let dmg = 2;
+                                    let shielded = false;
                                     if (u.shieldActive) {
+                                        shielded = true;
                                         u.shieldActive = false;
-                                        u.timeBomb = null;
+                                        dmg -= 1;
                                         this.io.to(this.code).emit("game:visual_effect", { type: 'shield_cast', targetId: u.id });
-                                        this.io.to(this.code).emit("game:visual_effect", { type: 'bomb_explode', targetId: u.id });
-                                        this.addChatLog({ system: true, message: `🛡️ 💥 GÜM! Saatli Bomba patladı ancak ${u.name}'in Gizli Kalkanı hasarı tamamen emdi!`, timestamp: Date.now() });
+                                    }
+                                    
+                                    u.lives -= dmg;
+                                    u.timeBomb = null;
+                                    this.io.to(this.code).emit("game:visual_effect", { type: 'bomb_explode', targetId: u.id });
+                                    
+                                    if (shielded) {
+                                        this.addChatLog({ system: true, message: `🛡️ 💥 GÜM! Saatli Bomba patladı! ${u.name}'in kalkanı kırıldı ama yine de 1 can kaybetti! (-1 Can)`, timestamp: Date.now() });
                                     } else {
-                                        u.lives -= 2;
-                                        u.timeBomb = null;
-                                        this.io.to(this.code).emit("game:visual_effect", { type: 'bomb_explode', targetId: u.id });
                                         this.addChatLog({ system: true, message: `💥 GÜM! Süre doldu. ${u.name}'in üzerindeki Saatli Bomba patladı! (-2 Can)`, timestamp: Date.now() });
-                                        if (u.lives <= 0) {
-                                            u.status = 'spectator';
-                                            u.bloodTieTarget = null;
-                                            this.addChatLog({ system: true, message: `💀 ${u.name} bombanın etkisiyle elendi! Kelimesi: ${u.assignedWord}`, timestamp: Date.now() });
-                                        }
+                                    }
+                                    
+                                    if (u.lives <= 0) {
+                                        u.status = 'spectator';
+                                        u.bloodTieTarget = null;
+                                        this.addChatLog({ system: true, message: `💀 ${u.name} bombanın etkisiyle elendi! Kelimesi: ${u.assignedWord}`, timestamp: Date.now() });
                                     }
                                 }
                             }
