@@ -1226,6 +1226,7 @@ class Room {
         }
 
         if (!this.resolvedQuestionsThisTurn) this.resolvedQuestionsThisTurn = []; 
+        if (asker) asker.lastQuestion = this.activeQuestion;
         this.resolvedQuestionsThisTurn.push(this.activeQuestion);
         this.activeQuestion = null;
         if (this.questionTimer) {
@@ -1363,6 +1364,7 @@ class Room {
                     });
                 } else {
                     nextUser.questionsAskedThisTurn = 0;
+                    nextUser.lastQuestion = null;
                     foundNext = true;
                     break; 
                 }
@@ -1451,6 +1453,7 @@ class Room {
                 silencedTurns: u.silencedTurns,
                 extraQuestions: u.extraQuestions || 0,
                 questionsAskedThisTurn: u.questionsAskedThisTurn || 0,
+                lastQuestion: u.lastQuestion,
                 assignedWord: (this.gameState === "ROUND_END" || u.id !== user.id) ? u.assignedWord : null
             }));
 

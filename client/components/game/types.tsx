@@ -28,6 +28,7 @@ export type User = {
     extraQuestionChain?: boolean;
     silencedTurns?: number;
     extraQuestions?: number;
+    lastQuestion?: any;
     questionsAskedThisTurn?: number;
     assignedWord: string | null;
     lives: number;
