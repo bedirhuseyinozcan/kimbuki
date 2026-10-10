@@ -84,7 +84,9 @@ export const JOKERS = [
     { id: 11, name: "Sürpriz Kutu (Gümüş)", rarity: "silver", desc: "Kullandığında sana anında rastgele bir ALTIN joker verir.", requiresTarget: false, requiresWord: false },
     { id: 12, name: "Sürpriz Kutu (Altın)", rarity: "gold", desc: "Kullandığında sana anında rastgele bir PRİZMATİK joker verir.", requiresTarget: false, requiresWord: false },
     { id: 13, name: "Can Takası", rarity: "prismatic", desc: "Seçtiğin oyuncuyla canlarınızı (❤️) takas edersin. Masayı birbirine katar!", requiresTarget: true, requiresWord: false },
-    { id: 14, name: "Harf Dedektifi", rarity: "silver", desc: "Kelimende belirlediğin bir harfin olup olmadığını sorgular. Toplam 3 kez kullanılabilir (Üst üste kullanılamaz, 1 tur beklemelisin).", requiresTarget: false, requiresWord: true }
+    { id: 14, name: "Harf Dedektifi", rarity: "silver", desc: "Kelimende belirlediğin bir harfin olup olmadığını sorgular. Toplam 3 kez kullanılabilir (Üst üste kullanılamaz, 1 tur beklemelisin).", requiresTarget: false, requiresWord: true },
+    { id: 15, name: "Amnezi", rarity: "gold", desc: "Seçtiğin bir oyuncunun Not Defterindeki tüm yazıları anında siler! (Kalkan engeller)", requiresTarget: true, requiresWord: false },
+    { id: 16, name: "Telepati", rarity: "silver", desc: "Seçtiğin oyuncuyla kelimelerinizdeki tüm ortak harfleri ikinize de bildirir. (Kalkan/Ayna engellemez)", requiresTarget: true, requiresWord: false }
 ];
 
 export const AVATARS = [
