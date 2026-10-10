@@ -669,7 +669,7 @@ class Room {
         this.nextTurn();
     }
 
-    guessWord(userId, guess) {
+    async guessWord(userId, guess) {
         if (this.gameState !== "PLAYING" || typeof guess !== 'string') return;
         
         const currentUser = this.users[this.currentTurnIndex];
@@ -811,8 +811,8 @@ class Room {
                 }
             }
 
-            for (const [dbId, rewards] of Object.entries(playerRewards)) {
-                User.findOneAndUpdate(
+            const updatePromises = Object.entries(playerRewards).map(([dbId, rewards]) => {
+                return User.findOneAndUpdate(
                     { _id: dbId },
                     { $inc: { gold: rewards.gold, reputation: rewards.rep } },
                     { new: true }
@@ -826,11 +826,12 @@ class Room {
                         });
                         if (modified) {
                             userDb.markModified('quests');
-                            userDb.save().catch(e => console.error("Quest update err", e));
+                            return userDb.save().catch(e => console.error("Quest update err", e));
                         }
                     }
                 }).catch(err => console.error("Aggregated reward update error:", err));
-            }
+            });
+            await Promise.all(updatePromises);
 
             if (isRussianRoulette) {
                 this.endGame();
@@ -1012,10 +1013,16 @@ class Room {
                             if (this.mirrorWordTimer) clearTimeout(this.mirrorWordTimer);
                             this.mirrorWordTimer = setTimeout(() => {
                                 if (this.pendingMirrorWordOwner) {
+                                    const mirrorOwnerStillHere = this.users.find(u => u.id === this.pendingMirrorWordOwner && !u.disconnected);
                                     const t = this.users.find(u => u.id === this.pendingMirrorWordTarget);
                                     if (t) {
-                                        t.assignedWord = Math.random().toString(36).substring(2, 8).toUpperCase();
-                                        this.addChatLog({ system: true, message: `⏳ Ayna sahibi süresinde kelime belirlemedi! ${t.name}'in kelimesi rastgele harflere dönüştü!`, timestamp: Date.now() });
+                                        if (!mirrorOwnerStillHere) {
+                                            t.assignedWord = "BİLİNMEYEN";
+                                            this.addChatLog({ system: true, message: `⏳ Ayna sahibi oyundan koptuğu için ${t.name}'in kelimesi sıfırlandı!`, timestamp: Date.now() });
+                                        } else {
+                                            t.assignedWord = Math.random().toString(36).substring(2, 8).toUpperCase();
+                                            this.addChatLog({ system: true, message: `⏳ Ayna sahibi süresinde kelime belirlemedi! ${t.name}'in kelimesi rastgele harflere dönüştü!`, timestamp: Date.now() });
+                                        }
                                         this.broadcastState();
                                     }
                                     this.pendingMirrorWordOwner = null;

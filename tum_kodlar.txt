@@ -2613,7 +2613,7 @@ export default function GameScene({
     const [questionTimeLeft, setQuestionTimeLeft] = useState(0);
     const [questionDialogOpen, setQuestionDialogOpen] = useState(false);
     const [questionInput, setQuestionInput] = useState("");
-    const [activeBubbles, setActiveBubbles] = useState<{[key:string]: string}>({});
+    const [activeBubbles, setActiveBubbles] = useState<{[key:string]: { text: string, id: string }}>({});
     const [jokerGuideOpen, setJokerGuideOpen] = useState(false);
 
     const [jokerDialogOpen, setJokerDialogOpen] = useState(false);
@@ -2718,12 +2718,16 @@ export default function GameScene({
             if (gameState.chatHistory.length > 0) {
                 const lastMsg = gameState.chatHistory[gameState.chatHistory.length - 1];
                 if (!lastMsg.system && lastMsg.userId) {
-                    setActiveBubbles(prev => ({ ...prev, [lastMsg.userId]: lastMsg.message }));
+                    const bubbleId = Date.now().toString() + Math.random().toString();
+                    setActiveBubbles(prev => ({ ...prev, [lastMsg.userId]: { text: lastMsg.message, id: bubbleId } }));
                     setTimeout(() => {
                         setActiveBubbles(prev => {
-                            const next = { ...prev };
-                            if (next[lastMsg.userId] === lastMsg.message) delete next[lastMsg.userId];
-                            return next;
+                            if (prev[lastMsg.userId]?.id === bubbleId) {
+                                const next = { ...prev };
+                                delete next[lastMsg.userId];
+                                return next;
+                            }
+                            return prev;
                         });
                     }, 4000);
                 }
@@ -3900,7 +3904,7 @@ export default function Scene3D({ gameState, myId, activeBubbles, headRotations,
                         isCurrentTurn={u.id === gameState.currentTurnUserId} 
                         isMe={u.id === myId} 
                         isWinner={gameState.winners.includes(u.id)} 
-                        activeBubble={activeBubbles[u.id]}
+                        activeBubble={activeBubbles[u.id]?.text}
                         gameState={gameState}
                         headRotations={headRotations}
                         taunt={taunts?.[u.id]}
@@ -4533,6 +4537,7 @@ class GameManager {
     constructor(io) {
         this.io = io;
         this.rooms = new Map();
+        this.creationRateLimiter = new Map();
     }
 
     handleConnection(socket) {
@@ -4604,6 +4609,17 @@ class GameManager {
 
     async handleCreateRoom(socket, name, userId, avatar, pedestal, nameColor, title, cb) {
         try {
+            const clientIP = socket.handshake.address;
+            const now = Date.now();
+            if (this.creationRateLimiter.has(clientIP)) {
+                const lastTime = this.creationRateLimiter.get(clientIP);
+                if (now - lastTime < 5000) { 
+                    cb?.({ ok: false, error: "Lütfen yavaşlayın! Kısa sürede çok fazla oda kurdunuz." });
+                    return;
+                }
+            }
+            this.creationRateLimiter.set(clientIP, now);
+
             const code = Math.random().toString(36).slice(2, 8).toUpperCase();
             const room = new Room(code, this.io);
             this.rooms.set(code, room);
@@ -5456,7 +5472,7 @@ class Room {
         this.nextTurn();
     }
 
-    guessWord(userId, guess) {
+    async guessWord(userId, guess) {
         if (this.gameState !== "PLAYING" || typeof guess !== 'string') return;
         
         const currentUser = this.users[this.currentTurnIndex];
@@ -5598,8 +5614,8 @@ class Room {
                 }
             }
 
-            for (const [dbId, rewards] of Object.entries(playerRewards)) {
-                User.findOneAndUpdate(
+            const updatePromises = Object.entries(playerRewards).map(([dbId, rewards]) => {
+                return User.findOneAndUpdate(
                     { _id: dbId },
                     { $inc: { gold: rewards.gold, reputation: rewards.rep } },
                     { new: true }
@@ -5613,11 +5629,12 @@ class Room {
                         });
                         if (modified) {
                             userDb.markModified('quests');
-                            userDb.save().catch(e => console.error("Quest update err", e));
+                            return userDb.save().catch(e => console.error("Quest update err", e));
                         }
                     }
                 }).catch(err => console.error("Aggregated reward update error:", err));
-            }
+            });
+            await Promise.all(updatePromises);
 
             if (isRussianRoulette) {
                 this.endGame();
@@ -5799,10 +5816,16 @@ class Room {
                             if (this.mirrorWordTimer) clearTimeout(this.mirrorWordTimer);
                             this.mirrorWordTimer = setTimeout(() => {
                                 if (this.pendingMirrorWordOwner) {
+                                    const mirrorOwnerStillHere = this.users.find(u => u.id === this.pendingMirrorWordOwner && !u.disconnected);
                                     const t = this.users.find(u => u.id === this.pendingMirrorWordTarget);
                                     if (t) {
-                                        t.assignedWord = Math.random().toString(36).substring(2, 8).toUpperCase();
-                                        this.addChatLog({ system: true, message: `⏳ Ayna sahibi süresinde kelime belirlemedi! ${t.name}'in kelimesi rastgele harflere dönüştü!`, timestamp: Date.now() });
+                                        if (!mirrorOwnerStillHere) {
+                                            t.assignedWord = "BİLİNMEYEN";
+                                            this.addChatLog({ system: true, message: `⏳ Ayna sahibi oyundan koptuğu için ${t.name}'in kelimesi sıfırlandı!`, timestamp: Date.now() });
+                                        } else {
+                                            t.assignedWord = Math.random().toString(36).substring(2, 8).toUpperCase();
+                                            this.addChatLog({ system: true, message: `⏳ Ayna sahibi süresinde kelime belirlemedi! ${t.name}'in kelimesi rastgele harflere dönüştü!`, timestamp: Date.now() });
+                                        }
                                         this.broadcastState();
                                     }
                                     this.pendingMirrorWordOwner = null;
