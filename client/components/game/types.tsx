@@ -33,6 +33,8 @@ export type User = {
     assignedWord: string | null;
     lives: number;
     disconnected?: boolean;
+    detectiveUses?: number;
+    lastDetectiveRound?: number;
 };
 
 export type GameState = {
@@ -80,7 +82,9 @@ export const JOKERS = [
     { id: 9, name: "Gizli Kalkan", rarity: "silver", desc: "Gizlice basılır. Bir sonraki can kaybını (tahmin/bomba) engeller.", requiresTarget: false, requiresWord: false },
     { id: 10, name: "İpucu Tartısı", rarity: "silver", desc: "Gizlice bir hedef seç. Senin kelimenin onun kelimesinden UZUN/KISA olduğunu söyler.", requiresTarget: true, requiresWord: false },
     { id: 11, name: "Sürpriz Kutu (Gümüş)", rarity: "silver", desc: "Kullandığında sana anında rastgele bir ALTIN joker verir.", requiresTarget: false, requiresWord: false },
-    { id: 12, name: "Sürpriz Kutu (Altın)", rarity: "gold", desc: "Kullandığında sana anında rastgele bir PRİZMATİK joker verir.", requiresTarget: false, requiresWord: false }
+    { id: 12, name: "Sürpriz Kutu (Altın)", rarity: "gold", desc: "Kullandığında sana anında rastgele bir PRİZMATİK joker verir.", requiresTarget: false, requiresWord: false },
+    { id: 13, name: "Can Takası", rarity: "prismatic", desc: "Seçtiğin oyuncuyla canlarınızı (❤️) takas edersin. Masayı birbirine katar!", requiresTarget: true, requiresWord: false },
+    { id: 14, name: "Harf Dedektifi", rarity: "silver", desc: "Kelimende belirlediğin bir harfin olup olmadığını sorgular. Toplam 3 kez kullanılabilir (Üst üste kullanılamaz, 1 tur beklemelisin).", requiresTarget: false, requiresWord: true }
 ];
 
 export const AVATARS = [
