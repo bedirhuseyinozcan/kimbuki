@@ -6037,8 +6037,8 @@ class Room {
                     const target = this.users.find(u => u.id === targetId);
                     if (target && target.status === 'playing' && user.assignedWord && target.assignedWord) {
                         
-                        const myLetters = [...new Set(user.assignedWord.toLocaleUpperCase("tr-TR").replace(/[^A-ZÇĞİÖŞÜ]/g, "").split(''))];
-                        const targetLetters = [...new Set(target.assignedWord.toLocaleUpperCase("tr-TR").replace(/[^A-ZÇĞİÖŞÜ]/g, "").split(''))];
+                        const myLetters = [...new Set(user.assignedWord.toLocaleUpperCase("tr-TR").replace(/[^A-ZÇĞİÖŞÜ0-9]/g, "").split(''))];
+                        const targetLetters = [...new Set(target.assignedWord.toLocaleUpperCase("tr-TR").replace(/[^A-ZÇĞİÖŞÜ0-9]/g, "").split(''))];
                         
                         const commonLetters = myLetters.filter(l => targetLetters.includes(l));
 
