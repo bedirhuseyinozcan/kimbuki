@@ -1151,7 +1151,7 @@ class Room {
                 }
                 
                 const letter = payload.newWord.trim().toLocaleUpperCase("tr-TR").charAt(0);
-                if (!/[A-ZÇĞİÖŞÜ]/.test(letter)) {
+                if (!/[A-ZÇĞİÖŞÜ0-9]/.test(letter)) {
                      this.io.to(userId).emit("game:error", { message: "Lütfen geçerli bir harf girin!" });
                      break;
                 }
