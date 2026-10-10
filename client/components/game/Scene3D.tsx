@@ -415,7 +415,7 @@ export default function Scene3D({ gameState, myId, activeBubbles, headRotations,
                         isCurrentTurn={u.id === gameState.currentTurnUserId} 
                         isMe={u.id === myId} 
                         isWinner={gameState.winners.includes(u.id)} 
-                        activeBubble={activeBubbles[u.id]}
+                        activeBubble={activeBubbles[u.id]?.text}
                         gameState={gameState}
                         headRotations={headRotations}
                         taunt={taunts?.[u.id]}

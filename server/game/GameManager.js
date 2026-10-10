@@ -4,6 +4,7 @@ class GameManager {
     constructor(io) {
         this.io = io;
         this.rooms = new Map();
+        this.creationRateLimiter = new Map();
     }
 
     handleConnection(socket) {
@@ -75,6 +76,17 @@ class GameManager {
 
     async handleCreateRoom(socket, name, userId, avatar, pedestal, nameColor, title, cb) {
         try {
+            const clientIP = socket.handshake.address;
+            const now = Date.now();
+            if (this.creationRateLimiter.has(clientIP)) {
+                const lastTime = this.creationRateLimiter.get(clientIP);
+                if (now - lastTime < 5000) { 
+                    cb?.({ ok: false, error: "Lütfen yavaşlayın! Kısa sürede çok fazla oda kurdunuz." });
+                    return;
+                }
+            }
+            this.creationRateLimiter.set(clientIP, now);
+
             const code = Math.random().toString(36).slice(2, 8).toUpperCase();
             const room = new Room(code, this.io);
             this.rooms.set(code, room);

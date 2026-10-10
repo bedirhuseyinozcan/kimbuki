@@ -60,7 +60,7 @@ export default function GameScene({
     const [questionTimeLeft, setQuestionTimeLeft] = useState(0);
     const [questionDialogOpen, setQuestionDialogOpen] = useState(false);
     const [questionInput, setQuestionInput] = useState("");
-    const [activeBubbles, setActiveBubbles] = useState<{[key:string]: string}>({});
+    const [activeBubbles, setActiveBubbles] = useState<{[key:string]: { text: string, id: string }}>({});
     const [jokerGuideOpen, setJokerGuideOpen] = useState(false);
 
     const [jokerDialogOpen, setJokerDialogOpen] = useState(false);
@@ -165,12 +165,16 @@ export default function GameScene({
             if (gameState.chatHistory.length > 0) {
                 const lastMsg = gameState.chatHistory[gameState.chatHistory.length - 1];
                 if (!lastMsg.system && lastMsg.userId) {
-                    setActiveBubbles(prev => ({ ...prev, [lastMsg.userId]: lastMsg.message }));
+                    const bubbleId = Date.now().toString() + Math.random().toString();
+                    setActiveBubbles(prev => ({ ...prev, [lastMsg.userId]: { text: lastMsg.message, id: bubbleId } }));
                     setTimeout(() => {
                         setActiveBubbles(prev => {
-                            const next = { ...prev };
-                            if (next[lastMsg.userId] === lastMsg.message) delete next[lastMsg.userId];
-                            return next;
+                            if (prev[lastMsg.userId]?.id === bubbleId) {
+                                const next = { ...prev };
+                                delete next[lastMsg.userId];
+                                return next;
+                            }
+                            return prev;
                         });
                     }, 4000);
                 }
