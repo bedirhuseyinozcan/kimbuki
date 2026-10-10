@@ -366,6 +366,8 @@ class Room {
             this.users[i].russianRouletteActive = false;
             this.users[i].bloodTieTarget = null;
             this.users[i].timeBomb = null;
+            this.users[i].detectiveUses = 0;
+            this.users[i].lastDetectiveRound = 0;
             this.users[i].mirrorRoundsLeft = 0;
             this.users[i].shieldActive = false;
             this.users[i].extraQuestionChain = false;
@@ -394,9 +396,9 @@ class Room {
         
         const getRandomJoker = () => {
             const r = Math.random() * 100;
-            if (r < 10) return [4, 5, 6, 7][Math.floor(Math.random() * 4)];
+            if (r < 10) return [4, 5, 6, 7, 13][Math.floor(Math.random() * 5)];
             if (r < 40) return [2, 3, 8, 12][Math.floor(Math.random() * 4)];
-            return [0, 1, 9, 10, 11][Math.floor(Math.random() * 5)];
+            return [0, 1, 9, 10, 11, 14][Math.floor(Math.random() * 6)];
         };
 
         for (let u of this.users) {
@@ -931,7 +933,7 @@ class Room {
         let targetId = payload.targetId;
         let initialTargetId = targetId; 
         
-        if (targetId === user.id && [3, 4, 5, 7, 10].includes(jokerType)) {
+        if (targetId === user.id && [3, 4, 5, 7, 10, 13].includes(jokerType)) {
             this.io.to(userId).emit("game:error", { message: "Bu jokeri kendi üzerinde kullanamazsın!" });
             return;
         }
@@ -944,7 +946,7 @@ class Room {
             }
         }
 
-        if (targetId && [3, 4, 5, 7].includes(jokerType)) {
+        if (targetId && [3, 4, 5, 7, 13].includes(jokerType)) {
             const targetUser = this.users.find(u => u.id === targetId);
             if (targetUser && targetUser.mirrorRoundsLeft > 0 && targetUser.id !== user.id) {
                 this.addChatLog({ system: true, message: `🛡️ YANSIMA! Kötü niyetli joker, gizli Ayna Kalkanı'na çarpıp ${user.name}'e geri sekti!`, timestamp: Date.now() });
@@ -1099,16 +1101,99 @@ class Room {
                 user.hasUsedJoker = false; 
                 break;
             case 12:
-                const prisJokers = [4, 5, 6, 7];
+                const prisJokers = [4, 5, 6, 7, 13];
                 user.joker = prisJokers[Math.floor(Math.random() * prisJokers.length)];
                 this.addChatLog({ system: true, privateTo: user.id, message: "Sistem (Özel): Altın Sürpriz Kutu'yu açtın ve içinden PRİZMATİK joker çıktı!", timestamp: Date.now() });
                 jokerConsumed = true;
                 user.hasUsedJoker = false;
                 break;
+            case 13: 
+                if (targetId && typeof targetId === 'string') {
+                    const target = this.users.find(u => u.id === targetId);
+                    if (target && target.status === 'playing') {
+                        
+                        if (target.id === user.id && initialTargetId !== user.id) {
+                            this.io.to(this.code).emit("game:visual_effect", { type: 'mind_wipe', targetId: user.id }); 
+                            this.addChatLog({ system: true, message: `🤡 BÜYÜ GERİ TEPTİ! Ayna yüzünden ${user.name} kendi canını kendisiyle takas etti. Joker tamamen boşa gitti!`, timestamp: Date.now() });
+                        
+                        } else if (target.shieldActive) {
+                            target.shieldActive = false;
+                            this.io.to(this.code).emit("game:visual_effect", { type: 'shield_cast', targetId: target.id });
+                            this.addChatLog({ system: true, message: `🧛♂️ ${user.name} Can Takası yapmak istedi ama ${target.name}'in Gizli Kalkanı buna engel oldu!`, timestamp: Date.now() });
+                        
+                        } else {
+                            const tempLives = user.lives;
+                            user.lives = target.lives;
+                            target.lives = tempLives;
+
+                            this.io.to(this.code).emit("game:visual_effect", { type: 'blood_tie', targetId: target.id });
+                            this.io.to(this.code).emit("game:visual_effect", { type: 'blood_tie', targetId: user.id });
+
+                            this.addChatLog({ system: true, message: `🧛♂️ İHANET! ${user.name}, ${target.name} ile canlarını takas etti!`, timestamp: Date.now() });
+
+                            if (user.lives <= 0) {
+                                user.status = 'spectator';
+                                this.addChatLog({ system: true, message: `💀 ${user.name}, canı olmayan biriyle takas yapıp kendi kendini eledi!`, timestamp: Date.now() });
+                            }
+                            if (target.lives <= 0) {
+                                target.status = 'spectator';
+                                this.addChatLog({ system: true, message: `💀 ${target.name} canı kalmadığı için elendi! Kelimesi: ${target.assignedWord}`, timestamp: Date.now() });
+                            }
+                        }
+                        jokerConsumed = true;
+                    }
+                }
+                break;
+            case 14:
+                if (!payload.newWord || typeof payload.newWord !== 'string') {
+                    this.io.to(userId).emit("game:error", { message: "Lütfen aramak istediğiniz harfi girin!" });
+                    break;
+                }
+                
+                const letter = payload.newWord.trim().toLocaleUpperCase("tr-TR").charAt(0);
+                if (!/[A-ZÇĞİÖŞÜ]/.test(letter)) {
+                     this.io.to(userId).emit("game:error", { message: "Lütfen geçerli bir harf girin!" });
+                     break;
+                }
+
+                if (user.lastDetectiveRound && (this.roundCount - user.lastDetectiveRound < 2)) {
+                     this.io.to(userId).emit("game:error", { message: "Bu jokeri tekrar kullanmak için 1 tur beklemelisin!" });
+                     break;
+                }
+
+                const myWord = (user.assignedWord || "").toLocaleUpperCase("tr-TR");
+                const count = myWord.split('').filter(c => c === letter).length;
+
+                this.addChatLog({ system: true, message: `🕵️‍♂️ ${user.name} Harf Dedektifi'ni kullandı! Kelimesinde bir harf arıyor...`, timestamp: Date.now() });
+
+                if (count > 0) {
+                     this.addChatLog({ system: true, privateTo: user.id, message: `Sistem (Özel): Harika! Kelimende '${letter}' harfi BULUNUYOR! (${count} adet)`, timestamp: Date.now() });
+                     if (!user.revealedLetters) user.revealedLetters = [];
+                     if (!user.revealedLetters.includes(letter)) {
+                         user.revealedLetters.push(letter);
+                     }
+                } else {
+                     this.addChatLog({ system: true, privateTo: user.id, message: `Sistem (Özel): Maalesef, kelimende '${letter}' harfi YOK!`, timestamp: Date.now() });
+                }
+
+                user.lastDetectiveRound = this.roundCount;
+                user.detectiveUses = (user.detectiveUses || 0) + 1;
+
+                this.io.to(this.code).emit("game:visual_effect", { type: 'letter_reveal', targetId: user.id });
+
+                if (user.detectiveUses >= 3) {
+                     this.addChatLog({ system: true, privateTo: user.id, message: `Sistem (Özel): Harf Dedektifi'nin görev süresi doldu (3/3).`, timestamp: Date.now() });
+                } else {
+                     this.addChatLog({ system: true, privateTo: user.id, message: `Sistem (Özel): Harf Dedektifi için kalan kullanım hakkın: ${3 - user.detectiveUses}`, timestamp: Date.now() });
+                }
+                jokerConsumed = true;
+                break;
         }
         
         if (jokerConsumed) {
-            if (jokerType !== 11 && jokerType !== 12) {
+            if (jokerType !== 11 && jokerType !== 12 && jokerType !== 14) {
+                user.hasUsedJoker = true;
+            } else if (jokerType === 14 && user.detectiveUses >= 3) {
                 user.hasUsedJoker = true;
             }
             if (user.dbId) {
@@ -1123,7 +1208,7 @@ class Room {
                     }
                 }).catch(err => console.error("Joker quest update error:", err));
             }
-        } else {
+        } else if (jokerType !== 14 || (user.detectiveUses === undefined || user.detectiveUses === 0)) {
             this.io.to(userId).emit("game:error", { message: "Joker geçersiz bir hedefe uygulanamadı. Jokerin iade edildi!" });
         }
 
