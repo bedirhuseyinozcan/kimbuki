@@ -397,8 +397,8 @@ class Room {
         const getRandomJoker = () => {
             const r = Math.random() * 100;
             if (r < 10) return [4, 5, 6, 7, 13][Math.floor(Math.random() * 5)];
-            if (r < 40) return [2, 3, 8, 12][Math.floor(Math.random() * 4)];
-            return [0, 1, 9, 10, 11, 14][Math.floor(Math.random() * 6)];
+            if (r < 40) return [2, 3, 8, 12, 15][Math.floor(Math.random() * 5)];
+            return [0, 1, 9, 10, 11, 14, 16][Math.floor(Math.random() * 7)];
         };
 
         for (let u of this.users) {
@@ -933,7 +933,7 @@ class Room {
         let targetId = payload.targetId;
         let initialTargetId = targetId; 
         
-        if (targetId === user.id && [3, 4, 5, 7, 10, 13].includes(jokerType)) {
+        if (targetId === user.id && [3, 4, 5, 7, 10, 13, 15, 16].includes(jokerType)) {
             this.io.to(userId).emit("game:error", { message: "Bu jokeri kendi üzerinde kullanamazsın!" });
             return;
         }
@@ -946,7 +946,7 @@ class Room {
             }
         }
 
-        if (targetId && [3, 4, 5, 7, 13].includes(jokerType)) {
+        if (targetId && [3, 4, 5, 7, 13, 15].includes(jokerType)) {
             const targetUser = this.users.find(u => u.id === targetId);
             if (targetUser && targetUser.mirrorRoundsLeft > 0 && targetUser.id !== user.id) {
                 this.addChatLog({ system: true, message: `🛡️ YANSIMA! Kötü niyetli joker, gizli Ayna Kalkanı'na çarpıp ${user.name}'e geri sekti!`, timestamp: Date.now() });
@@ -1094,7 +1094,7 @@ class Room {
                 }
                 break;
             case 11:
-                const goldJokers = [2, 3, 8, 12];
+                const goldJokers = [2, 3, 8, 12, 15];
                 user.joker = goldJokers[Math.floor(Math.random() * goldJokers.length)];
                 this.addChatLog({ system: true, privateTo: user.id, message: "Sistem (Özel): Gümüş Sürpriz Kutu'yu açtın ve içinden ALTIN joker çıktı!", timestamp: Date.now() });
                 jokerConsumed = true;
@@ -1187,6 +1187,57 @@ class Room {
                      this.addChatLog({ system: true, privateTo: user.id, message: `Sistem (Özel): Harf Dedektifi için kalan kullanım hakkın: ${3 - user.detectiveUses}`, timestamp: Date.now() });
                 }
                 jokerConsumed = true;
+                break;
+            case 15:
+                if (targetId && typeof targetId === 'string') {
+                    const target = this.users.find(u => u.id === targetId);
+                    if (target && target.status === 'playing') {
+                        if (target.shieldActive) {
+                            target.shieldActive = false;
+                            this.io.to(this.code).emit("game:visual_effect", { type: 'shield_cast', targetId: target.id });
+                            this.addChatLog({ system: true, message: `🧠 ${user.name} Amnezi kullanmak istedi ama ${target.name}'in Gizli Kalkanı buna engel oldu!`, timestamp: Date.now() });
+                        } else {
+                            this.io.to(target.id).emit("game:clear_notepad");
+                            this.io.to(this.code).emit("game:visual_effect", { type: 'mind_wipe', targetId: target.id });
+                            this.addChatLog({ system: true, message: `🧠 AMNEZİ! ${user.name}, ${target.name} isimli oyuncunun hafızasını sildi! Not defteri artık bomboş...`, timestamp: Date.now() });
+                        }
+                        jokerConsumed = true;
+                    }
+                }
+                break;
+            case 16:
+                if (targetId && typeof targetId === 'string') {
+                    const target = this.users.find(u => u.id === targetId);
+                    if (target && target.status === 'playing' && user.assignedWord && target.assignedWord) {
+                        
+                        const myLetters = [...new Set(user.assignedWord.toLocaleUpperCase("tr-TR").replace(/[^A-ZÇĞİÖŞÜ]/g, "").split(''))];
+                        const targetLetters = [...new Set(target.assignedWord.toLocaleUpperCase("tr-TR").replace(/[^A-ZÇĞİÖŞÜ]/g, "").split(''))];
+                        
+                        const commonLetters = myLetters.filter(l => targetLetters.includes(l));
+
+                        this.io.to(this.code).emit("game:visual_effect", { type: 'letter_reveal', targetId: user.id });
+                        this.io.to(this.code).emit("game:visual_effect", { type: 'letter_reveal', targetId: target.id });
+                        this.addChatLog({ system: true, message: `🤝 TELEPATİ! ${user.name} ve ${target.name} zihinlerini birleştirdi!`, timestamp: Date.now() });
+
+                        if (commonLetters.length > 0) {
+                            const commonStr = commonLetters.join(", ");
+                            this.addChatLog({ system: true, privateTo: user.id, message: `Sistem (Özel): ${target.name} ile kelimelerinizdeki ORTAK HARFLER şunlar: ${commonStr}`, timestamp: Date.now() });
+                            this.addChatLog({ system: true, privateTo: target.id, message: `Sistem (Özel): ${user.name} ile kelimelerinizdeki ORTAK HARFLER şunlar: ${commonStr}`, timestamp: Date.now() });
+                            
+                            commonLetters.forEach(char => {
+                                if (!user.revealedLetters) user.revealedLetters = [];
+                                if (!target.revealedLetters) target.revealedLetters = [];
+                                if (!user.revealedLetters.includes(char)) user.revealedLetters.push(char);
+                                if (!target.revealedLetters.includes(char)) target.revealedLetters.push(char);
+                            });
+                        } else {
+                            this.addChatLog({ system: true, privateTo: user.id, message: `Sistem (Özel): ${target.name} ile hiçbir ortak harfiniz YOK!`, timestamp: Date.now() });
+                            this.addChatLog({ system: true, privateTo: target.id, message: `Sistem (Özel): ${user.name} ile hiçbir ortak harfiniz YOK!`, timestamp: Date.now() });
+                        }
+
+                        jokerConsumed = true;
+                    }
+                }
                 break;
         }
         

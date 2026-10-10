@@ -157,6 +157,13 @@ export default function GamePage() {
             if (s) s.disconnect();
             router.push("/");
         });
+        s.on("game:clear_notepad", () => {
+            setNotepad("");
+            if (typeof window !== 'undefined') {
+                localStorage.removeItem(`kimbuki_notepad_${code}`);
+            }
+            toast.error("🧠 AMNEZİ! Biri hafızanı sildi, tüm notların kayboldu!", { autoClose: 5000, theme: "colored" });
+        });
         s.on("game:play_taunt", ({ userId, type }: any) => {
             const tauntId = Date.now();
             setTaunts(prev => ({ ...prev, [userId]: { type, id: tauntId } }));
