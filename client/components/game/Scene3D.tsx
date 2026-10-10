@@ -16,7 +16,7 @@ const PLAYER_CIRCLE_RADIUS_SMALL = 3.5;
 const PLAYER_CIRCLE_RADIUS_LARGE = 4.5;
 
 function FirstPersonCamera({ myId, users, radius, onHeadRotation }: any) {
-    const { camera } = useThree();
+    const { camera, gl } = useThree();
     const lastEmitTime = useRef(0);
     const lastEmittedRot = useRef({ pitch: 0, yaw: 0 });
     const isDragging = useRef(false);
@@ -27,12 +27,18 @@ function FirstPersonCamera({ myId, users, radius, onHeadRotation }: any) {
 
     React.useEffect(() => {
         const handleDown = (e: PointerEvent) => { 
-            if(e.isPrimary && (e.target as HTMLElement).tagName.toUpperCase() === 'CANVAS') {
+            if(e.isPrimary) {
                 isDragging.current = true; 
                 lastPos.current = { x: e.screenX, y: e.screenY };
+                (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
             }
         };
-        const handleUp = (e: PointerEvent) => { if(e.isPrimary) isDragging.current = false; };
+        const handleUp = (e: PointerEvent) => { 
+            if(e.isPrimary) {
+                isDragging.current = false; 
+                (e.target as HTMLElement).releasePointerCapture?.(e.pointerId);
+            }
+        };
         const handleMove = (e: PointerEvent) => {
             if (isDragging.current && e.isPrimary) {
                 const maxYaw = Math.PI / 2.5; 
@@ -50,17 +56,18 @@ function FirstPersonCamera({ myId, users, radius, onHeadRotation }: any) {
             }
         };
 
-        window.addEventListener('pointerdown', handleDown as EventListener);
-        window.addEventListener('pointerup', handleUp as EventListener);
-        window.addEventListener('pointercancel', handleUp as EventListener);
-        window.addEventListener('pointermove', handleMove as EventListener);
+        const target = gl.domElement;
+        target.addEventListener('pointerdown', handleDown as EventListener);
+        target.addEventListener('pointerup', handleUp as EventListener);
+        target.addEventListener('pointercancel', handleUp as EventListener);
+        target.addEventListener('pointermove', handleMove as EventListener);
         return () => {
-            window.removeEventListener('pointerdown', handleDown as EventListener);
-            window.removeEventListener('pointerup', handleUp as EventListener);
-            window.removeEventListener('pointercancel', handleUp as EventListener);
-            window.removeEventListener('pointermove', handleMove as EventListener);
+            target.removeEventListener('pointerdown', handleDown as EventListener);
+            target.removeEventListener('pointerup', handleUp as EventListener);
+            target.removeEventListener('pointercancel', handleUp as EventListener);
+            target.removeEventListener('pointermove', handleMove as EventListener);
         }
-    }, []);
+    }, [gl.domElement]);
 
     useFrame((state, delta) => {
         const myIndex = users.findIndex((u: any) => u.id === myId);
@@ -389,11 +396,11 @@ export default function Scene3D({ gameState, myId, activeBubbles, headRotations,
 
     return (
         <div className='absolute inset-0 w-full h-full z-0 pointer-events-auto'>
-            <Canvas shadows camera={{ position: [0, 4.5, 8], fov: 45 }}>
+            <Canvas shadows dpr={[1, 1.5]} camera={{ position: [0, 4.5, 8], fov: 45 }}>
                 <color attach='background' args={[isDay ? '#38bdf8' : '#0f172a']} />
                 <fog attach='fog' args={[isDay ? '#38bdf8' : '#0f172a', isDay ? 15 : 8, isDay ? 40 : 30]} />
                 <ambientLight intensity={isDay ? 0.9 : 0.4} />
-                <directionalLight castShadow position={[10, 15, 5]} intensity={isDay ? 2.2 : 1.2} color={isDay ? "#ffedd5" : "#e0f2fe"} shadow-mapSize={[2048, 2048]} />
+                <directionalLight castShadow position={[10, 15, 5]} intensity={isDay ? 2.2 : 1.2} color={isDay ? "#ffedd5" : "#e0f2fe"} shadow-mapSize={[1024, 1024]} />
                 <pointLight position={[0, 4, 0]} intensity={isDay ? 0.5 : 1.5} color={isDay ? '#eab308' : '#38bdf8'} distance={10} />
                 
                 <Suspense fallback={

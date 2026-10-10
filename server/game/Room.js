@@ -194,6 +194,22 @@ class Room {
             }, 60000);
         }
 
+        const userIndex = this.users.indexOf(user);
+        const wasCurrentTurn = this.gameState === "PLAYING" && this.currentTurnIndex === userIndex;
+        if (wasCurrentTurn && !this.activeQuestion && !this.objection) {
+            if (this.timer) clearTimeout(this.timer);
+            const remaining = this.turnStartTime + (this.turnTime * 1000) - Date.now();
+            const skipDelay = Math.max(0, Math.min(remaining, 5000));
+            this.timer = setTimeout(() => {
+                if (this.gameState === "PLAYING") {
+                    const currentUser = this.users[this.currentTurnIndex];
+                    if (currentUser && currentUser.disconnected) {
+                         this.nextTurn(true);
+                    }
+                }
+            }, skipDelay || 5000);
+        }
+
         return false;
     }
 
@@ -540,8 +556,8 @@ class Room {
         if (this.gameState !== "WORD_SELECTION" || typeof word !== 'string') return;
 
         const cleanWord = word.trim().substring(0, 50);
-        if (!cleanWord || cleanWord.length === 0) {
-            this.io.to(userId).emit("game:error", { message: "Geçersiz! Lütfen rakibiniz için kurallara uygun, mantıklı bir kelime girin." });
+        if (!cleanWord || cleanWord.length < 3 || !/^[a-zA-ZçğıöşüÇĞİÖŞÜ0-9\s]+$/.test(cleanWord)) {
+            this.io.to(userId).emit("game:error", { message: "Geçersiz! Kelime en az 3 harfli olmalı ve sadece harf/rakamlardan oluşmalıdır." });
             return;
         }
 
@@ -682,7 +698,7 @@ class Room {
 
         const normalizedTarget = (user.assignedWord || "").toLocaleLowerCase("tr-TR").replace(/[^a-z0-9çğıöşü]/g, "");
         const normalizedGuess = (guess || "").toLocaleLowerCase("tr-TR").replace(/[^a-z0-9çğıöşü]/g, "");
-        if (!normalizedGuess || normalizedGuess.length === 0) return;
+        if (!normalizedGuess || normalizedGuess.length < 3) return;
 
         const targetTokens = (user.assignedWord || "").toLocaleLowerCase("tr-TR").split(/\s+/).map(w => w.replace(/[^a-z0-9çğıöşü]/g, "")).filter(Boolean);
         const isTokenMatch = targetTokens.some(w => w === normalizedGuess && w.length >= 3);
