@@ -412,18 +412,28 @@ export default function GameScene({
                 <DialogContent>
                     <p className="text-center text-slate-600 mt-2 font-medium">{myJokerMeta?.desc}</p>
                     
-                    {myJokerMeta?.requiresTarget && (
-                        <div className="flex flex-col gap-4 mt-6">
+                    <div className="flex flex-col gap-4 mt-6">
+                        {myJokerMeta?.requiresTarget && (
                             <TextField select label="Oyuncu Seç" value={jokerTarget} onChange={e => setJokerTarget(e.target.value)}>
                                 {gameState.users.filter((u:User) => u.id !== myId && u.status === 'playing').map((u:User) => (
                                     <MenuItem key={u.id} value={u.id}>{u.name}</MenuItem>
                                 ))}
                             </TextField>
-                            {myJokerMeta?.requiresWord && (
-                                <TextField label="Yeni Kelime" value={jokerWord} onChange={e => setJokerWord(e.target.value)} />
-                            )}
-                        </div>
-                    )}
+                        )}
+                        {myJokerMeta?.requiresWord && (
+                            <TextField 
+                                label={myJokerMeta.id === 14 ? "Harf Girin" : "Yeni Kelime"} 
+                                value={jokerWord} 
+                                onChange={e => {
+                                    if (myJokerMeta.id === 14) {
+                                        setJokerWord(e.target.value.substring(0, 1));
+                                    } else {
+                                        setJokerWord(e.target.value);
+                                    }
+                                }} 
+                            />
+                        )}
+                    </div>
                 </DialogContent>
                 <DialogActions className="p-4 pt-0 justify-between">
                     <Button onClick={() => setJokerDialogOpen(false)} className="!text-slate-500">İptal</Button>

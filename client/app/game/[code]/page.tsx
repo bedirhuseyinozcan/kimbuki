@@ -17,6 +17,16 @@ import { LiveKitRoom, RoomAudioRenderer, useRoomContext } from '@livekit/compone
 import '@livekit/components-styles';
 import { useLocalParticipant } from '@livekit/components-react';
 
+if (typeof console !== 'undefined') {
+    const originalError = console.error;
+    console.error = (...args) => {
+        if (typeof args[0] === 'string' && (args[0].includes('Failed to set sink id') || args[0].includes('setSinkId error'))) {
+            return; 
+        }
+        originalError(...args);
+    };
+}
+
 function LiveKitSpeakerSync() {
     const room = useRoomContext();
     useEffect(() => {
