@@ -5,6 +5,8 @@ class GameManager {
         this.io = io;
         this.rooms = new Map();
         this.creationRateLimiter = new Map();
+        
+        setInterval(() => this.creationRateLimiter.clear(), 10 * 60 * 1000);
     }
 
     handleConnection(socket) {
