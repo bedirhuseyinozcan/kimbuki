@@ -19,10 +19,18 @@ import { InputAdornment, Avatar } from "@mui/material";
 import { toast } from 'react-toastify';
 import Logo from "@/components/Logo";
 import { AVATARS, PEDESTALS, getRankInfo, NAME_COLORS, TITLES } from "@/components/game/types";
+import { getAudioContext } from "@/utils/audio";
 
 export default function Home() {
   const [roomCode, setRoomCode] = useState("");
   const [playDialogOpen, setPlayDialogOpen] = useState(false);
+
+  const initAudio = () => {
+      const ctx = getAudioContext();
+      if (ctx && ctx.state === 'suspended') {
+          ctx.resume();
+      }
+  };
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
   const [forgotPasswordDialogOpen, setForgotPasswordDialogOpen] = useState(false);
   
@@ -369,7 +377,7 @@ export default function Home() {
                 </>
               )}
 
-              <Button variant="contained" className="bg-gradient-to-r from-violet-600 to-cyan-600 hover:from-violet-500 hover:to-cyan-500 shadow-lg shadow-violet-500/25 font-bold rounded-full px-8 py-2" onClick={() => setPlayDialogOpen(true)}>
+              <Button variant="contained" className="bg-gradient-to-r from-violet-600 to-cyan-600 hover:from-violet-500 hover:to-cyan-500 shadow-lg shadow-violet-500/25 font-bold rounded-full px-8 py-2" onClick={() => { initAudio(); setPlayDialogOpen(true); }}>
                 Oyna
               </Button>
             </div>
@@ -417,7 +425,7 @@ export default function Home() {
                 </>
             )}
 
-            <Button variant="contained" className="w-full bg-gradient-to-r from-violet-600 to-cyan-600 font-bold py-3 mt-4" onClick={() => { setPlayDialogOpen(true); setMobileMenuOpen(false); }}>
+            <Button variant="contained" className="w-full bg-gradient-to-r from-violet-600 to-cyan-600 font-bold py-3 mt-4" onClick={() => { initAudio(); setPlayDialogOpen(true); setMobileMenuOpen(false); }}>
                 Oyna
             </Button>
         </List>
@@ -455,7 +463,7 @@ export default function Home() {
               variant="contained" 
               size="large" 
               startIcon={<PlayArrowIcon />}
-              onClick={() => setPlayDialogOpen(true)}
+              onClick={() => { initAudio(); setPlayDialogOpen(true); }}
               className="bg-gradient-to-r from-violet-600 to-cyan-600 hover:from-violet-500 hover:to-cyan-500 text-lg py-3 px-8 rounded-full font-bold shadow-lg shadow-violet-500/25"
             >
               Hemen Başla

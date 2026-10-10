@@ -76,7 +76,8 @@ class GameManager {
 
     async handleCreateRoom(socket, name, userId, avatar, pedestal, nameColor, title, cb) {
         try {
-            const clientIP = socket.handshake.address;
+            const forwardedFor = socket.handshake.headers['x-forwarded-for'];
+            const clientIP = (typeof forwardedFor === 'string' ? forwardedFor.split(',')[0] : forwardedFor) || socket.handshake.address;
             const now = Date.now();
             if (this.creationRateLimiter.has(clientIP)) {
                 const lastTime = this.creationRateLimiter.get(clientIP);
