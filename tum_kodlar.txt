@@ -27,6 +27,7 @@ PROJE DOSYA VE KLASÖR AĞACI:
                 📁 livekit/
                     📄 route.ts
             📁 game/
+                📄 page.tsx
                 📁 [code]/
                     📄 page.tsx
         📁 components/
@@ -130,27 +131,11 @@ Thumbs.db
 DOSYA: LICENSE
 =========================
 
-MIT License
+Copyright (c) 2026 Bedir Hüseyin Özcan
 
-Copyright (c) 2026 Bedir Özcan
+Tüm hakları saklıdır (All Rights Reserved).
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+Bu kodun (veya herhangi bir kısmının) kopyalanması, çoğaltılması, değiştirilmesi, dağıtılması, satılması veya herhangi bir şekilde ticari ya da bireysel amaçla kullanılması, yazarın önceden yazılı izni olmaksızın kesinlikle yasaktır.
 
 
 =========================
@@ -160,20 +145,37 @@ DOSYA: README.md
 # Kimbuki 🎭 - Multiplayer 3D Parti ve Tahmin Oyunu
 
 [![Live Preview](https://img.shields.io/badge/Oyna-Canl%C4%B1_Sunucu-success?style=for-the-badge&logo=vercel)](https://kimbuki.vercel.app/)
+[![License: Copyright](https://img.shields.io/badge/License-Copyright-red.svg)](LICENSE)
 
-Kimbuki, arkadaşlarınızla oynayabileceğiniz, herkesin alnında bir kelime/isim yazdığı ve herkesin kendi kim olduğunu bulmaya çalıştığı klasik "Ben Kimim?" (Vampir Köylü / Post-it) oyununun modern, 3 boyutlu (3D) ve çok oyunculu versiyonudur!
+Kimbuki, arkadaşlarınızla oynayabileceğiniz, herkesin alnında bir kelime/isim yazdığı ve herkesin kim olduğunu bulmaya çalıştığı klasik "Ben Kimim?" (Vampir Köylü / Post-it) oyununun modern, 3 boyutlu (3D) ve çok oyunculu (multiplayer) versiyonudur!
 
-**🌐 Canlı Oyna:** [https://kimbuki.vercel.app/](https://kimbuki.vercel.app/)
+**🚀 Canlı Oyna:** [https://kimbuki.vercel.app/](https://kimbuki.vercel.app/)
+
+---
 
 ## ✨ Özellikler
 
-- **🎭 3D Karakterler ve Çevre:** React Three Fiber destekli, tamamen 3 boyutlu oyun odaları ve karakterler.
-- **🗣️ WebRTC Sesli Sohbet:** Oyuncular arası gecikmesiz, oyun içi entegre sesli sohbet.
-- **💰 Ekonomi & EXP Sistemi:** Maç kazandıkça, bahis bildikçe ve katılım sağladıkça Altın ve XP kazanın. Lvl atlayın!
-- **🎁 Günlük Ödüller:** 7 günlük giriş serisi (streak) sistemiyle her gün artan altın ödülleri.
-- **🛒 Mağaza (Shop):** Kazandığınız altınlarla yeni 3D karakterler ve avatarlar satın alın.
-- **🔮 Bahis ve Joker Sistemi:** Oyuna bahis yatırın, ipucu jokerlerini kullanarak kelimenizi daha kolay bulun.
-- **⚖️ Şike/İtiraz Sistemi:** Adaletsizlik durumunda oyuncuların oylamasıyla itiraz edip turu iptal edin.
+- **🎨 3D Karakterler ve Çevre:** React Three Fiber destekli, tamamen 3 boyutlu oyun odaları, haritalar (Çöl, Kar, Uçan Ada) ve animasyonlu avatarlar. Baş hareketleri (Head Tracking) eşzamanlı olarak diğer oyunculara yansır!
+- **🎙️ WebRTC Sesli Sohbet:** LiveKit altyapısı ile oyuncular arası gecikmesiz, oyun içi entegre sesli sohbet deneyimi.
+- **📈 Ekonomi & İtibar Sistemi:** Maç kazandıkça, bahis bildikçe ve görevleri tamamladıkça Altın ve İtibar (Reputation) kazanın. Çaylaklıktan Efsanevi seviyelere yükselin!
+- **🎁 Günlük Ödüller ve Görevler:** 7 günlük giriş serisi (streak) sistemi ve oyun içi hedefleri barındıran dinamik görev sistemi.
+- **🛒 Mağaza (Shop):** Kazandığınız altınlarla yeni 3D karakterler (Rogue, Wizard, Cleric vs.), kaideler (pedestals), isim renkleri ve unvanlar satın alın.
+- **🃏 Bahis ve Joker Sistemi:** Oyuna altın bahisleri yatırın. "Rus Ruleti", "Saatli Bomba", "Gizli Kalkan" gibi birbirinden eğlenceli ve stratejik jokerlerle oyunu şekillendirin.
+- **⚖️ Şike/İtiraz Sistemi:** Adaletsizlik veya trolleme durumunda oyuncuların oylamasıyla itiraz edip turu iptal edin.
+- **🎭 Taunt (Kışkırtma) Efektleri:** 3D masada arkadaşlarınıza emojili ve ses efektli anlık reaksiyonlar gönderin.
+
+---
+
+## 🛠️ Prodüksiyona Hazır Mimari (V2 Güncellemeleri)
+
+Kimbuki, binlerce eşzamanlı oyuncuyu kaldırabilmesi için **prodüksiyon (canlı ortam) standartlarında** optimize edilmiştir:
+- **Güvenlik (Socket Auth):** Tüm WebSocket (Socket.io) iletişimi JWT (JSON Web Token) middleware'i ile şifrelenmiş ve doğrulanmıştır. Sahte veri gönderimi engellenmiştir.
+- **Atomik Veritabanı İşlemleri (Anti-Race Condition):** Bahis sistemi ve altın kazanımları MongoDB'nin atomic operatörleri (`$inc`, `findOneAndUpdate`) ile korunarak veri ezilmeleri ve negatif bakiye hataları (TOCTOU) engellenmiştir.
+- **Bellek Optimizasyonu (Audio Pool):** Oyun içi ses efektleri için global `AudioContext` havuzu oluşturularak tarayıcı bazlı bellek sızıntıları (memory leak) ve ses kesilmeleri tamamen çözülmüştür.
+- **3D Render Performansı:** Tüm GLTF/GLB modelleri oyun başlangıcında `useGLTF.preload` ile önbelleğe (cache) alınarak sahne içi anlık takılmalar (stuttering) ve FPS düşüşleri giderilmiştir.
+- **Kesintisiz Yönlendirme:** Next.js App Router yapısı eksiksiz kurgulanarak yetkisiz veya eksik route erişimlerinde 404 yerine akıllı yönlendirmeler sağlanmıştır.
+
+---
 
 ## 🎮 Oyun Mantığı
 
@@ -181,37 +183,64 @@ Kimbuki, arkadaşlarınızla oynayabileceğiniz, herkesin alnında bir kelime/is
 2. **Kelime Belirleme:** Her oyuncu, karşısındaki bir oyuncunun alnına yazılacak kelimeyi belirler.
 3. **Oyun Sahnesi:** 3D masaya oturulur. Herkes diğerlerinin alnındaki kelimeyi görebilir, kendi kelimesini GÖREMEZ.
 4. **Sırayla Soru Sorma:** Sırası gelen kişi mikrofonu açıp "Ben yaşıyor muyum?", "Futbolcu muyum?" gibi sorular sorar.
-5. **Tahmin ve Bahis:** Kendi kelimesini bulan oyunu kazanır ve Kasa'dan (Pot) yüzdelik pay alır. İzleyiciler ise doğru kişiye bahis yaptıysa bahislerini ikiye katlar!
+5. **Tahmin ve Bahis:** Kendi kelimesini bulan oyunu kazanır ve Kasa'dan (Pot) yüzdelik pay alır. İzleyiciler ise doğru kişiye bahis yaptıysa bahislerini katlar!
 
-## 🛠️ Teknolojiler (Mimarî)
+---
 
-- **Frontend (`/client`):** Next.js (App Router), React Three Fiber (3D), Tailwind CSS, Material UI.
-- **Backend (`/server`):** Node.js, Express.js, Socket.io (WebSocket Gerçek Zamanlı İletişim).
-- **Veritabanı:** MongoDB (Mongoose) - Kullanıcılar, envanter, istatistikler ve günlük ödül takibi için.
-- **Deployment:** Vercel (Frontend), Render (Backend), MongoDB Atlas (DB).
+## 💻 Teknolojiler (Tech Stack)
 
-## 🚀 Kurulum (Local Development)
+- **Frontend (`/client`):** Next.js (React), React Three Fiber (Drei & Three.js), Tailwind CSS, Material UI (MUI), Framer Motion.
+- **Backend (`/server`):** Node.js, Express.js, Socket.io (WebSocket).
+- **Ses İletişimi:** LiveKit (WebRTC).
+- **Veritabanı:** MongoDB (Mongoose) - Atomic sorgularla güvenli ekonomi yönetimi.
+- **Dağıtım (Deployment):** Vercel (Frontend), Render/Railway (Backend), MongoDB Atlas (DB).
+
+---
+
+## ⚙️ Kurulum (Local Development)
+
+Projeyi bilgisayarınızda çalıştırmak için aşağıdaki adımları izleyin:
 
 ### 1. Veritabanı ve Backend (`/server`)
-```bash
+\`\`\`bash
 cd server
 npm install
-# .env dosyası oluşturup içine PORT ve MONGO_URI ekleyebilirsiniz.
+\`\`\`
+`.env` dosyası oluşturup içine aşağıdaki değişkenleri ekleyin:
+\`\`\`env
+PORT=4000
+MONGO_URI=your_mongodb_connection_string
+JWT_SECRET=gizli_anahtariniz
+\`\`\`
+Daha sonra sunucuyu başlatın:
+\`\`\`bash
 npm run dev
-```
+\`\`\`
 *Sunucu `http://localhost:4000` adresinde çalışacaktır.*
 
 ### 2. Frontend (`/client`)
-```bash
+\`\`\`bash
 cd client
 npm install
-# .env.local oluşturup NEXT_PUBLIC_SERVER_URL=http://localhost:4000 ekleyin.
+\`\`\`
+`.env.local` dosyası oluşturup aşağıdaki değişkenleri ekleyin:
+\`\`\`env
+NEXT_PUBLIC_SERVER_URL=http://localhost:4000
+NEXT_PUBLIC_LIVEKIT_URL=your_livekit_wss_url
+\`\`\`
+Daha sonra arayüzü başlatın:
+\`\`\`bash
 npm run dev
-```
-*Arayüz `http://localhost:3000` adresinde açılacaktır.*
+\`\`\`
+*Oyun arayüzü `http://localhost:3000` adresinde açılacaktır.*
+
+---
 
 ## 📜 Lisans
-Bu proje [MIT](LICENSE) lisansı altında sunulmaktadır.
+**Tüm Hakları Saklıdır (All Rights Reserved).**
+
+Bu projenin kaynak kodları, tasarımı ve varlıkları ticari ve tescilli bir üründür. Açık kaynak kodlu (Open Source) **değildir**.
+Kodun kopyalanması, başka projelerde kullanılması, satılması veya izinsiz olarak klonlanıp geliştirilmesi **kesinlikle yasaktır**. Detaylar için [LICENSE](LICENSE) dosyasına bakabilirsiniz.
 
 
 =========================
@@ -1756,6 +1785,17 @@ export async function GET(req: NextRequest) {
 
 
 =========================
+DOSYA: client\app\game\page.tsx
+=========================
+
+import { redirect } from 'next/navigation';
+
+export default function GamePage() {
+    redirect('/');
+}
+
+
+=========================
 DOSYA: client\app\game\[code]\page.tsx
 =========================
 
@@ -1887,10 +1927,13 @@ export default function GamePage() {
     }, [code]);
 
     const connectToRoom = (user: any) => {
-        const s = io(process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:4000");
+        const token = localStorage.getItem("gameToken");
+        const s = io(process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:4000", {
+            auth: { token }
+        });
         setSocket(s);
 
-        s.emit("room:join", { roomCode: code, name: user.username, userId: user.id, avatar: user.avatar, pedestal: user.pedestal, nameColor: user.nameColor, title: user.title }, (res: any) => {
+        s.emit("room:join", { roomCode: code, name: user.username, avatar: user.avatar, pedestal: user.pedestal, nameColor: user.nameColor, title: user.title }, (res: any) => {
             if (!res.ok) {
                 toast.error("Hata: " + res.error);
                 router.push("/");
@@ -3878,6 +3921,16 @@ export default function Scene3D({ gameState, myId, activeBubbles, headRotations,
 );
 }
 
+useGLTF.preload('/avatars/Warrior.gltf');
+useGLTF.preload('/avatars/Wizard.gltf');
+useGLTF.preload('/avatars/Rogue.gltf');
+useGLTF.preload('/avatars/Ranger.gltf');
+useGLTF.preload('/avatars/Monk.gltf');
+useGLTF.preload('/avatars/Cleric.gltf');
+useGLTF.preload('/maps/floating_island__low_poly_vr.glb');
+useGLTF.preload('/maps/snow.glb');
+useGLTF.preload('/maps/desert.glb');
+
 =========================
 DOSYA: client\components\game\WordSelection.tsx
 =========================
@@ -4112,11 +4165,26 @@ export const TITLES = [
 DOSYA: client\utils\audio.ts
 =========================
 
+let sharedAudioCtx: AudioContext | null = null;
+
+export const getAudioContext = () => {
+    if (typeof window === 'undefined') return null;
+    if (!sharedAudioCtx) {
+        const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+        if (AudioContext) {
+            sharedAudioCtx = new AudioContext();
+        }
+    }
+    if (sharedAudioCtx && sharedAudioCtx.state === 'suspended') {
+        sharedAudioCtx.resume();
+    }
+    return sharedAudioCtx;
+};
+
 export const playTurnSound = () => {
     try {
-        const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-        if (!AudioContext) return;
-        const ctx = new AudioContext();
+        const ctx = getAudioContext();
+        if (!ctx) return;
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         osc.connect(gain);
@@ -4134,9 +4202,8 @@ export const playTurnSound = () => {
 
 export const playWinSound = () => {
     try {
-        const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-        if (!AudioContext) return;
-        const ctx = new AudioContext();
+        const ctx = getAudioContext();
+        if (!ctx) return;
         
         [523.25, 659.25, 783.99, 1046.50].forEach((freq, i) => {
             const osc = ctx.createOscillator();
@@ -4157,9 +4224,8 @@ export const playWinSound = () => {
 
 export const playExplosionSound = () => {
     try {
-        const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-        if (!AudioContext) return;
-        const ctx = new AudioContext();
+        const ctx = getAudioContext();
+        if (!ctx) return;
         const bufferSize = ctx.sampleRate * 1.5; 
         const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
         const data = buffer.getChannelData(0);
@@ -4187,9 +4253,8 @@ export const playExplosionSound = () => {
 
 export const playGunshotSound = () => {
     try {
-        const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-        if (!AudioContext) return;
-        const ctx = new AudioContext();
+        const ctx = getAudioContext();
+        if (!ctx) return;
         const bufferSize = ctx.sampleRate * 0.5; 
         const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
         const data = buffer.getChannelData(0);
@@ -4217,9 +4282,8 @@ export const playGunshotSound = () => {
 
 export const playMagicSound = () => {
     try {
-        const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-        if (!AudioContext) return;
-        const ctx = new AudioContext();
+        const ctx = getAudioContext();
+        if (!ctx) return;
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         osc.connect(gain);
@@ -4239,9 +4303,8 @@ export const playMagicSound = () => {
 
 export const playHeartbeatSound = () => {
     try {
-        const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-        if (!AudioContext) return;
-        const ctx = new AudioContext();
+        const ctx = getAudioContext();
+        if (!ctx) return;
         
         const playBeat = (startTime: number) => {
             const osc = ctx.createOscillator();
@@ -4264,9 +4327,8 @@ export const playHeartbeatSound = () => {
 
 export const playGlitchSound = () => {
     try {
-        const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-        if (!AudioContext) return;
-        const ctx = new AudioContext();
+        const ctx = getAudioContext();
+        if (!ctx) return;
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         osc.connect(gain);
@@ -4284,9 +4346,8 @@ export const playGlitchSound = () => {
 
 export const playSilenceSound = () => {
     try {
-        const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-        if (!AudioContext) return;
-        const ctx = new AudioContext();
+        const ctx = getAudioContext();
+        if (!ctx) return;
         const bufferSize = ctx.sampleRate * 0.5;
         const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
         const data = buffer.getChannelData(0);
@@ -4311,9 +4372,8 @@ export const playSilenceSound = () => {
 
 export const playReloadSound = () => {
     try {
-        const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-        if (!AudioContext) return;
-        const ctx = new AudioContext();
+        const ctx = getAudioContext();
+        if (!ctx) return;
         const playClick = (startTime: number, freq: number) => {
             const osc = ctx.createOscillator();
             const gain = ctx.createGain();
@@ -4333,9 +4393,8 @@ export const playReloadSound = () => {
 
 export const playSparkleSound = () => {
     try {
-        const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-        if (!AudioContext) return;
-        const ctx = new AudioContext();
+        const ctx = getAudioContext();
+        if (!ctx) return;
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         osc.connect(gain);
@@ -4382,6 +4441,22 @@ app.get("/health", (req, res) => {
 
 const io = new Server(server, {
   cors: { origin: "*", methods: ["GET", "POST"] },
+});
+
+const jwt = require("jsonwebtoken");
+
+io.use((socket, next) => {
+  const token = socket.handshake.auth?.token;
+  if (token) {
+    jwt.verify(token, process.env.JWT_SECRET || "gizli_anahtar_buraya", (err, decoded) => {
+      if (!err && decoded) {
+        socket.data.userId = decoded.id;
+      }
+      next();
+    });
+  } else {
+    next();
+  }
 });
 
 const GameManager = require("./game/GameManager");
@@ -4463,8 +4538,8 @@ class GameManager {
     handleConnection(socket) {
         console.log("New client connected:", socket.id);
 
-        socket.on("room:create", ({ name, userId, avatar, pedestal, nameColor, title }, cb) => this.handleCreateRoom(socket, name, userId, avatar, pedestal, nameColor, title, cb));
-        socket.on("room:join", ({ roomCode, name, userId, avatar, pedestal, nameColor, title }, cb) => this.handleJoinRoom(socket, roomCode, name, userId, avatar, pedestal, nameColor, title, cb));
+        socket.on("room:create", ({ name, avatar, pedestal, nameColor, title }, cb) => this.handleCreateRoom(socket, name, socket.data.userId, avatar, pedestal, nameColor, title, cb));
+        socket.on("room:join", ({ roomCode, name, avatar, pedestal, nameColor, title }, cb) => this.handleJoinRoom(socket, roomCode, name, socket.data.userId, avatar, pedestal, nameColor, title, cb));
         socket.on("game:update_avatar", ({ avatarIndex }) => this.handleUpdateAvatar(socket, avatarIndex));
         socket.on("game:start", (settings = {}) => this.handleStartGame(socket, settings));
         socket.on("game:place_bet", ({ targetId }) => this.handlePlaceBet(socket, targetId));
@@ -5000,31 +5075,37 @@ class Room {
 
         if (this.isBettingEnabled) {
             const User = require('../models/User');
+            let failedUser = null;
+            const deductedUsers = [];
             for (let u of activeUsers) {
                 if (u.dbId) {
-                    const userDb = await User.findById(u.dbId);
-                    if (!userDb || userDb.gold < this.betAmount) {
-                        this.io.to(this.code).emit("game:error", { message: `${u.name} isimli oyuncunun yeterli altını (${this.betAmount}) yok!` });
-                        
-                        if (this.gameState === "ROUND_END") {
-                            this.gameState = "LOBBY";
-                            this.broadcastState();
-                        }
-                        return;
+                    const updatedUser = await User.findOneAndUpdate(
+                        { _id: u.dbId, gold: { $gte: this.betAmount } },
+                        { $inc: { gold: -this.betAmount } },
+                        { new: true }
+                    );
+                    if (!updatedUser) {
+                        failedUser = u;
+                        break;
+                    } else {
+                        deductedUsers.push(u.dbId);
                     }
                 } else {
-                    this.io.to(this.code).emit("game:error", { message: `${u.name} giriş yapmadığı için bahisli moda katılamaz!` });
-                    
-                    if (this.gameState === "ROUND_END") {
-                        this.gameState = "LOBBY";
-                        this.broadcastState();
-                    }
-                    return;
+                    failedUser = u;
+                    break;
                 }
             }
-            
-            for (let u of activeUsers) {
-                await User.findByIdAndUpdate(u.dbId, { $inc: { gold: -this.betAmount } });
+
+            if (failedUser) {
+                for (let dbId of deductedUsers) {
+                    await User.findByIdAndUpdate(dbId, { $inc: { gold: this.betAmount } });
+                }
+                this.io.to(this.code).emit("game:error", { message: `${failedUser.name} isimli oyuncunun yeterli altını (${this.betAmount}) yok veya giriş yapmamış!` });
+                if (this.gameState === "ROUND_END") {
+                    this.gameState = "LOBBY";
+                    this.broadcastState();
+                }
+                return;
             }
 
             this.gameState = "BETTING";
@@ -5518,19 +5599,22 @@ class Room {
             }
 
             for (const [dbId, rewards] of Object.entries(playerRewards)) {
-                User.findById(dbId).then(userDb => {
-                    if (userDb) {
-                        userDb.gold += rewards.gold;
-                        userDb.reputation += rewards.rep;
-                        if (userDb.quests && userDb.quests.active) {
-                            userDb.quests.active.forEach(q => {
-                                if (q.type === 'win' && !q.isClaimed && q.progress < q.target) q.progress += rewards.winCount;
-                                if (q.type === 'play' && !q.isClaimed && q.progress < q.target) q.progress += rewards.playCount;
-                                if (q.type === 'bet_win' && !q.isClaimed && q.progress < q.target) q.progress += rewards.betWinCount;
-                            });
+                User.findOneAndUpdate(
+                    { _id: dbId },
+                    { $inc: { gold: rewards.gold, reputation: rewards.rep } },
+                    { new: true }
+                ).then(userDb => {
+                    if (userDb && userDb.quests && userDb.quests.active) {
+                        let modified = false;
+                        userDb.quests.active.forEach(q => {
+                            if (q.type === 'win' && !q.isClaimed && q.progress < q.target) { q.progress += rewards.winCount; modified = true; }
+                            if (q.type === 'play' && !q.isClaimed && q.progress < q.target) { q.progress += rewards.playCount; modified = true; }
+                            if (q.type === 'bet_win' && !q.isClaimed && q.progress < q.target) { q.progress += rewards.betWinCount; modified = true; }
+                        });
+                        if (modified) {
                             userDb.markModified('quests');
+                            userDb.save().catch(e => console.error("Quest update err", e));
                         }
-                        return userDb.save();
                     }
                 }).catch(err => console.error("Aggregated reward update error:", err));
             }

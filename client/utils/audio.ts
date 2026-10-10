@@ -1,8 +1,23 @@
+let sharedAudioCtx: AudioContext | null = null;
+
+export const getAudioContext = () => {
+    if (typeof window === 'undefined') return null;
+    if (!sharedAudioCtx) {
+        const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+        if (AudioContext) {
+            sharedAudioCtx = new AudioContext();
+        }
+    }
+    if (sharedAudioCtx && sharedAudioCtx.state === 'suspended') {
+        sharedAudioCtx.resume();
+    }
+    return sharedAudioCtx;
+};
+
 export const playTurnSound = () => {
     try {
-        const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-        if (!AudioContext) return;
-        const ctx = new AudioContext();
+        const ctx = getAudioContext();
+        if (!ctx) return;
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         osc.connect(gain);
@@ -20,9 +35,8 @@ export const playTurnSound = () => {
 
 export const playWinSound = () => {
     try {
-        const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-        if (!AudioContext) return;
-        const ctx = new AudioContext();
+        const ctx = getAudioContext();
+        if (!ctx) return;
         
         [523.25, 659.25, 783.99, 1046.50].forEach((freq, i) => {
             const osc = ctx.createOscillator();
@@ -43,9 +57,8 @@ export const playWinSound = () => {
 
 export const playExplosionSound = () => {
     try {
-        const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-        if (!AudioContext) return;
-        const ctx = new AudioContext();
+        const ctx = getAudioContext();
+        if (!ctx) return;
         const bufferSize = ctx.sampleRate * 1.5; 
         const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
         const data = buffer.getChannelData(0);
@@ -73,9 +86,8 @@ export const playExplosionSound = () => {
 
 export const playGunshotSound = () => {
     try {
-        const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-        if (!AudioContext) return;
-        const ctx = new AudioContext();
+        const ctx = getAudioContext();
+        if (!ctx) return;
         const bufferSize = ctx.sampleRate * 0.5; 
         const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
         const data = buffer.getChannelData(0);
@@ -103,9 +115,8 @@ export const playGunshotSound = () => {
 
 export const playMagicSound = () => {
     try {
-        const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-        if (!AudioContext) return;
-        const ctx = new AudioContext();
+        const ctx = getAudioContext();
+        if (!ctx) return;
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         osc.connect(gain);
@@ -125,9 +136,8 @@ export const playMagicSound = () => {
 
 export const playHeartbeatSound = () => {
     try {
-        const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-        if (!AudioContext) return;
-        const ctx = new AudioContext();
+        const ctx = getAudioContext();
+        if (!ctx) return;
         
         const playBeat = (startTime: number) => {
             const osc = ctx.createOscillator();
@@ -150,9 +160,8 @@ export const playHeartbeatSound = () => {
 
 export const playGlitchSound = () => {
     try {
-        const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-        if (!AudioContext) return;
-        const ctx = new AudioContext();
+        const ctx = getAudioContext();
+        if (!ctx) return;
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         osc.connect(gain);
@@ -170,9 +179,8 @@ export const playGlitchSound = () => {
 
 export const playSilenceSound = () => {
     try {
-        const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-        if (!AudioContext) return;
-        const ctx = new AudioContext();
+        const ctx = getAudioContext();
+        if (!ctx) return;
         const bufferSize = ctx.sampleRate * 0.5;
         const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
         const data = buffer.getChannelData(0);
@@ -197,9 +205,8 @@ export const playSilenceSound = () => {
 
 export const playReloadSound = () => {
     try {
-        const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-        if (!AudioContext) return;
-        const ctx = new AudioContext();
+        const ctx = getAudioContext();
+        if (!ctx) return;
         const playClick = (startTime: number, freq: number) => {
             const osc = ctx.createOscillator();
             const gain = ctx.createGain();
@@ -219,9 +226,8 @@ export const playReloadSound = () => {
 
 export const playSparkleSound = () => {
     try {
-        const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-        if (!AudioContext) return;
-        const ctx = new AudioContext();
+        const ctx = getAudioContext();
+        if (!ctx) return;
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         osc.connect(gain);
