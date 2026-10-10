@@ -9,8 +9,8 @@ class GameManager {
     handleConnection(socket) {
         console.log("New client connected:", socket.id);
 
-        socket.on("room:create", ({ name, userId, avatar, pedestal, nameColor, title }, cb) => this.handleCreateRoom(socket, name, userId, avatar, pedestal, nameColor, title, cb));
-        socket.on("room:join", ({ roomCode, name, userId, avatar, pedestal, nameColor, title }, cb) => this.handleJoinRoom(socket, roomCode, name, userId, avatar, pedestal, nameColor, title, cb));
+        socket.on("room:create", ({ name, avatar, pedestal, nameColor, title }, cb) => this.handleCreateRoom(socket, name, socket.data.userId, avatar, pedestal, nameColor, title, cb));
+        socket.on("room:join", ({ roomCode, name, avatar, pedestal, nameColor, title }, cb) => this.handleJoinRoom(socket, roomCode, name, socket.data.userId, avatar, pedestal, nameColor, title, cb));
         socket.on("game:update_avatar", ({ avatarIndex }) => this.handleUpdateAvatar(socket, avatarIndex));
         socket.on("game:start", (settings = {}) => this.handleStartGame(socket, settings));
         socket.on("game:place_bet", ({ targetId }) => this.handlePlaceBet(socket, targetId));

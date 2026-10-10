@@ -288,31 +288,37 @@ class Room {
 
         if (this.isBettingEnabled) {
             const User = require('../models/User');
+            let failedUser = null;
+            const deductedUsers = [];
             for (let u of activeUsers) {
                 if (u.dbId) {
-                    const userDb = await User.findById(u.dbId);
-                    if (!userDb || userDb.gold < this.betAmount) {
-                        this.io.to(this.code).emit("game:error", { message: `${u.name} isimli oyuncunun yeterli altını (${this.betAmount}) yok!` });
-                        
-                        if (this.gameState === "ROUND_END") {
-                            this.gameState = "LOBBY";
-                            this.broadcastState();
-                        }
-                        return;
+                    const updatedUser = await User.findOneAndUpdate(
+                        { _id: u.dbId, gold: { $gte: this.betAmount } },
+                        { $inc: { gold: -this.betAmount } },
+                        { new: true }
+                    );
+                    if (!updatedUser) {
+                        failedUser = u;
+                        break;
+                    } else {
+                        deductedUsers.push(u.dbId);
                     }
                 } else {
-                    this.io.to(this.code).emit("game:error", { message: `${u.name} giriş yapmadığı için bahisli moda katılamaz!` });
-                    
-                    if (this.gameState === "ROUND_END") {
-                        this.gameState = "LOBBY";
-                        this.broadcastState();
-                    }
-                    return;
+                    failedUser = u;
+                    break;
                 }
             }
-            
-            for (let u of activeUsers) {
-                await User.findByIdAndUpdate(u.dbId, { $inc: { gold: -this.betAmount } });
+
+            if (failedUser) {
+                for (let dbId of deductedUsers) {
+                    await User.findByIdAndUpdate(dbId, { $inc: { gold: this.betAmount } });
+                }
+                this.io.to(this.code).emit("game:error", { message: `${failedUser.name} isimli oyuncunun yeterli altını (${this.betAmount}) yok veya giriş yapmamış!` });
+                if (this.gameState === "ROUND_END") {
+                    this.gameState = "LOBBY";
+                    this.broadcastState();
+                }
+                return;
             }
 
             this.gameState = "BETTING";
@@ -806,19 +812,22 @@ class Room {
             }
 
             for (const [dbId, rewards] of Object.entries(playerRewards)) {
-                User.findById(dbId).then(userDb => {
-                    if (userDb) {
-                        userDb.gold += rewards.gold;
-                        userDb.reputation += rewards.rep;
-                        if (userDb.quests && userDb.quests.active) {
-                            userDb.quests.active.forEach(q => {
-                                if (q.type === 'win' && !q.isClaimed && q.progress < q.target) q.progress += rewards.winCount;
-                                if (q.type === 'play' && !q.isClaimed && q.progress < q.target) q.progress += rewards.playCount;
-                                if (q.type === 'bet_win' && !q.isClaimed && q.progress < q.target) q.progress += rewards.betWinCount;
-                            });
+                User.findOneAndUpdate(
+                    { _id: dbId },
+                    { $inc: { gold: rewards.gold, reputation: rewards.rep } },
+                    { new: true }
+                ).then(userDb => {
+                    if (userDb && userDb.quests && userDb.quests.active) {
+                        let modified = false;
+                        userDb.quests.active.forEach(q => {
+                            if (q.type === 'win' && !q.isClaimed && q.progress < q.target) { q.progress += rewards.winCount; modified = true; }
+                            if (q.type === 'play' && !q.isClaimed && q.progress < q.target) { q.progress += rewards.playCount; modified = true; }
+                            if (q.type === 'bet_win' && !q.isClaimed && q.progress < q.target) { q.progress += rewards.betWinCount; modified = true; }
+                        });
+                        if (modified) {
                             userDb.markModified('quests');
+                            userDb.save().catch(e => console.error("Quest update err", e));
                         }
-                        return userDb.save();
                     }
                 }).catch(err => console.error("Aggregated reward update error:", err));
             }

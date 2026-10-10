@@ -26,6 +26,22 @@ const io = new Server(server, {
   cors: { origin: "*", methods: ["GET", "POST"] },
 });
 
+const jwt = require("jsonwebtoken");
+
+io.use((socket, next) => {
+  const token = socket.handshake.auth?.token;
+  if (token) {
+    jwt.verify(token, process.env.JWT_SECRET || "gizli_anahtar_buraya", (err, decoded) => {
+      if (!err && decoded) {
+        socket.data.userId = decoded.id;
+      }
+      next();
+    });
+  } else {
+    next();
+  }
+});
+
 const GameManager = require("./game/GameManager");
 
 const gameManager = new GameManager(io);

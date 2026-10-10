@@ -435,3 +435,13 @@ export default function Scene3D({ gameState, myId, activeBubbles, headRotations,
     </div>
 );
 }
+
+useGLTF.preload('/avatars/Warrior.gltf');
+useGLTF.preload('/avatars/Wizard.gltf');
+useGLTF.preload('/avatars/Rogue.gltf');
+useGLTF.preload('/avatars/Ranger.gltf');
+useGLTF.preload('/avatars/Monk.gltf');
+useGLTF.preload('/avatars/Cleric.gltf');
+useGLTF.preload('/maps/floating_island__low_poly_vr.glb');
+useGLTF.preload('/maps/snow.glb');
+useGLTF.preload('/maps/desert.glb');

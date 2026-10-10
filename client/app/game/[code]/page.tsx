@@ -126,10 +126,13 @@ export default function GamePage() {
     }, [code]);
 
     const connectToRoom = (user: any) => {
-        const s = io(process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:4000");
+        const token = localStorage.getItem("gameToken");
+        const s = io(process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:4000", {
+            auth: { token }
+        });
         setSocket(s);
 
-        s.emit("room:join", { roomCode: code, name: user.username, userId: user.id, avatar: user.avatar, pedestal: user.pedestal, nameColor: user.nameColor, title: user.title }, (res: any) => {
+        s.emit("room:join", { roomCode: code, name: user.username, avatar: user.avatar, pedestal: user.pedestal, nameColor: user.nameColor, title: user.title }, (res: any) => {
             if (!res.ok) {
                 toast.error("Hata: " + res.error);
                 router.push("/");
