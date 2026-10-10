@@ -304,7 +304,7 @@ function PlayerNode({ u, index, totalUsers, isCurrentTurn, isMe, isWinner, activ
             )}
             
             {bomb && (
-                <Html position={[0, 3.2, 0]} center zIndexRange={[95, 0]} style={{ pointerEvents: 'none' }}>
+                <Html position={[0, 2.90, 0]} center zIndexRange={[95, 0]} style={{ pointerEvents: 'none' }}>
                     <div className="flex flex-col items-center animate-bounce">
                         <span className="text-4xl drop-shadow-[0_0_15px_rgba(239,68,68,0.8)]">💣</span>
                         <span className="text-[10px] font-black text-red-400 bg-black/80 px-2 py-0.5 rounded-full mt-1 border border-red-500/50">

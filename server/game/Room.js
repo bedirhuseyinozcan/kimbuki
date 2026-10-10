@@ -1382,7 +1382,11 @@ class Room {
         }
 
         if (!this.resolvedQuestionsThisTurn) this.resolvedQuestionsThisTurn = []; 
-        if (asker) asker.lastQuestion = this.activeQuestion;
+        if (asker) {
+            asker.lastQuestion = this.activeQuestion;
+            if (!asker.lastQuestions) asker.lastQuestions = [];
+            asker.lastQuestions.push(this.activeQuestion);
+        }
         this.resolvedQuestionsThisTurn.push(this.activeQuestion);
         this.activeQuestion = null;
         if (this.questionTimer) {
@@ -1521,6 +1525,7 @@ class Room {
                 } else {
                     nextUser.questionsAskedThisTurn = 0;
                     nextUser.lastQuestion = null;
+                    nextUser.lastQuestions = [];
                     foundNext = true;
                     break; 
                 }
@@ -1610,6 +1615,7 @@ class Room {
                 extraQuestions: u.extraQuestions || 0,
                 questionsAskedThisTurn: u.questionsAskedThisTurn || 0,
                 lastQuestion: u.lastQuestion,
+                lastQuestions: u.lastQuestions || [],
                 assignedWord: (this.gameState === "ROUND_END" || u.id !== user.id) ? u.assignedWord : null
             }));
 

@@ -29,6 +29,7 @@ export type User = {
     silencedTurns?: number;
     extraQuestions?: number;
     lastQuestion?: any;
+    lastQuestions?: any[];
     questionsAskedThisTurn?: number;
     assignedWord: string | null;
     lives: number;
