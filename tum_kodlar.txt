@@ -43,6 +43,12 @@ PROJE DOSYA VE KLASÖR AĞACI:
                 📄 Scene3D.tsx
                 📄 WordSelection.tsx
                 📄 types.tsx
+                📁 ui/
+                    📄 ActionMenu.tsx
+                    📄 ChatPanel.tsx
+                    📄 Notepad.tsx
+        📁 hooks/
+            📄 useGameSocket.tsx
         📁 public/
             📄 file.svg
             📄 globe.svg
@@ -84,6 +90,29 @@ PROJE DOSYA VE KLASÖR AĞACI:
         📁 game/
             📄 GameManager.js
             📄 Room.js
+            📁 handlers/
+                📄 guessHandler.js
+                📄 objectionHandler.js
+                📄 questionHandler.js
+            📁 jokers/
+                📄 Amnesia.js
+                📄 BaseJoker.js
+                📄 BloodTie.js
+                📄 DoubleMagazine.js
+                📄 LetterDetective.js
+                📄 LetterOpener.js
+                📄 LifeSwap.js
+                📄 MindWiper.js
+                📄 MirrorShield.js
+                📄 MysteryBox.js
+                📄 RussianRoulette.js
+                📄 SecretShield.js
+                📄 Silencer.js
+                📄 Telepathy.js
+                📄 TimeBender.js
+                📄 TimeBomb.js
+                📄 WordComparator.js
+                📄 index.js
         📁 models/
             📄 User.js
         📁 routes/
@@ -1837,28 +1866,23 @@ DOSYA: client\app\game\[code]\page.tsx
 
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { io, Socket } from "socket.io-client";
-import { Button, TextField } from "@mui/material";
-import { toast } from "react-toastify";
-
-import { User, GameState } from "@/components/game/types";
+import { useEffect } from "react";
+import { useParams } from "next/navigation";
+import { useGameSocket } from "@/hooks/useGameSocket";
 import Lobby from "@/components/game/Lobby";
 import WordSelection from "@/components/game/WordSelection";
 import JokerDraft from "@/components/game/JokerDraft";
 import GameScene from "@/components/game/GameScene";
 import GameOver from "@/components/game/GameOver";
 import BettingPhase from "@/components/game/BettingPhase";
-import { LiveKitRoom, RoomAudioRenderer, useRoomContext } from '@livekit/components-react';
-import '@livekit/components-styles';
-import { useLocalParticipant } from '@livekit/components-react';
+import { LiveKitRoom, RoomAudioRenderer, useRoomContext, useLocalParticipant } from "@livekit/components-react";
+import "@livekit/components-styles";
 
-if (typeof console !== 'undefined') {
+if (typeof console !== "undefined") {
     const originalError = console.error;
     console.error = (...args) => {
-        if (typeof args[0] === 'string' && (args[0].includes('Failed to set sink id') || args[0].includes('setSinkId error'))) {
-            return; 
+        if (typeof args[0] === "string" && (args[0].includes("Failed to set sink id") || args[0].includes("setSinkId error"))) {
+            return;
         }
         originalError(...args);
     };
@@ -1867,9 +1891,9 @@ if (typeof console !== 'undefined') {
 function LiveKitSpeakerSync() {
     const room = useRoomContext();
     useEffect(() => {
-        const savedSpeaker = typeof window !== 'undefined' ? localStorage.getItem('preferredSpeaker') : null;
+        const savedSpeaker = typeof window !== "undefined" ? localStorage.getItem("preferredSpeaker") : null;
         if (savedSpeaker && room) {
-            room.switchActiveDevice('audiooutput', savedSpeaker).catch(e => console.error("setSinkId error", e));
+            room.switchActiveDevice("audiooutput", savedSpeaker).catch((e) => console.error("setSinkId error", e));
         }
     }, [room]);
     return null;
@@ -1877,184 +1901,21 @@ function LiveKitSpeakerSync() {
 
 function LiveKitMicSync({ isVoiceEnabled }: { isVoiceEnabled: boolean }) {
     const { localParticipant } = useLocalParticipant();
-    
+
     useEffect(() => {
         if (localParticipant) {
-            localParticipant.setMicrophoneEnabled(isVoiceEnabled).catch(e => console.error("Mic sync error", e));
+            localParticipant.setMicrophoneEnabled(isVoiceEnabled).catch((e) => console.error("Mic sync error", e));
         }
     }, [isVoiceEnabled, localParticipant]);
-    
+
     return null;
 }
 
 export default function GamePage() {
     const { code } = useParams();
-    const router = useRouter();
-    const [socket, setSocket] = useState<Socket | null>(null);
-    const [gameState, setGameState] = useState<GameState | null>(null);
-    const [inviteUrl, setInviteUrl] = useState<string>("");
+    const game = useGameSocket(code);
 
-    const [isJoined, setIsJoined] = useState(false);
-    const [wordInput, setWordInput] = useState("");
-    const [chatInput, setChatInput] = useState("");
-    const [notepad, setNotepad] = useState("");
-    const [isNotepadLoaded, setIsNotepadLoaded] = useState(false);
-    const [guessDialogOpen, setGuessDialogOpen] = useState(false);
-    const [guessInput, setGuessInput] = useState("");
-    const [headRotations, setHeadRotations] = useState<{ [key: string]: { pitch: number, yaw: number } }>({});
-    const [taunts, setTaunts] = useState<{[key: string]: { type: string, id: number }}>({});
-    const [visualEffects, setVisualEffects] = useState<any[]>([]);
-
-    useEffect(() => {
-        if (code && typeof window !== 'undefined') {
-            const saved = localStorage.getItem(`kimbuki_notepad_${code}`);
-            if (saved) setNotepad(saved);
-            setIsNotepadLoaded(true);
-        }
-    }, [code]);
-
-    useEffect(() => {
-        if (isNotepadLoaded && code && typeof window !== 'undefined') {
-            localStorage.setItem(`kimbuki_notepad_${code}`, notepad);
-        }
-    }, [notepad, code, isNotepadLoaded]);
-
-    const myId = socket?.id || "";
-    const me = gameState?.users.find((u: User) => u.id === myId);
-    
-    const [token, setToken] = useState("");
-
-    useEffect(() => {
-        if (!me?.id || !code) return;
-        (async () => {
-            try {
-                const livekitIdentity = me.dbId || me.id;
-                const gameToken = localStorage.getItem("gameToken");
-                const resp = await fetch(`/api/livekit?room=${code}&username=${encodeURIComponent(livekitIdentity)}`, {
-                    headers: gameToken ? { "Authorization": `Bearer ${gameToken}` } : {}
-                });
-                const data = await resp.json();
-                if (data.token) {
-                    setToken(data.token);
-                }
-            } catch (e) {
-                console.error("LiveKit token fetch error", e);
-            }
-        })();
-    }, [me?.id, me?.dbId, code]);
-
-    const [checkingAuth, setCheckingAuth] = useState(true);
-
-    useEffect(() => {
-        if (code && typeof window !== 'undefined') {
-            setInviteUrl(`${window.location.origin}/game/${code}`);
-        }
-    }, [code]);
-
-    useEffect(() => {
-        const token = localStorage.getItem("gameToken");
-        if (!token) {
-            router.push(`/?invite=${code}`);
-            return;
-        }
-
-        fetch(`${process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:4000"}/api/auth/me`, {
-            headers: { "Authorization": `Bearer ${token}` }
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.username) {
-                connectToRoom(data);
-            } else {
-                localStorage.removeItem("gameToken");
-                router.push(`/?invite=${code}`);
-            }
-        })
-        .catch(() => {
-            router.push(`/?invite=${code}`);
-        });
-    }, [code]);
-
-    const connectToRoom = (user: any) => {
-        const token = localStorage.getItem("gameToken");
-        const s = io(process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:4000", {
-            auth: { token }
-        });
-        setSocket(s);
-
-        s.emit("room:join", { roomCode: code, name: user.username, avatar: user.avatar, pedestal: user.pedestal, nameColor: user.nameColor, title: user.title }, (res: any) => {
-            if (!res.ok) {
-                toast.error("Hata: " + res.error);
-                router.push("/");
-            } else {
-                setIsJoined(true);
-                setCheckingAuth(false);
-            }
-        });
-
-        s.on("game:state", (state: GameState) => setGameState(state));
-        s.on("game:hint_result", ({ hint }: { hint: string }) => {
-            toast.info(`💡 İPUCU: ${hint}`);
-        });
-        s.on("game:head_update", ({ userId, pitch, yaw }: any) => {
-            setHeadRotations(prev => ({ ...prev, [userId]: { pitch, yaw } }));
-        });
-        s.on("game:error", ({ message }: { message: string }) => {
-            toast.error(message);
-        });
-        s.on("game:closed", () => {
-            toast.error("Oda host tarafından kapatıldı!");
-            if (s) s.disconnect();
-            router.push("/");
-        });
-        s.on("game:clear_notepad", () => {
-            setNotepad("");
-            if (typeof window !== 'undefined') {
-                localStorage.removeItem(`kimbuki_notepad_${code}`);
-            }
-            toast.error("🧠 AMNEZİ! Biri hafızanı sildi, tüm notların kayboldu!", { autoClose: 5000, theme: "colored" });
-        });
-        s.on("game:play_taunt", ({ userId, type }: any) => {
-            const tauntId = Date.now();
-            setTaunts(prev => ({ ...prev, [userId]: { type, id: tauntId } }));
-            setTimeout(() => {
-                setTaunts(prev => {
-                    if (prev[userId]?.id === tauntId) {
-                        const next = { ...prev };
-                        delete next[userId];
-                        return next;
-                    }
-                    return prev;
-                });
-            }, 2500);
-        });
-        
-        s.on("game:visual_effect", async (payload: any) => {
-            const audio = await import("@/utils/audio");
-            if (payload.type === 'bomb_explode') audio.playExplosionSound();
-            else if (payload.type === 'roulette_die') audio.playGunshotSound();
-            else if (['mirror_cast', 'shield_cast', 'time_bend'].includes(payload.type)) audio.playMagicSound();
-            else if (payload.type === 'blood_tie') audio.playHeartbeatSound();
-            else if (payload.type === 'mind_wipe') audio.playGlitchSound();
-            else if (payload.type === 'silence_cast') audio.playSilenceSound();
-            else if (payload.type === 'extra_ammo') audio.playReloadSound();
-            else if (payload.type === 'letter_reveal') audio.playSparkleSound();
-            
-            const effId = Date.now() + Math.random();
-            setVisualEffects(prev => [...prev, { ...payload, id: effId }]);
-            setTimeout(() => {
-                setVisualEffects(prev => prev.filter(e => e.id !== effId));
-            }, 2500);
-        });
-    };
-
-    useEffect(() => {
-        return () => {
-            if (socket) socket.disconnect();
-        };
-    }, [socket]);
-
-    if (checkingAuth || !isJoined) {
+    if (game.checkingAuth || !game.isJoined) {
         return (
             <main className="flex min-h-screen flex-col items-center justify-center p-6 text-center bg-slate-900 text-white">
                 <div className="glass w-full max-w-sm p-8 rounded-3xl shadow-2xl animate-pulse border border-slate-700">
@@ -2065,139 +1926,124 @@ export default function GamePage() {
         );
     }
 
-    if (!gameState) return <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white text-2xl animate-pulse">Odaya bağlanıyor...</div>;
-
-    const handleStart = (settings: { category?: string, bettingEnabled?: boolean, jokersEnabled?: boolean, betAmount?: number, theme?: "day" | "night", map?: string }) => socket?.emit("game:start", settings);
-    
-    const handleSetWord = () => {
-        if (!wordInput.trim()) return;
-        socket?.emit("game:set_word", { word: wordInput });
-    };
-
-    const handleChat = (e?: React.FormEvent) => {
-        e?.preventDefault();
-        if (!chatInput.trim()) return;
-        socket?.emit("game:chat", { message: chatInput });
-        setChatInput("");
-    };
-
-    const handleSkip = () => {
-        socket?.emit("game:skip_turn");
-    };
-
-    const handleAskQuestion = (question: string) => {
-        socket?.emit("game:ask_question", { question });
-    };
-
-    const handleSubmitVote = (vote: string) => {
-        socket?.emit("game:submit_vote", { vote });
-    };
-
-    const handleGuess = () => {
-        if (!guessInput.trim()) return;
-        socket?.emit("game:guess", { guess: guessInput });
-        setGuessInput("");
-        setGuessDialogOpen(false);
-    };
-
-    const handleUseJoker = (payload: any) => {
-        socket?.emit("game:use_joker", payload);
-    };
-
-    const toggleVoice = async (enabled: boolean) => {
-        socket?.emit("game:toggle_voice", { enabled });
-    };
-
-    const copyLink = () => {
-        navigator.clipboard.writeText(inviteUrl);
-        toast.success("Davet linki kopyalandı!");
-    };
-
-    const handleLeaveRoom = () => {
-        socket?.emit("game:leave");
-        if (socket) socket.disconnect();
-        sessionStorage.removeItem("username");
-        router.push("/");
-    };
-
-    const handleSelectAvatar = (id: number) => {
-        socket?.emit("game:set_avatar", { avatarId: id });
-    };
-
-    const handleCloseRoom = () => {
-        toast(
-            ({ closeToast }) => (
-                <div className="flex flex-col gap-3">
-                    <p className="font-bold">Odayı kapatmak istediğine emin misin?</p>
-                    <p className="text-sm">Odada bulunan herkes atılacak.</p>
-                    <div className="flex gap-2 justify-end mt-2">
-                        <Button size="small" variant="outlined" color="inherit" onClick={closeToast}>İptal</Button>
-                        <Button size="small" variant="contained" color="error" onClick={() => {
-                                socket?.emit("room:close");
-                                if (socket) socket.disconnect();
-                                sessionStorage.removeItem("username");
-                                router.push("/");
-                                if (closeToast) closeToast();
-                            }}>Kapat</Button>
-                    </div>
-                </div>
-            ),
-            { autoClose: false, closeOnClick: false, draggable: false, position: "top-center" }
+    if (!game.gameState) {
+        return (
+            <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white text-2xl animate-pulse">
+                Odaya bağlanıyor...
+            </div>
         );
-    };
+    }
+
+    const { gameState, me, myId } = game;
 
     const renderGameState = () => {
         if (gameState.gameState === "LOBBY") {
-            return <Lobby gameState={gameState} me={me!} code={code as string} inviteUrl={inviteUrl} myId={myId!} onStart={handleStart} onCloseRoom={handleCloseRoom} onLeaveRoom={handleLeaveRoom} onCopyLink={copyLink} onSelectAvatar={handleSelectAvatar} onToggleVoice={toggleVoice} />;
+            return (
+                <Lobby
+                    gameState={gameState}
+                    me={me!}
+                    code={code as string}
+                    inviteUrl={game.inviteUrl}
+                    myId={myId!}
+                    onStart={game.handleStart}
+                    onCloseRoom={game.handleCloseRoom}
+                    onLeaveRoom={game.handleLeaveRoom}
+                    onCopyLink={game.copyLink}
+                    onSelectAvatar={game.handleSelectAvatar}
+                    onToggleVoice={game.toggleVoice}
+                />
+            );
         }
         if (gameState.gameState === "BETTING") {
-            return <BettingPhase gameState={gameState} me={me!} onPlaceBet={(targetId) => socket?.emit("game:place_bet", { targetId })} />;
+            return <BettingPhase gameState={gameState} me={me!} onPlaceBet={game.handlePlaceBet} />;
         }
         if (gameState.gameState === "WORD_SELECTION") {
-            return <WordSelection gameState={gameState} me={me!} wordInput={wordInput} setWordInput={setWordInput} onSetWord={handleSetWord} onEditWord={() => socket?.emit("game:edit_word")} onShuffleTargets={() => socket?.emit("game:shuffle_targets")} onLeaveRoom={handleLeaveRoom} />;
+            return (
+                <WordSelection
+                    gameState={gameState}
+                    me={me!}
+                    wordInput={game.wordInput}
+                    setWordInput={game.setWordInput}
+                    onSetWord={game.handleSetWord}
+                    onEditWord={game.handleEditWord}
+                    onShuffleTargets={game.handleShuffleTargets}
+                    onLeaveRoom={game.handleLeaveRoom}
+                />
+            );
         }
         if (gameState.gameState === "JOKER_DRAFT") {
-            return <JokerDraft gameState={gameState} me={me!} onSelectJoker={(jokerId) => socket?.emit("game:select_joker", { jokerId })} />;
+            return <JokerDraft gameState={gameState} me={me!} onSelectJoker={game.handleSelectJoker} />;
         }
         if (gameState.gameState === "PLAYING") {
-            return <GameScene 
-                gameState={gameState} me={me!} myId={myId!} 
-                chatInput={chatInput} setChatInput={setChatInput} handleChat={handleChat}
-                notepad={notepad} setNotepad={setNotepad}
-                handleSkip={handleSkip}
-                guessInput={guessInput} setGuessInput={setGuessInput} handleGuess={handleGuess}
-                guessDialogOpen={guessDialogOpen} setGuessDialogOpen={setGuessDialogOpen}
-                onLeaveRoom={handleLeaveRoom}
-                onAskQuestion={handleAskQuestion}
-                onSubmitVote={handleSubmitVote}
-                onUseJoker={handleUseJoker}
-                onToggleVoice={toggleVoice}
-                onStartObjection={() => socket?.emit("game:start_objection")}
-                onVoteObjection={(vote) => socket?.emit("game:vote_objection", { vote })}
-                headRotations={headRotations}
-                onHeadRotation={(pitch, yaw) => socket?.emit("game:head_rotation", { pitch, yaw })}
-                taunts={taunts}
-                onTaunt={(type) => socket?.emit("game:taunt", { type })}
-                visualEffects={visualEffects}
-            />;
+            return (
+                <GameScene
+                    gameState={gameState}
+                    me={me!}
+                    myId={myId!}
+                    chatInput={game.chatInput}
+                    setChatInput={game.setChatInput}
+                    handleChat={game.handleChat}
+                    notepad={game.notepad}
+                    setNotepad={game.setNotepad}
+                    handleSkip={game.handleSkip}
+                    guessInput={game.guessInput}
+                    setGuessInput={game.setGuessInput}
+                    handleGuess={game.handleGuess}
+                    guessDialogOpen={game.guessDialogOpen}
+                    setGuessDialogOpen={game.setGuessDialogOpen}
+                    onLeaveRoom={game.handleLeaveRoom}
+                    onAskQuestion={game.handleAskQuestion}
+                    onSubmitVote={game.handleSubmitVote}
+                    onUseJoker={game.handleUseJoker}
+                    onToggleVoice={game.toggleVoice}
+                    onStartObjection={game.handleStartObjection}
+                    onVoteObjection={game.handleVoteObjection}
+                    headRotations={game.headRotations}
+                    onHeadRotation={game.handleHeadRotation}
+                    taunts={game.taunts}
+                    onTaunt={game.handleTaunt}
+                    visualEffects={game.visualEffects}
+                />
+            );
         }
         if (gameState.gameState === "ROUND_END") {
-            return <GameOver gameState={gameState} me={me!} onStart={() => handleStart({ category: gameState.category || "Karışık", bettingEnabled: gameState.isBettingEnabled, jokersEnabled: gameState.isJokersEnabled, betAmount: gameState.betAmount })} onLeaveRoom={handleLeaveRoom} />;
+            return (
+                <GameOver
+                    gameState={gameState}
+                    me={me!}
+                    onStart={() =>
+                        game.handleStart({
+                            category: gameState.category || "Karışık",
+                            bettingEnabled: gameState.isBettingEnabled,
+                            jokersEnabled: gameState.isJokersEnabled,
+                            betAmount: gameState.betAmount,
+                        })
+                    }
+                    onLeaveRoom={game.handleLeaveRoom}
+                />
+            );
         }
         return null;
     };
 
     const roomOptions = {
         audioCaptureDefaults: {
-            deviceId: typeof window !== 'undefined' ? (localStorage.getItem('preferredMic') || undefined) : undefined,
+            deviceId: typeof window !== "undefined" ? localStorage.getItem("preferredMic") || undefined : undefined,
             echoCancellation: true,
             autoGainControl: true,
             noiseSuppression: true,
-        }
+        },
     };
 
     return (
-        <LiveKitRoom video={false} audio={me?.isVoiceEnabled || false} token={token} serverUrl={process.env.NEXT_PUBLIC_LIVEKIT_URL} connect={!!token} options={roomOptions}>
+        <LiveKitRoom
+            video={false}
+            audio={me?.isVoiceEnabled || false}
+            token={game.token}
+            serverUrl={process.env.NEXT_PUBLIC_LIVEKIT_URL}
+            connect={!!game.token}
+            options={roomOptions}
+        >
             {renderGameState()}
             <RoomAudioRenderer />
             <LiveKitSpeakerSync />
@@ -2624,6 +2470,9 @@ import { playTurnSound, playWinSound } from "@/utils/audio";
 import confetti from "canvas-confetti";
 import { motion, AnimatePresence } from "framer-motion";
 import Scene3D from "./Scene3D";
+import Notepad from "./ui/Notepad";
+import ChatPanel from "./ui/ChatPanel";
+import ActionMenu from "./ui/ActionMenu";
 
 interface GameSceneProps {
     gameState: GameState;
@@ -2860,60 +2709,14 @@ export default function GameScene({
 
             <div className="w-full h-full flex-1 relative z-10 mt-12 md:mt-10 px-2 pb-2 md:px-6 md:pb-0 pointer-events-none flex flex-col justify-end gap-2 md:flex-row md:gap-6">
                 
-                <div className="order-2 md:order-1 w-full md:w-1/4 md:max-w-[400px] md:self-start glass p-3 rounded-2xl flex flex-col border border-slate-700/50 pointer-events-auto shadow-2xl bg-slate-900/60 backdrop-blur-lg transition-all duration-300 h-auto max-h-[85vh] overflow-y-auto custom-scrollbar">
-                    <h3 onClick={() => handleToggle('notepad')} className="font-bold text-lg flex items-center justify-between gap-2 text-yellow-400 cursor-pointer select-none hover:text-yellow-300">
-                        <span className="flex items-center gap-2">📝 Not Defterim</span>
-                        <span className="text-sm bg-slate-800/80 px-2 py-1 rounded-lg">{isNotepadOpen ? '▲ Gizle' : '▼ Aç'}</span>
-                    </h3>
-                    {isNotepadOpen && (
-                        <textarea placeholder="Örn: Gerçek bir insan mı? Yaşıyor mu?..." value={notepad} onChange={e => setNotepad(e.target.value)} spellCheck="false" className="w-full bg-yellow-900/20 rounded-xl text-slate-200 p-3 mt-2 border border-yellow-500/30 focus:border-yellow-500/60 outline-none resize-none h-[150px] md:h-[250px] custom-scrollbar shrink-0" />
-                    )}
-                    
-                    {myJokerMeta && (
-                        <div className={`mt-4 p-3 rounded-xl border ${me.hasUsedJoker ? 'bg-slate-800/50 border-slate-700/50 opacity-60' : (myJokerMeta.rarity === 'prismatic' ? 'bg-fuchsia-900/30 border-fuchsia-500/30' : myJokerMeta.rarity === 'gold' ? 'bg-amber-900/30 border-amber-500/30' : 'bg-slate-700/30 border-slate-400/30')}`}>
-                            <h4 className={`font-bold text-sm flex items-center gap-1 mb-1 ${me.hasUsedJoker ? 'text-slate-400' : (myJokerMeta.rarity === 'prismatic' ? 'text-fuchsia-400' : myJokerMeta.rarity === 'gold' ? 'text-amber-400' : 'text-slate-200')}`}>
-                                🃏 {myJokerMeta.name} {me.hasUsedJoker && <span className="text-red-400 text-xs ml-auto">(Kullanıldı)</span>}
-                            </h4>
-                            <p className="text-xs text-slate-300">{myJokerMeta.desc}</p>
-                            
-                            {(me.shieldActive || (me.mirrorRoundsLeft ?? 0) > 0) && (
-                                <div className="mt-2 flex flex-wrap gap-1.5 pt-2 border-t border-slate-700/50">
-                                    {me.shieldActive && (
-                                        <Chip size="small" label="🛡️ Gizli Kalkan Aktif" color="info" className="font-bold text-xs" />
-                                    )}
-                                    {(me.mirrorRoundsLeft ?? 0) > 0 ? (
-                                        <Chip size="small" label={`🪞 Ayna (${me.mirrorRoundsLeft} Tur)`} color="secondary" className="font-bold text-xs" />
-                                    ) : null}
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    {me?.lastQuestions && me.lastQuestions.length > 0 && (
-                        <div className="mt-4 flex flex-col gap-3 overflow-y-auto custom-scrollbar max-h-[300px] pr-2">
-                            {me.lastQuestions.map((q: any, i: number) => (
-                                <div key={i} className="p-3 rounded-xl border bg-cyan-900/30 border-cyan-500/30">
-                                    <h4 className="font-bold text-sm text-cyan-400 mb-1">{me.lastQuestions!.length > 1 ? `${i + 1}. Sorum` : 'Son Sorduğum Soru'}</h4>
-                                    <p className="text-sm font-bold text-slate-200 mb-2 break-words break-all">"{q.question}"</p>
-                                    <div className="flex gap-2 text-xs flex-wrap">
-                                        {Object.entries(q.votes).map(([voterId, vote]) => {
-                                            const voter = gameState.users.find((u: any) => u.id === voterId);
-                                            if (!voter) return null;
-                                            const voteColor = vote === 'yes' ? 'text-green-400' : vote === 'no' ? 'text-red-400' : 'text-yellow-400';
-                                            const voteText = vote === 'yes' ? 'Evet' : vote === 'no' ? 'Hayır' : 'Bazen';
-                                            return (
-                                                <div key={voterId} className="bg-slate-800/80 px-2 py-1 rounded border border-slate-700">
-                                                    <span className="text-slate-400 mr-1">{voter.name}:</span>
-                                                    <span className={`font-bold ${voteColor}`}>{voteText}</span>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
+                <Notepad
+                    notepad={notepad}
+                    setNotepad={setNotepad}
+                    isNotepadOpen={isNotepadOpen}
+                    onToggle={() => handleToggle('notepad')}
+                    me={me}
+                    gameState={gameState}
+                />
 
                 <div className="order-3 md:order-2 w-full md:flex-1 md:w-auto flex flex-col pointer-events-none z-20 md:justify-between">
                     <div className="hidden md:flex justify-between items-center bg-slate-900/80 backdrop-blur-md border border-slate-700/50 p-4 rounded-2xl relative z-10 pointer-events-auto shadow-2xl">
@@ -2930,92 +2733,37 @@ export default function GameScene({
                    
                     <div className="hidden md:block flex-1" />
                  
-                    <div className="bg-slate-900/80 backdrop-blur-md border border-slate-700/50 rounded-2xl transition-all duration-300 flex flex-col z-10 relative pointer-events-auto shadow-2xl">
-                        <div onClick={() => handleToggle('chat')} className="p-3 flex justify-between items-center cursor-pointer border-b border-slate-700/50">
-                            <span className="font-bold text-sm text-violet-400 flex items-center gap-2">💬 Sohbet</span>
-                            <span className="text-xs bg-slate-800 px-2 py-1 rounded-lg text-slate-300">{isChatOpen ? '▼ Gizle' : '▲ Aç'}</span>
-                        </div>
-
-                        <div className={`group ${isChatOpen ? 'flex flex-col' : 'hidden'}`}>
-                            <div className="h-40 group-focus-within:h-64 md:group-focus-within:h-72 transition-all duration-300 ease-in-out overflow-y-auto p-4 space-y-2 custom-scrollbar pointer-events-auto">
-                                {gameState.chatHistory.map((msg: any, i: number) => {
-                                    let colorClass = "text-violet-400";
-                                    if (!msg.system && msg.nameColor) {
-                                        const found = NAME_COLORS.find(c => c.id === msg.nameColor);
-                                        if (found) colorClass = found.className;
-                                    }
-                                    return (
-                                        <div key={i} className={`text-sm ${msg.system ? (msg.message.includes('Sistem (Özel)') ? 'text-fuchsia-400 font-bold' : 'text-cyan-400 text-center italic my-2') : ''}`}>
-                                            {!msg.system && <strong className={colorClass}>{msg.name}: </strong>}
-                                            <span className={`break-words break-all ${msg.system ? (msg.message.includes('Sistem (Özel)') ? '' : 'font-bold') : 'text-slate-200'}`}>{msg.message}</span>
-                                        </div>
-                                    );
-                                })}
-                                <div ref={chatEndRef} />
-                            </div>
-                            <form onSubmit={handleChat} className="p-2 border-t border-slate-700 flex gap-2 pointer-events-auto">
-                                <TextField fullWidth size="small" slotProps={{ htmlInput: { maxLength: 120 } }} placeholder={me?.status === 'playing' ? "Soru sor veya cevapla..." : "İzleyici sohbeti..."} value={chatInput} onChange={e => setChatInput(e.target.value)} sx={{ input: { color: 'white' }, '& .MuiOutlinedInput-root': { '& fieldset': { borderColor: '#475569' }, '&:hover fieldset': { borderColor: '#94a3b8' }, '&.Mui-focused fieldset': { borderColor: '#06b6d4' } } }} />
-                                <IconButton type="submit" color="primary" className="bg-violet-600 hover:bg-violet-500 text-white rounded-lg px-4"><SendIcon /></IconButton>
-                            </form>
-                        </div>
-                    </div>
+                    <ChatPanel
+                        chatHistory={gameState.chatHistory}
+                        chatInput={chatInput}
+                        setChatInput={setChatInput}
+                        handleChat={handleChat}
+                        isChatOpen={isChatOpen}
+                        onToggle={() => handleToggle('chat')}
+                        isPlayer={me?.status === 'playing'}
+                    />
                 </div>
 
-                <div className="order-1 md:order-3 w-full md:w-1/4 md:max-w-[400px] flex flex-col gap-3 pointer-events-auto z-40">
-                    {me?.status === 'playing' && gameState.gameState === "PLAYING" && (
-                        <div className="glass rounded-2xl flex flex-col border border-slate-700/50 shadow-xl bg-slate-900/60 backdrop-blur-lg overflow-hidden transition-all duration-300">
-                            
-                            <div onClick={() => handleToggle('actions')} className="p-3 md:hidden flex justify-between items-center cursor-pointer border-b border-slate-700/50 bg-slate-800/80">
-                                <span className="font-bold text-sm text-green-400 flex items-center gap-2">⚡ Aksiyonlar</span>
-                                <span className="text-xs bg-slate-700 px-2 py-1 rounded-lg text-slate-300">{isActionsOpen ? '▼ Gizle' : '▲ Aç'}</span>
-                            </div>
-
-                            <div className={`p-4 flex-col justify-center items-center gap-3 ${isActionsOpen ? 'flex' : 'hidden md:flex'}`}>
-                                <motion.div whileHover={{ scale: isMyTurn ? 1.05 : 1 }} whileTap={{ scale: isMyTurn ? 0.95 : 1 }} className="w-full">
-                                    <Button variant="contained" color="info" size="medium" fullWidth startIcon={<QuestionAnswerIcon />} onClick={() => setQuestionDialogOpen(true)} disabled={!isMyTurn || ((me?.questionsAskedThisTurn ?? 0) >= 1 && (me?.extraQuestions ?? 0) <= 0) || !!gameState.activeQuestion || isRussianRoulette} className={`py-3 rounded-xl border-2 font-bold ${isMyTurn && !gameState.activeQuestion && !isRussianRoulette ? 'bg-cyan-600 shadow-lg shadow-cyan-500/30' : 'opacity-50'}`}>
-                                        Soru Sor & Oylat
-                                    </Button>
-                                </motion.div>
-
-                                <div className="w-full h-px bg-slate-700 my-2"></div>
-
-                                <motion.div whileHover={{ scale: isMyTurn ? 1.05 : 1 }} whileTap={{ scale: isMyTurn ? 0.95 : 1 }} className="w-full">
-                                    <Button variant="contained" color="success" size="medium" fullWidth onClick={() => setGuessDialogOpen(true)} disabled={!isMyTurn} className={`py-3 rounded-xl text-lg font-bold shadow-lg shadow-green-500/20 ${!isMyTurn ? 'opacity-50' : ''}`}>
-                                        TAHMİN ET
-                                    </Button>
-                                </motion.div>
-
-                                <motion.div whileHover={{ scale: isMyTurn ? 1.05 : 1 }} whileTap={{ scale: isMyTurn ? 0.95 : 1 }} className="w-full">
-                                    <Button variant="outlined" color="warning" size="medium" fullWidth startIcon={<SkipNextIcon />} onClick={handleSkip} disabled={!isMyTurn || isRussianRoulette} className={`py-3 rounded-xl border-2 ${isMyTurn && !isRussianRoulette ? 'hover:bg-warning-main/10' : 'opacity-50'}`}>
-                                        Turu Geç
-                                    </Button>
-                                </motion.div>
-
-                                {me?.joker !== undefined && me?.joker !== null && !me?.hasUsedJoker && (
-                                    <motion.div whileHover={{ scale: isMyTurn ? 1.05 : 1 }} whileTap={{ scale: isMyTurn ? 0.95 : 1 }} className="w-full mt-2">
-                                        <Button 
-                                            variant="contained" 
-                                            color="secondary" 
-                                            size="medium" 
-                                            fullWidth 
-                                            onClick={() => setJokerDialogOpen(true)}
-                                            disabled={currentRound < 3 || isRussianRoulette || !isMyTurn}
-                                            className={`py-3 rounded-xl border-2 font-bold ${currentRound >= 3 && !isRussianRoulette && isMyTurn ? 'bg-fuchsia-600 shadow-[0_0_15px_rgba(192,38,211,0.5)]' : 'opacity-50'}`}
-                                        >
-                                            {currentRound < 3 ? '🃏 Joker (3. Turda Açılır)' : '🃏 Joker Kullan'}
-                                        </Button>
-                                    </motion.div>
-                                )}
-
-                                <motion.div whileHover={{ scale: !gameState.hasObjectionUsed ? 1.05 : 1 }} whileTap={{ scale: !gameState.hasObjectionUsed ? 0.95 : 1 }} className="w-full mt-4">
-                                    <Button variant="outlined" color="error" size="medium" fullWidth onClick={onStartObjection} disabled={gameState.hasObjectionUsed || isRussianRoulette} className={`py-2 rounded-xl border-2 font-bold ${!gameState.hasObjectionUsed && !isRussianRoulette ? 'border-red-500/80 text-red-400 shadow-[0_0_15px_rgba(239,68,68,0.2)] hover:bg-red-500/20' : 'opacity-50'}`}>
-                                        🚨 ŞİKEYE İTİRAZ ET {gameState.hasObjectionUsed && '(Kullanıldı)'}
-                                    </Button>
-                                </motion.div>
-                            </div>
-                        </div>
-                    )}
-                </div>
+                {me?.status === 'playing' && gameState.gameState === "PLAYING" && (
+                    <ActionMenu
+                        isMyTurn={isMyTurn}
+                        currentRound={currentRound}
+                        isRussianRoulette={!!isRussianRoulette}
+                        hasActiveQuestion={!!gameState.activeQuestion}
+                        questionsAskedThisTurn={me?.questionsAskedThisTurn ?? 0}
+                        extraQuestions={me?.extraQuestions ?? 0}
+                        hasJoker={me?.joker !== undefined && me?.joker !== null}
+                        hasUsedJoker={!!me?.hasUsedJoker}
+                        hasObjectionUsed={!!gameState.hasObjectionUsed}
+                        isActionsOpen={isActionsOpen}
+                        onToggle={() => handleToggle('actions')}
+                        onOpenQuestionDialog={() => setQuestionDialogOpen(true)}
+                        onOpenGuessDialog={() => setGuessDialogOpen(true)}
+                        onSkip={handleSkip}
+                        onOpenJokerDialog={() => setJokerDialogOpen(true)}
+                        onStartObjection={onStartObjection}
+                    />
+                )}
             </div>
 
             <Dialog open={jokerDialogOpen} onClose={() => setJokerDialogOpen(false)} slotProps={{ paper: { className: "!bg-white !text-slate-900 !rounded-2xl min-w-[300px]" } }}>
@@ -4248,6 +3996,707 @@ export const TITLES = [
 
 
 =========================
+DOSYA: client\components\game\ui\ActionMenu.tsx
+=========================
+
+import React from "react";
+import { Button } from "@mui/material";
+import QuestionAnswerIcon from '@mui/icons-material/QuestionAnswer';
+import SkipNextIcon from '@mui/icons-material/SkipNext';
+import { motion } from "framer-motion";
+
+interface ActionMenuProps {
+    isMyTurn: boolean;
+    currentRound: number;
+    isRussianRoulette: boolean;
+    hasActiveQuestion: boolean;
+    questionsAskedThisTurn: number;
+    extraQuestions: number;
+    hasJoker: boolean;
+    hasUsedJoker: boolean;
+    hasObjectionUsed: boolean;
+    isActionsOpen: boolean;
+    onToggle: () => void;
+    onOpenQuestionDialog: () => void;
+    onOpenGuessDialog: () => void;
+    onSkip: () => void;
+    onOpenJokerDialog: () => void;
+    onStartObjection: () => void;
+}
+
+export default function ActionMenu({
+    isMyTurn,
+    currentRound,
+    isRussianRoulette,
+    hasActiveQuestion,
+    questionsAskedThisTurn,
+    extraQuestions,
+    hasJoker,
+    hasUsedJoker,
+    hasObjectionUsed,
+    isActionsOpen,
+    onToggle,
+    onOpenQuestionDialog,
+    onOpenGuessDialog,
+    onSkip,
+    onOpenJokerDialog,
+    onStartObjection
+}: ActionMenuProps) {
+    return (
+        <div className="order-1 md:order-3 w-full md:w-1/4 md:max-w-[400px] flex flex-col gap-3 pointer-events-auto z-40">
+            <div className="glass rounded-2xl flex flex-col border border-slate-700/50 shadow-xl bg-slate-900/60 backdrop-blur-lg overflow-hidden transition-all duration-300">
+                <div onClick={onToggle} className="p-3 md:hidden flex justify-between items-center cursor-pointer border-b border-slate-700/50 bg-slate-800/80">
+                    <span className="font-bold text-sm text-green-400 flex items-center gap-2">⚡ Aksiyonlar</span>
+                    <span className="text-xs bg-slate-700 px-2 py-1 rounded-lg text-slate-300">{isActionsOpen ? '▼ Gizle' : '▲ Aç'}</span>
+                </div>
+
+                <div className={`p-4 flex-col justify-center items-center gap-3 ${isActionsOpen ? 'flex' : 'hidden md:flex'}`}>
+                    <motion.div whileHover={{ scale: isMyTurn ? 1.05 : 1 }} whileTap={{ scale: isMyTurn ? 0.95 : 1 }} className="w-full">
+                        <Button 
+                            variant="contained" 
+                            color="info" 
+                            size="medium" 
+                            fullWidth 
+                            startIcon={<QuestionAnswerIcon />} 
+                            onClick={onOpenQuestionDialog} 
+                            disabled={!isMyTurn || (questionsAskedThisTurn >= 1 && extraQuestions <= 0) || hasActiveQuestion || isRussianRoulette} 
+                            className={`py-3 rounded-xl border-2 font-bold ${isMyTurn && !hasActiveQuestion && !isRussianRoulette ? 'bg-cyan-600 shadow-lg shadow-cyan-500/30' : 'opacity-50'}`}
+                        >
+                            Soru Sor & Oylat
+                        </Button>
+                    </motion.div>
+
+                    <div className="w-full h-px bg-slate-700 my-2"></div>
+
+                    <motion.div whileHover={{ scale: isMyTurn ? 1.05 : 1 }} whileTap={{ scale: isMyTurn ? 0.95 : 1 }} className="w-full">
+                        <Button 
+                            variant="contained" 
+                            color="success" 
+                            size="medium" 
+                            fullWidth 
+                            onClick={onOpenGuessDialog} 
+                            disabled={!isMyTurn} 
+                            className={`py-3 rounded-xl text-lg font-bold shadow-lg shadow-green-500/20 ${!isMyTurn ? 'opacity-50' : ''}`}
+                        >
+                            TAHMİN ET
+                        </Button>
+                    </motion.div>
+
+                    <motion.div whileHover={{ scale: isMyTurn ? 1.05 : 1 }} whileTap={{ scale: isMyTurn ? 0.95 : 1 }} className="w-full">
+                        <Button 
+                            variant="outlined" 
+                            color="warning" 
+                            size="medium" 
+                            fullWidth 
+                            startIcon={<SkipNextIcon />} 
+                            onClick={onSkip} 
+                            disabled={!isMyTurn || isRussianRoulette} 
+                            className={`py-3 rounded-xl border-2 ${isMyTurn && !isRussianRoulette ? 'hover:bg-warning-main/10' : 'opacity-50'}`}
+                        >
+                            Turu Geç
+                        </Button>
+                    </motion.div>
+
+                    {hasJoker && !hasUsedJoker && (
+                        <motion.div whileHover={{ scale: isMyTurn ? 1.05 : 1 }} whileTap={{ scale: isMyTurn ? 0.95 : 1 }} className="w-full mt-2">
+                            <Button 
+                                variant="contained" 
+                                color="secondary" 
+                                size="medium" 
+                                fullWidth 
+                                onClick={onOpenJokerDialog} 
+                                disabled={currentRound < 3 || isRussianRoulette || !isMyTurn} 
+                                className={`py-3 rounded-xl border-2 font-bold ${currentRound >= 3 && !isRussianRoulette && isMyTurn ? 'bg-fuchsia-600 shadow-[0_0_15px_rgba(192,38,211,0.5)]' : 'opacity-50'}`}
+                            >
+                                {currentRound < 3 ? '🃏 Joker (3. Turda Açılır)' : '🃏 Joker Kullan'}
+                            </Button>
+                        </motion.div>
+                    )}
+
+                    <motion.div whileHover={{ scale: !hasObjectionUsed ? 1.05 : 1 }} whileTap={{ scale: !hasObjectionUsed ? 0.95 : 1 }} className="w-full mt-4">
+                        <Button 
+                            variant="outlined" 
+                            color="error" 
+                            size="medium" 
+                            fullWidth 
+                            onClick={onStartObjection} 
+                            disabled={hasObjectionUsed || isRussianRoulette} 
+                            className={`py-2 rounded-xl border-2 font-bold ${!hasObjectionUsed && !isRussianRoulette ? 'border-red-500/80 text-red-400 shadow-[0_0_15px_rgba(239,68,68,0.2)] hover:bg-red-500/20' : 'opacity-50'}`}
+                        >
+                            🚨 ŞİKEYE İTİRAZ ET {hasObjectionUsed && '(Kullanıldı)'}
+                        </Button>
+                    </motion.div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+
+=========================
+DOSYA: client\components\game\ui\ChatPanel.tsx
+=========================
+
+import React, { useRef, useEffect } from "react";
+import { TextField, IconButton } from "@mui/material";
+import SendIcon from '@mui/icons-material/Send';
+import { NAME_COLORS } from "../types";
+
+interface ChatPanelProps {
+    chatHistory: any[];
+    chatInput: string;
+    setChatInput: (val: string) => void;
+    handleChat: (e?: React.FormEvent) => void;
+    isChatOpen: boolean;
+    onToggle: () => void;
+    isPlayer: boolean;
+}
+
+export default function ChatPanel({
+    chatHistory,
+    chatInput,
+    setChatInput,
+    handleChat,
+    isChatOpen,
+    onToggle,
+    isPlayer
+}: ChatPanelProps) {
+    const chatEndRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, [chatHistory]);
+
+    return (
+        <div className="bg-slate-900/80 backdrop-blur-md border border-slate-700/50 rounded-2xl transition-all duration-300 flex flex-col z-10 relative pointer-events-auto shadow-2xl">
+            <div onClick={onToggle} className="p-3 flex justify-between items-center cursor-pointer border-b border-slate-700/50">
+                <span className="font-bold text-sm text-violet-400 flex items-center gap-2">💬 Sohbet</span>
+                <span className="text-xs bg-slate-800 px-2 py-1 rounded-lg text-slate-300">{isChatOpen ? '▼ Gizle' : '▲ Aç'}</span>
+            </div>
+
+            <div className={`group ${isChatOpen ? 'flex flex-col' : 'hidden'}`}>
+                <div className="h-40 group-focus-within:h-64 md:group-focus-within:h-72 transition-all duration-300 ease-in-out overflow-y-auto p-4 space-y-2 custom-scrollbar pointer-events-auto">
+                    {chatHistory.map((msg: any, i: number) => {
+                        let colorClass = "text-violet-400";
+                        if (!msg.system && msg.nameColor) {
+                            const found = NAME_COLORS.find(c => c.id === msg.nameColor);
+                            if (found) colorClass = found.className;
+                        }
+                        return (
+                            <div key={i} className={`text-sm ${msg.system ? (msg.message.includes('Sistem (Özel)') ? 'text-fuchsia-400 font-bold' : 'text-cyan-400 text-center italic my-2') : ''}`}>
+                                {!msg.system && <strong className={colorClass}>{msg.name}: </strong>}
+                                <span className={`break-words break-all ${msg.system ? (msg.message.includes('Sistem (Özel)') ? '' : 'font-bold') : 'text-slate-200'}`}>{msg.message}</span>
+                            </div>
+                        );
+                    })}
+                    <div ref={chatEndRef} />
+                </div>
+                <form onSubmit={handleChat} className="p-2 border-t border-slate-700 flex gap-2 pointer-events-auto">
+                    <TextField 
+                        fullWidth 
+                        size="small" 
+                        slotProps={{ htmlInput: { maxLength: 120 } }} 
+                        placeholder={isPlayer ? "Soru sor veya cevapla..." : "İzleyici sohbeti..."} 
+                        value={chatInput} 
+                        onChange={e => setChatInput(e.target.value)} 
+                        sx={{ 
+                            input: { color: 'white' }, 
+                            '& .MuiOutlinedInput-root': { 
+                                '& fieldset': { borderColor: '#475569' }, 
+                                '&:hover fieldset': { borderColor: '#94a3b8' }, 
+                                '&.Mui-focused fieldset': { borderColor: '#06b6d4' } 
+                            } 
+                        }} 
+                    />
+                    <IconButton type="submit" color="primary" className="bg-violet-600 hover:bg-violet-500 text-white rounded-lg px-4">
+                        <SendIcon />
+                    </IconButton>
+                </form>
+            </div>
+        </div>
+    );
+}
+
+
+=========================
+DOSYA: client\components\game\ui\Notepad.tsx
+=========================
+
+import React from "react";
+import { Chip } from "@mui/material";
+import { User, GameState, JOKERS } from "../types";
+
+interface NotepadProps {
+    notepad: string;
+    setNotepad: (val: string) => void;
+    isNotepadOpen: boolean;
+    onToggle: () => void;
+    me: User;
+    gameState: GameState;
+}
+
+export default function Notepad({
+    notepad,
+    setNotepad,
+    isNotepadOpen,
+    onToggle,
+    me,
+    gameState
+}: NotepadProps) {
+    const myJokerMeta = JOKERS.find(j => j.id === me?.joker);
+
+    return (
+        <div className="order-2 md:order-1 w-full md:w-1/4 md:max-w-[400px] md:self-start glass p-3 rounded-2xl flex flex-col border border-slate-700/50 pointer-events-auto shadow-2xl bg-slate-900/60 backdrop-blur-lg transition-all duration-300 h-auto max-h-[85vh] overflow-y-auto custom-scrollbar">
+            <h3 onClick={onToggle} className="font-bold text-lg flex items-center justify-between gap-2 text-yellow-400 cursor-pointer select-none hover:text-yellow-300">
+                <span className="flex items-center gap-2">📝 Not Defterim</span>
+                <span className="text-sm bg-slate-800/80 px-2 py-1 rounded-lg">{isNotepadOpen ? '▲ Gizle' : '▼ Aç'}</span>
+            </h3>
+            {isNotepadOpen && (
+                <textarea
+                    placeholder="Örn: Gerçek bir insan mı? Yaşıyor mu?..."
+                    value={notepad}
+                    onChange={e => setNotepad(e.target.value)}
+                    spellCheck="false"
+                    className="w-full bg-yellow-900/20 rounded-xl text-slate-200 p-3 mt-2 border border-yellow-500/30 focus:border-yellow-500/60 outline-none resize-none h-[150px] md:h-[250px] custom-scrollbar shrink-0"
+                />
+            )}
+
+            {myJokerMeta && (
+                <div className={`mt-4 p-3 rounded-xl border ${me.hasUsedJoker ? 'bg-slate-800/50 border-slate-700/50 opacity-60' : (myJokerMeta.rarity === 'prismatic' ? 'bg-fuchsia-900/30 border-fuchsia-500/30' : myJokerMeta.rarity === 'gold' ? 'bg-amber-900/30 border-amber-500/30' : 'bg-slate-700/30 border-slate-400/30')}`}>
+                    <h4 className={`font-bold text-sm flex items-center gap-1 mb-1 ${me.hasUsedJoker ? 'text-slate-400' : (myJokerMeta.rarity === 'prismatic' ? 'text-fuchsia-400' : myJokerMeta.rarity === 'gold' ? 'text-amber-400' : 'text-slate-200')}`}>
+                        🃏 {myJokerMeta.name} {me.hasUsedJoker && <span className="text-red-400 text-xs ml-auto">(Kullanıldı)</span>}
+                    </h4>
+                    <p className="text-xs text-slate-300">{myJokerMeta.desc}</p>
+
+                    {(me.shieldActive || (me.mirrorRoundsLeft ?? 0) > 0) && (
+                        <div className="mt-2 flex flex-wrap gap-1.5 pt-2 border-t border-slate-700/50">
+                            {me.shieldActive && (
+                                <Chip size="small" label="🛡️ Gizli Kalkan Aktif" color="info" className="font-bold text-xs" />
+                            )}
+                            {(me.mirrorRoundsLeft ?? 0) > 0 ? (
+                                <Chip size="small" label={`🪞 Ayna (${me.mirrorRoundsLeft} Tur)`} color="secondary" className="font-bold text-xs" />
+                            ) : null}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {me?.lastQuestions && me.lastQuestions.length > 0 && (
+                <div className="mt-4 flex flex-col gap-3 overflow-y-auto custom-scrollbar max-h-[300px] pr-2">
+                    {me.lastQuestions.map((q: any, i: number) => (
+                        <div key={i} className="p-3 rounded-xl border bg-cyan-900/30 border-cyan-500/30">
+                            <h4 className="font-bold text-sm text-cyan-400 mb-1">{me.lastQuestions!.length > 1 ? `${i + 1}. Sorum` : 'Son Sorduğum Soru'}</h4>
+                            <p className="text-sm font-bold text-slate-200 mb-2 break-words break-all">"{q.question}"</p>
+                            <div className="flex gap-2 text-xs flex-wrap">
+                                {Object.entries(q.votes).map(([voterId, vote]) => {
+                                    const voter = gameState.users.find((u: any) => u.id === voterId);
+                                    if (!voter) return null;
+                                    const voteColor = vote === 'yes' ? 'text-green-400' : vote === 'no' ? 'text-red-400' : 'text-yellow-400';
+                                    const voteText = vote === 'yes' ? 'Evet' : vote === 'no' ? 'Hayır' : 'Bazen';
+                                    return (
+                                        <div key={voterId} className="bg-slate-800/80 px-2 py-1 rounded border border-slate-700">
+                                            <span className="text-slate-400 mr-1">{voter.name}:</span>
+                                            <span className={`font-bold ${voteColor}`}>{voteText}</span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+
+=========================
+DOSYA: client\hooks\useGameSocket.tsx
+=========================
+
+"use client";
+
+import React, { useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { io, Socket } from "socket.io-client";
+import { toast } from "react-toastify";
+import { Button } from "@mui/material";
+import { User, GameState } from "@/components/game/types";
+
+export function useGameSocket(code: string | string[] | undefined) {
+    const router = useRouter();
+    const [socket, setSocket] = useState<Socket | null>(null);
+    const [gameState, setGameState] = useState<GameState | null>(null);
+    const [inviteUrl, setInviteUrl] = useState<string>("");
+
+    const [isJoined, setIsJoined] = useState(false);
+    const [checkingAuth, setCheckingAuth] = useState(true);
+
+    const [wordInput, setWordInput] = useState("");
+    const [chatInput, setChatInput] = useState("");
+    const [notepad, setNotepad] = useState("");
+    const [isNotepadLoaded, setIsNotepadLoaded] = useState(false);
+    const [guessDialogOpen, setGuessDialogOpen] = useState(false);
+    const [guessInput, setGuessInput] = useState("");
+
+    const [headRotations, setHeadRotations] = useState<{ [key: string]: { pitch: number; yaw: number } }>({});
+    const [taunts, setTaunts] = useState<{ [key: string]: { type: string; id: number } }>({});
+    const [visualEffects, setVisualEffects] = useState<any[]>([]);
+    const [token, setToken] = useState("");
+
+    useEffect(() => {
+        if (code && typeof window !== "undefined") {
+            const saved = localStorage.getItem(`kimbuki_notepad_${code}`);
+            if (saved) setNotepad(saved);
+            setIsNotepadLoaded(true);
+        }
+    }, [code]);
+
+    useEffect(() => {
+        if (isNotepadLoaded && code && typeof window !== "undefined") {
+            localStorage.setItem(`kimbuki_notepad_${code}`, notepad);
+        }
+    }, [notepad, code, isNotepadLoaded]);
+
+    const myId = socket?.id || "";
+    const me = gameState?.users.find((u: User) => u.id === myId);
+
+    useEffect(() => {
+        if (!me?.id || !code) return;
+        (async () => {
+            try {
+                const livekitIdentity = me.dbId || me.id;
+                const gameToken = localStorage.getItem("gameToken");
+                const resp = await fetch(`/api/livekit?room=${code}&username=${encodeURIComponent(livekitIdentity)}`, {
+                    headers: gameToken ? { Authorization: `Bearer ${gameToken}` } : {},
+                });
+                const data = await resp.json();
+                if (data.token) {
+                    setToken(data.token);
+                }
+            } catch (e) {
+                console.error("LiveKit token fetch error", e);
+            }
+        })();
+    }, [me?.id, me?.dbId, code]);
+
+    useEffect(() => {
+        if (code && typeof window !== "undefined") {
+            setInviteUrl(`${window.location.origin}/game/${code}`);
+        }
+    }, [code]);
+
+    const connectToRoom = useCallback((user: any) => {
+        const token = localStorage.getItem("gameToken");
+        const s = io(process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:4000", {
+            auth: { token },
+        });
+        setSocket(s);
+
+        s.emit(
+            "room:join",
+            {
+                roomCode: code,
+                name: user.username,
+                avatar: user.avatar,
+                pedestal: user.pedestal,
+                nameColor: user.nameColor,
+                title: user.title,
+            },
+            (res: any) => {
+                if (!res.ok) {
+                    toast.error("Hata: " + res.error);
+                    router.push("/");
+                } else {
+                    setIsJoined(true);
+                    setCheckingAuth(false);
+                }
+            }
+        );
+
+        s.on("game:state", (state: GameState) => setGameState(state));
+
+        s.on("game:new_chat", (chatMsg: any) => {
+            setGameState((prev) => {
+                if (!prev) return prev;
+                const history = prev.chatHistory || [];
+                const isDuplicate = history.some(
+                    (c) => c.timestamp === chatMsg.timestamp && c.message === chatMsg.message && c.userId === chatMsg.userId
+                );
+                if (isDuplicate) return prev;
+                return {
+                    ...prev,
+                    chatHistory: [...history, chatMsg],
+                };
+            });
+        });
+
+        s.on("game:hint_result", ({ hint }: { hint: string }) => {
+            toast.info(`💡 İPUCU: ${hint}`);
+        });
+
+        s.on("game:head_update", ({ userId, pitch, yaw }: any) => {
+            setHeadRotations((prev) => ({ ...prev, [userId]: { pitch, yaw } }));
+        });
+
+        s.on("game:error", ({ message }: { message: string }) => {
+            toast.error(message);
+        });
+
+        s.on("game:closed", () => {
+            toast.error("Oda host tarafından kapatıldı!");
+            s.disconnect();
+            router.push("/");
+        });
+
+        s.on("game:clear_notepad", () => {
+            setNotepad("");
+            if (typeof window !== "undefined") {
+                localStorage.removeItem(`kimbuki_notepad_${code}`);
+            }
+            toast.error("🧠 AMNEZİ! Biri hafızanı sildi, tüm notların kayboldu!", { autoClose: 5000, theme: "colored" });
+        });
+
+        s.on("game:play_taunt", ({ userId, type }: any) => {
+            const tauntId = Date.now();
+            setTaunts((prev) => ({ ...prev, [userId]: { type, id: tauntId } }));
+            setTimeout(() => {
+                setTaunts((prev) => {
+                    if (prev[userId]?.id === tauntId) {
+                        const next = { ...prev };
+                        delete next[userId];
+                        return next;
+                    }
+                    return prev;
+                });
+            }, 2500);
+        });
+
+        s.on("game:visual_effect", async (payload: any) => {
+            const audio = await import("@/utils/audio");
+            if (payload.type === "bomb_explode") audio.playExplosionSound();
+            else if (payload.type === "roulette_die") audio.playGunshotSound();
+            else if (["mirror_cast", "shield_cast", "time_bend"].includes(payload.type)) audio.playMagicSound();
+            else if (payload.type === "blood_tie") audio.playHeartbeatSound();
+            else if (payload.type === "mind_wipe") audio.playGlitchSound();
+            else if (payload.type === "silence_cast") audio.playSilenceSound();
+            else if (payload.type === "extra_ammo") audio.playReloadSound();
+            else if (payload.type === "letter_reveal") audio.playSparkleSound();
+
+            const effId = Date.now() + Math.random();
+            setVisualEffects((prev) => [...prev, { ...payload, id: effId }]);
+            setTimeout(() => {
+                setVisualEffects((prev) => prev.filter((e) => e.id !== effId));
+            }, 2500);
+        });
+    }, [code, router]);
+
+    useEffect(() => {
+        const gameToken = localStorage.getItem("gameToken");
+        if (!gameToken) {
+            router.push(`/?invite=${code}`);
+            return;
+        }
+
+        fetch(`${process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:4000"}/api/auth/me`, {
+            headers: { Authorization: `Bearer ${gameToken}` },
+        })
+            .then((res) => res.json())
+            .then((data) => {
+                if (data.username) {
+                    connectToRoom(data);
+                } else {
+                    localStorage.removeItem("gameToken");
+                    router.push(`/?invite=${code}`);
+                }
+            })
+            .catch(() => {
+                router.push(`/?invite=${code}`);
+            });
+    }, [code, router, connectToRoom]);
+
+    useEffect(() => {
+        return () => {
+            if (socket) socket.disconnect();
+        };
+    }, [socket]);
+
+    // Game Actions
+    const handleStart = (settings: {
+        category?: string;
+        bettingEnabled?: boolean;
+        jokersEnabled?: boolean;
+        betAmount?: number;
+        theme?: "day" | "night";
+        map?: string;
+    }) => socket?.emit("game:start", settings);
+
+    const handleSetWord = () => {
+        if (!wordInput.trim()) return;
+        socket?.emit("game:set_word", { word: wordInput });
+    };
+
+    const handleChat = (e?: React.FormEvent) => {
+        e?.preventDefault();
+        if (!chatInput.trim()) return;
+        socket?.emit("game:chat", { message: chatInput });
+        setChatInput("");
+    };
+
+    const handleSkip = () => {
+        socket?.emit("game:skip_turn");
+    };
+
+    const handleAskQuestion = (question: string) => {
+        socket?.emit("game:ask_question", { question });
+    };
+
+    const handleSubmitVote = (vote: string) => {
+        socket?.emit("game:submit_vote", { vote });
+    };
+
+    const handleGuess = () => {
+        if (!guessInput.trim()) return;
+        socket?.emit("game:guess", { guess: guessInput });
+        setGuessInput("");
+        setGuessDialogOpen(false);
+    };
+
+    const handleUseJoker = (payload: any) => {
+        socket?.emit("game:use_joker", payload);
+    };
+
+    const toggleVoice = async (enabled: boolean) => {
+        socket?.emit("game:toggle_voice", { enabled });
+    };
+
+    const copyLink = () => {
+        navigator.clipboard.writeText(inviteUrl);
+        toast.success("Davet linki kopyalandı!");
+    };
+
+    const handleLeaveRoom = () => {
+        socket?.emit("game:leave");
+        if (socket) socket.disconnect();
+        sessionStorage.removeItem("username");
+        router.push("/");
+    };
+
+    const handleSelectAvatar = (id: number) => {
+        socket?.emit("game:set_avatar", { avatarId: id });
+    };
+
+    const handlePlaceBet = (targetId: string) => {
+        socket?.emit("game:place_bet", { targetId });
+    };
+
+    const handleEditWord = () => {
+        socket?.emit("game:edit_word");
+    };
+
+    const handleShuffleTargets = () => {
+        socket?.emit("game:shuffle_targets");
+    };
+
+    const handleSelectJoker = (jokerId: number) => {
+        socket?.emit("game:select_joker", { jokerId });
+    };
+
+    const handleStartObjection = () => {
+        socket?.emit("game:start_objection");
+    };
+
+    const handleVoteObjection = (vote: boolean) => {
+        socket?.emit("game:vote_objection", { vote });
+    };
+
+    const handleHeadRotation = (pitch: number, yaw: number) => {
+        socket?.emit("game:head_rotation", { pitch, yaw });
+    };
+
+    const handleTaunt = (type: string) => {
+        socket?.emit("game:taunt", { type });
+    };
+
+    const handleCloseRoom = () => {
+        toast(
+            ({ closeToast }) => (
+                <div className="flex flex-col gap-3">
+                    <p className="font-bold">Odayı kapatmak istediğine emin misin?</p>
+                    <p className="text-sm">Odada bulunan herkes atılacak.</p>
+                    <div className="flex gap-2 justify-end mt-2">
+                        <Button size="small" variant="outlined" color="inherit" onClick={closeToast}>
+                            İptal
+                        </Button>
+                        <Button
+                            size="small"
+                            variant="contained"
+                            color="error"
+                            onClick={() => {
+                                socket?.emit("room:close");
+                                if (socket) socket.disconnect();
+                                sessionStorage.removeItem("username");
+                                router.push("/");
+                                if (closeToast) closeToast();
+                            }}
+                        >
+                            Kapat
+                        </Button>
+                    </div>
+                </div>
+            ),
+            { autoClose: false, closeOnClick: false, draggable: false, position: "top-center" }
+        );
+    };
+
+    return {
+        socket,
+        gameState,
+        inviteUrl,
+        isJoined,
+        checkingAuth,
+        token,
+        myId,
+        me,
+        headRotations,
+        taunts,
+        visualEffects,
+        notepad,
+        setNotepad,
+        wordInput,
+        setWordInput,
+        chatInput,
+        setChatInput,
+        guessDialogOpen,
+        setGuessDialogOpen,
+        guessInput,
+        setGuessInput,
+        handleStart,
+        handleSetWord,
+        handleChat,
+        handleSkip,
+        handleAskQuestion,
+        handleSubmitVote,
+        handleGuess,
+        handleUseJoker,
+        toggleVoice,
+        copyLink,
+        handleLeaveRoom,
+        handleSelectAvatar,
+        handleCloseRoom,
+        handlePlaceBet,
+        handleEditWord,
+        handleShuffleTargets,
+        handleSelectJoker,
+        handleStartObjection,
+        handleVoteObjection,
+        handleHeadRotation,
+        handleTaunt,
+    };
+}
+
+
+=========================
 DOSYA: client\utils\audio.ts
 =========================
 
@@ -4893,6 +5342,10 @@ DOSYA: server\game\Room.js
 =========================
 
 const User = require('../models/User');
+const JokerManager = require('./jokers');
+const questionHandler = require('./handlers/questionHandler');
+const guessHandler = require('./handlers/guessHandler');
+const objectionHandler = require('./handlers/objectionHandler');
 
 class Room {
     constructor(code, io) {
@@ -4920,6 +5373,11 @@ class Room {
         this.chatHistory.push(logObj);
         if (this.chatHistory.length > 60) {
             this.chatHistory.shift();
+        }
+        if (logObj.privateTo) {
+            this.io.to(logObj.privateTo).emit("game:new_chat", logObj);
+        } else {
+            this.io.to(this.code).emit("game:new_chat", logObj);
         }
     }
 
@@ -5362,88 +5820,15 @@ class Room {
     }
 
     startObjection(userId) {
-        if (this.objection || this.gameState !== "PLAYING" || this.hasObjectionUsed) return;
-        
-        const initiator = this.users.find(u => u.id === userId);
-        if (!initiator) return;
-
-        this.hasObjectionUsed = true;
-        this.pausedRemainingMs = this.turnStartTime + (this.turnTime * 1000) - Date.now();
-        if (this.timer) clearTimeout(this.timer);
-        
-        this.objection = {
-            initiator: initiator.name,
-            votes: {},
-            endTime: Date.now() + 15000 
-        };
-        
-        this.objection.votes[userId] = true;
-        this.broadcastState();
-        
-        this.objectionTimer = setTimeout(() => {
-            this.resolveObjection();
-        }, 15000);
+        return objectionHandler.startObjection(this, userId);
     }
 
     voteObjection(userId, vote) {
-        if (!this.objection || typeof vote !== 'boolean') return;
-        
-        const user = this.users.find(u => u.id === userId);
-        if (!user || user.status !== 'playing' || user.disconnected) return; 
-
-        this.objection.votes[userId] = vote;
-        
-        const playingUsers = this.users.filter(u => u.status === 'playing' && !u.disconnected);
-        const voteCount = Object.keys(this.objection.votes).filter(vId => playingUsers.some(p => p.id === vId)).length;
-
-        if (voteCount >= playingUsers.length) {
-            clearTimeout(this.objectionTimer);
-            this.resolveObjection();
-        } else {
-            this.broadcastState();
-        }
+        return objectionHandler.voteObjection(this, userId, vote);
     }
 
-    async resolveObjection() {
-        if (!this.objection) return;
-        
-        const playingUsers = this.users.filter(u => u.status === 'playing' && !u.disconnected);
-        let yesVotes = 0;
-        for (let v of Object.values(this.objection.votes)) {
-            if (v === true) yesVotes++;
-        }
-        
-        const majority = Math.ceil(playingUsers.length / 2);
-        
-        const User = require('../models/User');
-        if (yesVotes >= majority) {
-            if (this.isBettingEnabled) {
-                for (let u of this.users) {
-                    if (u.dbId) {
-                        await User.findByIdAndUpdate(u.dbId, { $inc: { gold: this.betAmount } }).catch(err => console.error(err));
-                    }
-                }
-                this.io.to(this.code).emit("game:error", { message: `🚨 Şike itirazı kabul edildi! Oyun iptal edildi, herkese ${this.betAmount} Altın iade edildi.` });
-            } else {
-                this.io.to(this.code).emit("game:error", { message: `🚨 Çoğunluk kararı sağlandı! Eğlenceyi sabote edenler olduğu için oyun iptal edildi.` });
-            }
-            
-            this.objection = null;
-            if (this.timer) clearTimeout(this.timer);
-            this.gameState = "LOBBY";
-            this.chatHistory = [];
-            this.broadcastState();
-        } else {
-            this.io.to(this.code).emit("game:error", { message: `❌ Şike itirazı reddedildi! Yeterli çoğunluk sağlanamadı.` });
-            this.objection = null;
-            
-            this.turnStartTime = Date.now() - ((this.turnTime * 1000) - this.pausedRemainingMs);
-            this.timer = setTimeout(() => {
-                if (this.gameState === "PLAYING") this.nextTurn();
-            }, Math.max(5000, this.pausedRemainingMs));
-            
-            this.broadcastState();
-        }
+    resolveObjection() {
+        return objectionHandler.resolveObjection(this);
     }
 
     setWord(userId, word) {
@@ -5567,8 +5952,7 @@ class Room {
             message: message,
             timestamp: Date.now()
         });
-
-        this.broadcastState();
+        // broadcastState çağrılmıyor; addChatLog doğrudan game:new_chat event'ini yayınlar
     }
 
     skipTurn(userId) {
@@ -5582,230 +5966,7 @@ class Room {
     }
 
     async guessWord(userId, guess) {
-        if (this.gameState !== "PLAYING" || typeof guess !== 'string') return;
-        
-        const currentUser = this.users[this.currentTurnIndex];
-        if (currentUser.id !== userId) return;
-
-        const user = this.users.find(u => u.id === userId);
-        if (!user || user.status !== 'playing') return;
-
-        const normalizedTarget = (user.assignedWord || "").toLocaleLowerCase("tr-TR").replace(/[^a-z0-9çğıöşü]/g, "");
-        const normalizedGuess = (guess || "").toLocaleLowerCase("tr-TR").replace(/[^a-z0-9çğıöşü]/g, "");
-        if (!normalizedGuess || normalizedGuess.length < 3) return;
-
-        const targetTokens = (user.assignedWord || "").toLocaleLowerCase("tr-TR").split(/\s+/).map(w => w.replace(/[^a-z0-9çğıöşü]/g, "")).filter(Boolean);
-        const isTokenMatch = targetTokens.some(w => w === normalizedGuess && w.length >= 3);
-
-        const isSubstringMatch = (normalizedTarget.length >= 4 && normalizedGuess.length >= 4) && 
-                                 (normalizedTarget.includes(normalizedGuess) || normalizedGuess.includes(normalizedTarget));
-
-        const isCorrect = (normalizedTarget === normalizedGuess) || isTokenMatch || isSubstringMatch;
-
-        const isRussianRoulette = user.russianRouletteActive;
-
-        if (isCorrect) {
-            user.status = 'spectator';
-            user.bloodTieTarget = null;
-            this.winners.push(user.id);
-            const User = require('../models/User');
-            
-            if (user.timeBomb) {
-                const caster = this.users.find(c => c.id === user.timeBomb.casterId);
-                if (caster && caster.status === 'playing' && caster.id !== user.id) {
-                    let dmg = 2;
-                    let shielded = false;
-                    if (caster.shieldActive) {
-                        shielded = true;
-                        caster.shieldActive = false;
-                        dmg -= 1;
-                        this.io.to(this.code).emit("game:visual_effect", { type: 'shield_cast', targetId: caster.id });
-                    }
-                    caster.lives -= dmg;
-                    this.io.to(this.code).emit("game:visual_effect", { type: 'bomb_explode', targetId: caster.id });
-                    
-                    if (shielded) {
-                        this.addChatLog({ system: true, message: `🛡️ 💥 İADE! ${user.name} bombayı bildi! ${caster.name}'in kalkanı kırıldı ama yine de 1 can kaybetti!`, timestamp: Date.now() });
-                    } else {
-                        this.addChatLog({ system: true, message: `🔄💥 İADE! ${user.name} kelimesini bildi ve bombayı ${caster.name}'e geri fırlatarak patlattı! (-2 Can)`, timestamp: Date.now() });
-                    }
-                    if (caster.lives <= 0) {
-                        caster.status = 'spectator';
-                        caster.timeBomb = null;
-                        caster.bloodTieTarget = null;
-                        this.addChatLog({ system: true, message: `💀 ${caster.name} kendi bombasıyla elendi! Kelimesi: ${caster.assignedWord}`, timestamp: Date.now() });
-                    }
-                } else if (caster && caster.id === user.id) {
-                    this.addChatLog({ system: true, message: `💣 ${user.name} kalkanından seken kendi bombasını başarıyla imha etti!`, timestamp: Date.now() });
-                }
-                user.timeBomb = null;
-            }
-            
-            let winnerReward = 0; 
-            let bettorReward = 0;
-            const rank = this.winners.length; 
-            
-            if (this.isBettingEnabled) {
-                const playersCount = this.initialPlayerCount || this.users.length;
-                const totalPot = playersCount * this.betAmount;
-                let pct = 0;
-                
-                if (isRussianRoulette) {
-                    winnerReward = totalPot; 
-                    bettorReward = 0;
-                } else {
-                    if (playersCount <= 2) {
-                        pct = rank === 1 ? 1.0 : 0;
-                    } else if (playersCount === 3) {
-                        pct = rank === 1 ? 0.60 : (rank === 2 ? 0.40 : 0);
-                    } else if (playersCount === 4) {
-                        pct = rank === 1 ? 0.50 : (rank === 2 ? 0.30 : (rank === 3 ? 0.20 : 0));
-                    } else {
-                        if (rank === 1) pct = 0.40;
-                        else if (rank === 2) pct = 0.30;
-                        else if (rank === 3) pct = 0.20;
-                        else if (rank === 4) pct = 0.10;
-                        else pct = 0;
-                    }
-                    winnerReward = Math.floor(totalPot * pct);
-                    bettorReward = Math.max(1, Math.floor(winnerReward / 2));
-                }
-            }
-            
-            let repReward = 5;
-            if (isRussianRoulette) repReward = 200;
-            else if (rank === 1) repReward = 50;
-            else if (rank === 2) repReward = 20;
-            else if (rank === 3) repReward = 10;
-            
-            let playerRewards = {};
-            const addReward = (dbId, gold, rep, type) => {
-                if (!dbId) return;
-                if (!playerRewards[dbId]) playerRewards[dbId] = { gold: 0, rep: 0, winCount: 0, playCount: 0, betWinCount: 0 };
-                playerRewards[dbId].gold += gold;
-                playerRewards[dbId].rep += rep;
-                if (type === 'win') { playerRewards[dbId].winCount++; playerRewards[dbId].playCount++; }
-                if (type === 'bet_win') { playerRewards[dbId].betWinCount++; }
-            };
-
-            addReward(user.dbId, winnerReward, repReward, 'win');
-            
-            user.reputation += repReward;
-
-            let winMsg = "";
-            if (isRussianRoulette) {
-                winMsg = `💀👑 RUS RULETİ BAŞARILI! ${user.name} hayatını riske attı ve tüm kasayı (${winnerReward || repReward} Ödül) TEK BAŞINA ALDI!`;
-            } else if (this.isBettingEnabled) {
-                winMsg = `🏆 ${user.name} doğru tahmin etti! (${rank}. oldu) -> Oyun kazancı: ${winnerReward} Altın. (Kelimesi: ${user.assignedWord})`;
-            } else {
-                winMsg = `🏆 ${user.name} doğru tahmin etti! (${rank}. oldu) -> Oyun kazancı: ${repReward} İtibar. (Kelimesi: ${user.assignedWord})`;
-            }
-            this.addChatLog({ system: true, message: winMsg, timestamp: Date.now() });
-            this.roundLogs.push(winMsg);
-
-            if (this.isBettingEnabled && bettorReward > 0 && !isRussianRoulette) {
-                const bettors = Object.keys(this.bets || {}).filter(uid => this.bets[uid] === user.id);
-                let bettorNames = [];
-                
-                for (let uid of bettors) {
-                    const bettorUser = this.users.find(u => u.id === uid);
-                    if (bettorUser) {
-                        addReward(bettorUser.dbId, bettorReward, 5, 'bet_win');
-                        bettorUser.reputation += 5; 
-                        bettorNames.push(bettorUser.name);
-                    }
-                }
-                
-                if (bettorNames.length > 0) {
-                    const betMsg = `🎲 Bahis Kazananları (${user.name} üzerine oynayanlar): ${bettorNames.join(', ')} -> Bahis kazancı: Ekstra ${bettorReward} Altın!`;
-                    this.addChatLog({ system: true, message: betMsg, timestamp: Date.now() });
-                    this.roundLogs.push(betMsg);
-                }
-            }
-
-            const updatePromises = Object.entries(playerRewards).map(([dbId, rewards]) => {
-                return User.findOneAndUpdate(
-                    { _id: dbId },
-                    { $inc: { gold: rewards.gold, reputation: rewards.rep } },
-                    { new: true }
-                ).then(userDb => {
-                    if (userDb && userDb.quests && userDb.quests.active) {
-                        let modified = false;
-                        userDb.quests.active.forEach(q => {
-                            if (q.type === 'win' && !q.isClaimed && q.progress < q.target) { q.progress += rewards.winCount; modified = true; }
-                            if (q.type === 'play' && !q.isClaimed && q.progress < q.target) { q.progress += rewards.playCount; modified = true; }
-                            if (q.type === 'bet_win' && !q.isClaimed && q.progress < q.target) { q.progress += rewards.betWinCount; modified = true; }
-                        });
-                        if (modified) {
-                            userDb.markModified('quests');
-                            return userDb.save().catch(e => console.error("Quest update err", e));
-                        }
-                    }
-                }).catch(err => console.error("Aggregated reward update error:", err));
-            });
-            await Promise.all(updatePromises);
-
-            if (isRussianRoulette) {
-                this.endGame();
-                return;
-            }
-
-            const playingUsers = this.users.filter(u => u.status === 'playing');
-            if (playingUsers.length <= 1) { 
-                this.endGame();
-                return;
-            }
-
-            if (this.users[this.currentTurnIndex].id === userId) {
-                this.nextTurn();
-            } else {
-                this.broadcastState();
-            }
-        } else {
-            let dmg = isRussianRoulette ? 3 : 1;
-            let shielded = false;
-            if (user.shieldActive) {
-                shielded = true;
-                user.shieldActive = false;
-                dmg -= 1;
-                this.io.to(this.code).emit("game:visual_effect", { type: 'shield_cast', targetId: user.id });
-            }
-
-            user.lives -= dmg;
-            if (isRussianRoulette) user.russianRouletteActive = false;
-
-            if (user.lives <= 0) {
-                user.status = 'spectator';
-                user.bloodTieTarget = null;
-                user.timeBomb = null;
-                if (isRussianRoulette) {
-                    this.io.to(this.code).emit("game:visual_effect", { type: 'roulette_die', targetId: user.id });
-                    this.addChatLog({ system: true, message: `💀 RUS RULETİ PATLADI! ${user.name} yanlış bildi ve elendi! Kelimesi: ${user.assignedWord}`, timestamp: Date.now() });
-                } else {
-                    this.addChatLog({ system: true, message: `💀 ${user.name} tüm tahmin haklarını kaybetti ve izleyici oldu! Kelimesi: ${user.assignedWord}`, timestamp: Date.now() });
-                }
-            } else {
-                if (isRussianRoulette) {
-                    this.addChatLog({ system: true, message: `🛡️ ${user.name} Rus Ruleti'nde yanlış bildi! Kalkanı parçalandı ve ağır yaralandı ama yaşıyor! (Kalan Can: ${user.lives})`, timestamp: Date.now() });
-                } else if (shielded) {
-                    this.addChatLog({ system: true, message: `🛡️ ${user.name} yanlış tahminde bulundu! Gizli Kalkanı kırılarak onu korudu!`, timestamp: Date.now() });
-                } else {
-                    this.addChatLog({ system: true, message: `${user.name} yanlış tahminde bulundu! (${guess}) (Kalan Can: ${user.lives})`, timestamp: Date.now() });
-                }
-            }
-
-            const playingUsers = this.users.filter(u => u.status === 'playing');
-            if (playingUsers.length <= 1) { 
-                this.endGame();
-                return;
-            }
-
-            if (this.users[this.currentTurnIndex].id === userId) {
-                this.nextTurn();
-            } else {
-                this.broadcastState();
-            }
-        }
+        return guessHandler.guessWord(this, userId, guess);
     }
 
     openLettersForUser(user, count) {
@@ -5825,500 +5986,19 @@ class Room {
     }
 
     useJoker(userId, payload) {
-        if (this.gameState !== "PLAYING" || !payload || typeof payload !== 'object') return;
-        if (this.roundCount < 3) {
-            this.io.to(userId).emit("game:error", { message: "Jokerler 3. turdan itibaren kullanılabilir!" });
-            return;
-        }
-
-        const user = this.users.find(u => u.id === userId);
-        if (!user || user.status !== 'playing' || user.hasUsedJoker || user.joker === null) return;
-
-        if (this.users[this.currentTurnIndex].id !== userId) {
-            this.io.to(userId).emit("game:error", { message: "Jokerini sadece kendi sıranda kullanabilirsin!" });
-            return;
-        }
-
-        const jokerType = user.joker;
-        let targetId = payload.targetId;
-        let initialTargetId = targetId; 
-        
-        if (targetId === user.id && [3, 4, 5, 7, 10, 13, 15, 16].includes(jokerType)) {
-            this.io.to(userId).emit("game:error", { message: "Bu jokeri kendi üzerinde kullanamazsın!" });
-            return;
-        }
-
-        if (jokerType === 7 && targetId && typeof targetId === 'string') {
-            const targetForBomb = this.users.find(u => u.id === targetId);
-            if (targetForBomb && targetForBomb.timeBomb) {
-                 this.io.to(userId).emit("game:error", { message: "Bu oyuncunun üzerinde zaten aktif bir bomba var!" });
-                 return;
-            }
-        }
-
-        if (targetId && [3, 4, 5, 7, 13, 15].includes(jokerType)) {
-            const targetUser = this.users.find(u => u.id === targetId);
-            if (targetUser && targetUser.mirrorRoundsLeft > 0 && targetUser.id !== user.id) {
-                this.addChatLog({ system: true, message: `🛡️ YANSIMA! Kötü niyetli joker, gizli Ayna Kalkanı'na çarpıp ${user.name}'e geri sekti!`, timestamp: Date.now() });
-                targetId = user.id; 
-            }
-        }
-
-        let jokerConsumed = false;
-
-        switch (jokerType) {
-            case 0: 
-                if (this.currentTurnIndex !== -1 && this.users[this.currentTurnIndex].id === userId) {
-                    if (this.timer) clearTimeout(this.timer);
-                    this.turnTimeLeft = (this.turnStartTime + (this.turnTime * 1000) - Date.now()) / 1000;
-                    const newTime = this.turnTimeLeft + 60;
-                    this.turnStartTime = Date.now() - (this.turnTime * 1000 - newTime * 1000); 
-                    this.timer = setTimeout(() => { if (this.gameState === "PLAYING") this.nextTurn(); }, newTime * 1000);
-                    this.addChatLog({ system: true, message: `⏳ ${user.name} Zaman Bükücü kullanarak süresine 1 dakika ekledi!`, timestamp: Date.now() });
-                    this.io.to(this.code).emit("game:visual_effect", { type: 'time_bend', targetId: user.id });
-                    jokerConsumed = true;
-                }
-                break;
-            case 1: 
-                this.addChatLog({ system: true, message: `🔍 ${user.name}, Harf Açıcı kullanarak gizli bir ipucu elde etti!`, timestamp: Date.now() });
-                this.openLettersForUser(user, 1);
-                this.io.to(this.code).emit("game:visual_effect", { type: 'letter_reveal', targetId: user.id });
-                jokerConsumed = true;
-                break;
-            case 2: 
-                user.extraQuestions = 1;
-                user.extraQuestionChain = true;
-                this.addChatLog({ system: true, message: `🔫 ${user.name}, Çift Şarjör kullandı! (Ekstra +1 soru hakkı kazandı ve aldığı her 'Evet' oyunda yeni bir hak kazanacak!)`, timestamp: Date.now() });
-                this.io.to(this.code).emit("game:visual_effect", { type: 'extra_ammo', targetId: user.id });
-                jokerConsumed = true;
-                break;
-            case 3: 
-                if (targetId && typeof targetId === 'string') {
-                    const silenceTarget = this.users.find(u => u.id === targetId);
-                    if (silenceTarget) {
-                        silenceTarget.silencedTurns = 2;
-                        this.addChatLog({ system: true, message: `🤫 Susturucu kullanıldı! ${silenceTarget.name}, 2 tur boyunca susturuldu.`, timestamp: Date.now() });
-                        this.io.to(this.code).emit("game:visual_effect", { type: 'silence_cast', targetId: silenceTarget.id });
-                        jokerConsumed = true;
-                    }
-                }
-                break;
-            case 4: 
-                if (targetId && payload.newWord && typeof payload.newWord === 'string') {
-                    const cleanWord = payload.newWord.trim().substring(0, 30);
-                    if (!cleanWord) {
-                        this.io.to(userId).emit("game:error", { message: "Geçerli bir kelime girmelisiniz!" });
-                        break;
-                    }
-                    const target = this.users.find(u => u.id === targetId);
-                    if (target) {
-                        if (target.id === user.id && initialTargetId !== user.id) {
-                            this.pendingMirrorWordOwner = initialTargetId;
-                            this.pendingMirrorWordTarget = user.id;
-                            target.assignedWord = "AYNA SAHİBİ KELİME BEKLENİYOR"; 
-                            target.revealedLetters = [];
-                            
-                            const mirrorOwner = this.users.find(u => u.id === initialTargetId);
-                            this.addChatLog({ system: true, message: `🧠 Hafıza Silici geri tepti! ${target.name}'in kelimesi silindi! Ayna sahibi ${mirrorOwner ? mirrorOwner.name : ''} yeni kelimeyi belirliyor...`, timestamp: Date.now() });
-                            this.addChatLog({ system: true, privateTo: initialTargetId, message: `Sistem (Özel): Ayna ile Hafıza Siliciyi yansıttın! Lütfen 30 saniye içinde chat alanına "/kelime YENIKELIME" yazarak rakibinin yeni kelimesini belirle (Örn: /kelime Karpuz).`, timestamp: Date.now() });
-
-                            if (this.mirrorWordTimer) clearTimeout(this.mirrorWordTimer);
-                            this.mirrorWordTimer = setTimeout(() => {
-                                if (this.pendingMirrorWordOwner) {
-                                    const mirrorOwnerStillHere = this.users.find(u => u.id === this.pendingMirrorWordOwner && !u.disconnected);
-                                    const t = this.users.find(u => u.id === this.pendingMirrorWordTarget);
-                                    if (t) {
-                                        if (!mirrorOwnerStillHere) {
-                                            t.assignedWord = "BİLİNMEYEN";
-                                            this.addChatLog({ system: true, message: `⏳ Ayna sahibi oyundan koptuğu için ${t.name}'in kelimesi sıfırlandı!`, timestamp: Date.now() });
-                                        } else {
-                                            t.assignedWord = Math.random().toString(36).substring(2, 8).toUpperCase();
-                                            this.addChatLog({ system: true, message: `⏳ Ayna sahibi süresinde kelime belirlemedi! ${t.name}'in kelimesi rastgele harflere dönüştü!`, timestamp: Date.now() });
-                                        }
-                                        this.broadcastState();
-                                    }
-                                    this.pendingMirrorWordOwner = null;
-                                    this.pendingMirrorWordTarget = null;
-                                }
-                            }, 30000);
-                        } else {
-                            target.assignedWord = cleanWord; 
-                            this.addChatLog({ system: true, message: `🧠 Hafıza Silici kullanıldı! ${target.name}'in kelimesi acımasızca değiştirildi!`, timestamp: Date.now() });
-                            target.revealedLetters = [];
-                            this.io.to(this.code).emit("game:visual_effect", { type: 'mind_wipe', targetId: target.id });
-                        }
-                        jokerConsumed = true;
-                    }
-                }
-                break;
-            case 5:
-                if (targetId && typeof targetId === 'string') {
-                    user.bloodTieTarget = targetId;
-                    this.addChatLog({ system: true, message: `🩸 Kan Bağı kullanıldı! ${user.name} hedefini seçti, kaderleri artık bir!`, timestamp: Date.now() });
-                    this.io.to(this.code).emit("game:visual_effect", { type: 'blood_tie', targetId: targetId });
-                    this.io.to(this.code).emit("game:visual_effect", { type: 'blood_tie', targetId: user.id });
-                    jokerConsumed = true;
-                }
-                break;
-            case 6:
-                user.russianRouletteActive = true;
-                this.addChatLog({ system: true, message: `💀 RUS RULETİ! ${user.name} hemen tahmin etmek zorunda!`, timestamp: Date.now() });
-                this.openLettersForUser(user, 2);
-                this.io.to(this.code).emit("game:visual_effect", { type: 'roulette_start', targetId: user.id });
-                jokerConsumed = true;
-                break;
-            case 7: 
-                if (targetId && typeof targetId === 'string') {
-                    const target = this.users.find(u => u.id === targetId);
-                    if (target) {
-                        const actualCaster = (targetId === user.id) ? initialTargetId : user.id;
-                        target.timeBomb = { casterId: actualCaster, roundsLeft: 3 };
-                        this.addChatLog({ system: true, message: `💣 SAATLİ BOMBA! ${target.name}'in üzerine bomba yerleştirildi. 3 tur içinde bilemezse patlayacak!`, timestamp: Date.now() });
-                        this.io.to(this.code).emit("game:visual_effect", { type: 'bomb_plant', targetId: target.id });
-                        jokerConsumed = true;
-                    }
-                }
-                break;
-            case 8: 
-                user.mirrorRoundsLeft = 3;
-                this.addChatLog({ system: true, privateTo: user.id, message: "Sistem (Özel): Ayna (Kalkan) aktif! 3 tur boyunca sana atılan kötü niyetli jokerler atan kişiye geri sekecek.", timestamp: Date.now() });
-                this.io.to(userId).emit("game:visual_effect", { type: 'mirror_cast', targetId: user.id });
-                jokerConsumed = true;
-                break;
-            case 9:
-                user.shieldActive = true;
-                this.addChatLog({ system: true, privateTo: user.id, message: "Sistem (Özel): Gizli Kalkan aktif! Bir sonraki ölümcül hatanı veya bombayı engelleyecek.", timestamp: Date.now() });
-                this.io.to(userId).emit("game:visual_effect", { type: 'shield_cast', targetId: user.id });
-                jokerConsumed = true;
-                break;
-            case 10:
-                if (targetId && typeof targetId === 'string') {
-                    const target = this.users.find(u => u.id === targetId);
-                    if (target && user.assignedWord && target.assignedWord) {
-                        const mLen = user.assignedWord.replace(/\s/g, '').length;
-                        const tLen = target.assignedWord.replace(/\s/g, '').length;
-                        const cmp = mLen > tLen ? "DAHA UZUN" : mLen < tLen ? "DAHA KISA" : "AYNI UZUNLUKTA";
-                        this.addChatLog({ system: true, privateTo: user.id, message: `Sistem (Özel): Senin kelimen ${target.name}'in kelimesinden ${cmp}.`, timestamp: Date.now() });
-                        jokerConsumed = true;
-                    }
-                }
-                break;
-            case 11:
-                const goldJokers = [2, 3, 8, 12, 15];
-                user.joker = goldJokers[Math.floor(Math.random() * goldJokers.length)];
-                this.addChatLog({ system: true, privateTo: user.id, message: "Sistem (Özel): Gümüş Sürpriz Kutu'yu açtın ve içinden ALTIN joker çıktı!", timestamp: Date.now() });
-                jokerConsumed = true;
-                user.hasUsedJoker = false; 
-                break;
-            case 12:
-                const prisJokers = [4, 5, 6, 7, 13];
-                user.joker = prisJokers[Math.floor(Math.random() * prisJokers.length)];
-                this.addChatLog({ system: true, privateTo: user.id, message: "Sistem (Özel): Altın Sürpriz Kutu'yu açtın ve içinden PRİZMATİK joker çıktı!", timestamp: Date.now() });
-                jokerConsumed = true;
-                user.hasUsedJoker = false;
-                break;
-            case 13: 
-                if (targetId && typeof targetId === 'string') {
-                    const target = this.users.find(u => u.id === targetId);
-                    if (target && target.status === 'playing') {
-                        
-                        if (target.id === user.id && initialTargetId !== user.id) {
-                            this.io.to(this.code).emit("game:visual_effect", { type: 'mind_wipe', targetId: user.id }); 
-                            this.addChatLog({ system: true, message: `🤡 BÜYÜ GERİ TEPTİ! Ayna yüzünden ${user.name} kendi canını kendisiyle takas etti. Joker tamamen boşa gitti!`, timestamp: Date.now() });
-                        
-                        } else if (target.shieldActive) {
-                            target.shieldActive = false;
-                            this.io.to(this.code).emit("game:visual_effect", { type: 'shield_cast', targetId: target.id });
-                            this.addChatLog({ system: true, message: `🧛♂️ ${user.name} Can Takası yapmak istedi ama ${target.name}'in Gizli Kalkanı buna engel oldu!`, timestamp: Date.now() });
-                        
-                        } else {
-                            const tempLives = user.lives;
-                            user.lives = target.lives;
-                            target.lives = tempLives;
-
-                            this.io.to(this.code).emit("game:visual_effect", { type: 'blood_tie', targetId: target.id });
-                            this.io.to(this.code).emit("game:visual_effect", { type: 'blood_tie', targetId: user.id });
-
-                            this.addChatLog({ system: true, message: `🧛♂️ İHANET! ${user.name}, ${target.name} ile canlarını takas etti!`, timestamp: Date.now() });
-
-                            if (user.lives <= 0) {
-                                user.status = 'spectator';
-                                this.addChatLog({ system: true, message: `💀 ${user.name}, canı olmayan biriyle takas yapıp kendi kendini eledi!`, timestamp: Date.now() });
-                            }
-                            if (target.lives <= 0) {
-                                target.status = 'spectator';
-                                this.addChatLog({ system: true, message: `💀 ${target.name} canı kalmadığı için elendi! Kelimesi: ${target.assignedWord}`, timestamp: Date.now() });
-                            }
-                        }
-                        jokerConsumed = true;
-                    }
-                }
-                break;
-            case 14:
-                if (!payload.newWord || typeof payload.newWord !== 'string') {
-                    this.io.to(userId).emit("game:error", { message: "Lütfen aramak istediğiniz harfi girin!" });
-                    break;
-                }
-                
-                const letter = payload.newWord.trim().toLocaleUpperCase("tr-TR").charAt(0);
-                if (!/[A-ZÇĞİÖŞÜ0-9]/.test(letter)) {
-                     this.io.to(userId).emit("game:error", { message: "Lütfen geçerli bir harf girin!" });
-                     break;
-                }
-
-                if (user.lastDetectiveRound && (this.roundCount - user.lastDetectiveRound < 2)) {
-                     this.io.to(userId).emit("game:error", { message: "Bu jokeri tekrar kullanmak için 1 tur beklemelisin!" });
-                     break;
-                }
-
-                const myWord = (user.assignedWord || "").toLocaleUpperCase("tr-TR");
-                const count = myWord.split('').filter(c => c === letter).length;
-
-                this.addChatLog({ system: true, message: `🕵️‍♂️ ${user.name} Harf Dedektifi'ni kullandı! Kelimesinde bir harf arıyor...`, timestamp: Date.now() });
-
-                if (count > 0) {
-                     this.addChatLog({ system: true, privateTo: user.id, message: `Sistem (Özel): Harika! Kelimende '${letter}' harfi BULUNUYOR! (${count} adet)`, timestamp: Date.now() });
-                     if (!user.revealedLetters) user.revealedLetters = [];
-                     if (!user.revealedLetters.includes(letter)) {
-                         user.revealedLetters.push(letter);
-                     }
-                } else {
-                     this.addChatLog({ system: true, privateTo: user.id, message: `Sistem (Özel): Maalesef, kelimende '${letter}' harfi YOK!`, timestamp: Date.now() });
-                }
-
-                user.lastDetectiveRound = this.roundCount;
-                user.detectiveUses = (user.detectiveUses || 0) + 1;
-
-                this.io.to(this.code).emit("game:visual_effect", { type: 'letter_reveal', targetId: user.id });
-
-                if (user.detectiveUses >= 3) {
-                     this.addChatLog({ system: true, privateTo: user.id, message: `Sistem (Özel): Harf Dedektifi'nin görev süresi doldu (3/3).`, timestamp: Date.now() });
-                } else {
-                     this.addChatLog({ system: true, privateTo: user.id, message: `Sistem (Özel): Harf Dedektifi için kalan kullanım hakkın: ${3 - user.detectiveUses}`, timestamp: Date.now() });
-                }
-                jokerConsumed = true;
-                break;
-            case 15:
-                if (targetId && typeof targetId === 'string') {
-                    const target = this.users.find(u => u.id === targetId);
-                    if (target && target.status === 'playing') {
-                        if (target.shieldActive) {
-                            target.shieldActive = false;
-                            this.io.to(this.code).emit("game:visual_effect", { type: 'shield_cast', targetId: target.id });
-                            this.addChatLog({ system: true, message: `🧠 ${user.name} Amnezi kullanmak istedi ama ${target.name}'in Gizli Kalkanı buna engel oldu!`, timestamp: Date.now() });
-                        } else {
-                            this.io.to(target.id).emit("game:clear_notepad");
-                            this.io.to(this.code).emit("game:visual_effect", { type: 'mind_wipe', targetId: target.id });
-                            this.addChatLog({ system: true, message: `🧠 AMNEZİ! ${user.name}, ${target.name} isimli oyuncunun hafızasını sildi! Not defteri artık bomboş...`, timestamp: Date.now() });
-                        }
-                        jokerConsumed = true;
-                    }
-                }
-                break;
-            case 16:
-                if (targetId && typeof targetId === 'string') {
-                    const target = this.users.find(u => u.id === targetId);
-                    if (target && target.status === 'playing' && user.assignedWord && target.assignedWord) {
-                        
-                        const myLetters = [...new Set(user.assignedWord.toLocaleUpperCase("tr-TR").replace(/[^A-ZÇĞİÖŞÜ0-9]/g, "").split(''))];
-                        const targetLetters = [...new Set(target.assignedWord.toLocaleUpperCase("tr-TR").replace(/[^A-ZÇĞİÖŞÜ0-9]/g, "").split(''))];
-                        
-                        const commonLetters = myLetters.filter(l => targetLetters.includes(l));
-
-                        this.io.to(this.code).emit("game:visual_effect", { type: 'letter_reveal', targetId: user.id });
-                        this.io.to(this.code).emit("game:visual_effect", { type: 'letter_reveal', targetId: target.id });
-                        this.addChatLog({ system: true, message: `🤝 TELEPATİ! ${user.name} ve ${target.name} zihinlerini birleştirdi!`, timestamp: Date.now() });
-
-                        if (commonLetters.length > 0) {
-                            const commonStr = commonLetters.join(", ");
-                            this.addChatLog({ system: true, privateTo: user.id, message: `Sistem (Özel): ${target.name} ile kelimelerinizdeki ORTAK HARFLER şunlar: ${commonStr}`, timestamp: Date.now() });
-                            this.addChatLog({ system: true, privateTo: target.id, message: `Sistem (Özel): ${user.name} ile kelimelerinizdeki ORTAK HARFLER şunlar: ${commonStr}`, timestamp: Date.now() });
-                            
-                            commonLetters.forEach(char => {
-                                if (!user.revealedLetters) user.revealedLetters = [];
-                                if (!target.revealedLetters) target.revealedLetters = [];
-                                if (!user.revealedLetters.includes(char)) user.revealedLetters.push(char);
-                                if (!target.revealedLetters.includes(char)) target.revealedLetters.push(char);
-                            });
-                        } else {
-                            this.addChatLog({ system: true, privateTo: user.id, message: `Sistem (Özel): ${target.name} ile hiçbir ortak harfiniz YOK!`, timestamp: Date.now() });
-                            this.addChatLog({ system: true, privateTo: target.id, message: `Sistem (Özel): ${user.name} ile hiçbir ortak harfiniz YOK!`, timestamp: Date.now() });
-                        }
-
-                        jokerConsumed = true;
-                    }
-                }
-                break;
-        }
-        
-        if (jokerConsumed) {
-            if (jokerType !== 11 && jokerType !== 12 && jokerType !== 14) {
-                user.hasUsedJoker = true;
-            } else if (jokerType === 14 && user.detectiveUses >= 3) {
-                user.hasUsedJoker = true;
-            }
-            if (user.dbId) {
-                const User = require('../models/User');
-                User.findById(user.dbId).then(userDb => {
-                    if (userDb && userDb.quests && userDb.quests.active) {
-                        userDb.quests.active.forEach(q => {
-                            if (q.type === 'use_joker' && !q.isClaimed && q.progress < q.target) q.progress++;
-                        });
-                        userDb.markModified('quests');
-                        return userDb.save();
-                    }
-                }).catch(err => console.error("Joker quest update error:", err));
-            }
-        } else if (jokerType !== 14 || (user.detectiveUses === undefined || user.detectiveUses === 0)) {
-            this.io.to(userId).emit("game:error", { message: "Joker geçersiz bir hedefe uygulanamadı. Jokerin iade edildi!" });
-        }
-
-        this.broadcastState();
+        return JokerManager.executeJoker(this, userId, payload);
     }
 
     askQuestion(userId, question) {
-        if (this.gameState !== "PLAYING") return;
-        if (this.activeQuestion) return;
-        if (typeof question !== 'string' || question.length > 150) return;
-        const currentUser = this.users[this.currentTurnIndex];
-        if (currentUser.id !== userId) return;
-        if (currentUser.russianRouletteActive) return; 
-
-        const asked = currentUser.questionsAskedThisTurn || 0;
-        
-        if (asked >= 1) {
-            if (currentUser.extraQuestions > 0) {
-                currentUser.extraQuestions--;
-            } else {
-                this.io.to(currentUser.id).emit("game:error", { message: "Bu turdaki soru hakkını doldurdun! Lütfen tahmin et veya sıranı bekle." });
-                return;
-            }
-        }
-
-        currentUser.questionsAskedThisTurn = asked + 1;
-
-        if (this.timer) {
-            clearTimeout(this.timer);
-            this.timer = null;
-        }
-        
-        const remainingMs = this.turnStartTime + (this.turnTime * 1000) - Date.now();
-        this.pausedRemainingMs = Math.max(10000, remainingMs);
-
-        this.activeQuestion = {
-            askerId: userId,
-            question: question,
-            votes: {},
-            endTime: Date.now() + 15000
-        };
-        
-        this.questionTimer = setTimeout(() => {
-            this.resolveQuestion();
-        }, 15000);
-
-        this.broadcastState();
+        return questionHandler.askQuestion(this, userId, question);
     }
 
     submitVote(userId, voteType) {
-        if (this.gameState !== "PLAYING" || !this.activeQuestion || typeof voteType !== 'string') return;
-        if (this.activeQuestion.askerId === userId) return; 
-
-        const user = this.users.find(u => u.id === userId);
-        if (!user || user.status !== 'playing' || user.disconnected) return;
-
-        this.activeQuestion.votes[userId] = voteType;
-        
-        const playingUsers = this.users.filter(u => u.status === 'playing' && !u.disconnected && u.id !== this.activeQuestion.askerId);
-        
-        const validVotesCount = Object.keys(this.activeQuestion.votes).filter(vId => playingUsers.some(p => p.id === vId)).length;
-        
-        if (validVotesCount >= playingUsers.length) {
-            this.resolveQuestion();
-        } else {
-            this.broadcastState();
-        }
+        return questionHandler.submitVote(this, userId, voteType);
     }
 
     resolveQuestion() {
-        if (!this.activeQuestion) return;
-        
-        const asker = this.users.find(u => u.id === this.activeQuestion.askerId);
-        
-        let yesCount = 0, noCount = 0;
-        for (let vote of Object.values(this.activeQuestion.votes)) {
-            if(vote === 'yes') yesCount++;
-            else if(vote === 'no') noCount++;
-        }
-        const isYesMajority = yesCount > noCount;
-        const isNoMajority = noCount > yesCount;
-
-        if (asker && asker.extraQuestionChain) {
-            if (isYesMajority) {
-                asker.extraQuestions += 1;
-                this.addChatLog({ system: true, privateTo: asker.id, message: "Sistem (Özel): Sorun çoğunluktan 'Evet' oyu aldığı için +1 Soru Hakkı daha kazandın!", timestamp: Date.now() });
-            } else {
-                asker.extraQuestions = 0;
-                asker.extraQuestionChain = false;
-                this.addChatLog({ system: true, privateTo: asker.id, message: "Sistem (Özel): Sorun 'Evet' çoğunluğunu sağlayamadığı için Çift Şarjör serin kırıldı!", timestamp: Date.now() });
-            }
-        }
-
-        for (let u of this.users) {
-            if (u.bloodTieTarget === this.activeQuestion.askerId && u.status === 'playing') {
-                if (isYesMajority) {
-                    this.addChatLog({ system: true, message: `🩸 Kan Bağı: Bağlı olduğun oyuncu EVET aldı! ${u.name}'in gizli bir harfi açıldı.`, timestamp: Date.now() });
-                    this.openLettersForUser(u, 1);
-                } else if (isNoMajority) {
-                    let dmg = 1;
-                    if (u.shieldActive) {
-                        u.shieldActive = false;
-                        dmg -= 1;
-                        this.io.to(this.code).emit("game:visual_effect", { type: 'shield_cast', targetId: u.id });
-                        this.addChatLog({ system: true, message: `🛡️ 🩸 Kan Bağı: ${u.name} can kaybedecekti ancak Gizli Kalkanı onu korudu!`, timestamp: Date.now() });
-                    }
-                    u.lives -= dmg;
-                    if (dmg > 0) {
-                        if (u.lives <= 0) {
-                            u.status = 'spectator';
-                            u.bloodTieTarget = null;
-                            u.timeBomb = null;
-                            this.addChatLog({ system: true, message: `🩸 Kan Bağı: Bağlı olduğun oyuncu HAYIR aldı! ${u.name} tüm canlarını kaybetti ve elendi!`, timestamp: Date.now() });
-                        } else {
-                            this.addChatLog({ system: true, message: `🩸 Kan Bağı: Bağlı olduğun oyuncu HAYIR aldı! ${u.name} 1 can kaybetti!`, timestamp: Date.now() });
-                        }
-                    }
-                }
-            }
-        }
-
-        if (!this.resolvedQuestionsThisTurn) this.resolvedQuestionsThisTurn = []; 
-        if (asker) {
-            asker.lastQuestion = this.activeQuestion;
-            if (!asker.lastQuestions) asker.lastQuestions = [];
-            asker.lastQuestions.push(this.activeQuestion);
-        }
-        this.resolvedQuestionsThisTurn.push(this.activeQuestion);
-        this.activeQuestion = null;
-        if (this.questionTimer) {
-            clearTimeout(this.questionTimer);
-            this.questionTimer = null;
-        }
-
-        const activePlayers = this.users.filter(x => x.status === 'playing');
-        if (activePlayers.length <= 1) {
-            this.endGame();
-            return;
-        }
-        
-        this.turnStartTime = Date.now() - ((this.turnTime * 1000) - this.pausedRemainingMs);
-        
-        this.timer = setTimeout(() => {
-            if (this.gameState === "PLAYING") {
-                this.nextTurn();
-            }
-        }, this.pausedRemainingMs);
-        
-        this.broadcastState();
+        return questionHandler.resolveQuestion(this);
     }
 
     nextTurn(isDisconnect = false) {
@@ -6591,6 +6271,1222 @@ class Room {
 }
 
 module.exports = Room;
+
+
+=========================
+DOSYA: server\game\handlers\guessHandler.js
+=========================
+
+const User = require('../../models/User');
+
+async function guessWord(room, userId, guess) {
+    if (room.gameState !== "PLAYING" || typeof guess !== 'string') return;
+
+    const currentUser = room.users[room.currentTurnIndex];
+    if (!currentUser || currentUser.id !== userId) return;
+
+    const user = room.users.find(u => u.id === userId);
+    if (!user || user.status !== 'playing') return;
+
+    const normalizedTarget = (user.assignedWord || "").toLocaleLowerCase("tr-TR").replace(/[^a-z0-9çğıöşü]/g, "");
+    const normalizedGuess = (guess || "").toLocaleLowerCase("tr-TR").replace(/[^a-z0-9çğıöşü]/g, "");
+    if (!normalizedGuess || normalizedGuess.length < 3) return;
+
+    const targetTokens = (user.assignedWord || "").toLocaleLowerCase("tr-TR").split(/\s+/).map(w => w.replace(/[^a-z0-9çğıöşü]/g, "")).filter(Boolean);
+    const isTokenMatch = targetTokens.some(w => w === normalizedGuess && w.length >= 3);
+
+    const isSubstringMatch = (normalizedTarget.length >= 4 && normalizedGuess.length >= 4) &&
+                             (normalizedTarget.includes(normalizedGuess) || normalizedGuess.includes(normalizedTarget));
+
+    const isCorrect = (normalizedTarget === normalizedGuess) || isTokenMatch || isSubstringMatch;
+    const isRussianRoulette = user.russianRouletteActive;
+
+    if (isCorrect) {
+        user.status = 'spectator';
+        user.bloodTieTarget = null;
+        room.winners.push(user.id);
+
+        if (user.timeBomb) {
+            const caster = room.users.find(c => c.id === user.timeBomb.casterId);
+            if (caster && caster.status === 'playing' && caster.id !== user.id) {
+                let dmg = 2;
+                let shielded = false;
+                if (caster.shieldActive) {
+                    shielded = true;
+                    caster.shieldActive = false;
+                    dmg -= 1;
+                    room.io.to(room.code).emit("game:visual_effect", { type: 'shield_cast', targetId: caster.id });
+                }
+                caster.lives -= dmg;
+                room.io.to(room.code).emit("game:visual_effect", { type: 'bomb_explode', targetId: caster.id });
+
+                if (shielded) {
+                    room.addChatLog({ system: true, message: `🛡️ 💥 İADE! ${user.name} bombayı bildi! ${caster.name}'in kalkanı kırıldı ama yine de 1 can kaybetti!`, timestamp: Date.now() });
+                } else {
+                    room.addChatLog({ system: true, message: `🔄💥 İADE! ${user.name} kelimesini bildi ve bombayı ${caster.name}'e geri fırlatarak patlattı! (-2 Can)`, timestamp: Date.now() });
+                }
+                if (caster.lives <= 0) {
+                    caster.status = 'spectator';
+                    caster.timeBomb = null;
+                    caster.bloodTieTarget = null;
+                    room.addChatLog({ system: true, message: `💀 ${caster.name} kendi bombasıyla elendi! Kelimesi: ${caster.assignedWord}`, timestamp: Date.now() });
+                }
+            } else if (caster && caster.id === user.id) {
+                room.addChatLog({ system: true, message: `💣 ${user.name} kalkanından seken kendi bombasını başarıyla imha etti!`, timestamp: Date.now() });
+            }
+            user.timeBomb = null;
+        }
+
+        let winnerReward = 0;
+        let bettorReward = 0;
+        const rank = room.winners.length;
+
+        if (room.isBettingEnabled) {
+            const playersCount = room.initialPlayerCount || room.users.length;
+            const totalPot = playersCount * room.betAmount;
+            let pct = 0;
+
+            if (isRussianRoulette) {
+                winnerReward = totalPot;
+                bettorReward = 0;
+            } else {
+                if (playersCount <= 2) {
+                    pct = rank === 1 ? 1.0 : 0;
+                } else if (playersCount === 3) {
+                    pct = rank === 1 ? 0.60 : (rank === 2 ? 0.40 : 0);
+                } else if (playersCount === 4) {
+                    pct = rank === 1 ? 0.50 : (rank === 2 ? 0.30 : (rank === 3 ? 0.20 : 0));
+                } else {
+                    if (rank === 1) pct = 0.40;
+                    else if (rank === 2) pct = 0.30;
+                    else if (rank === 3) pct = 0.20;
+                    else if (rank === 4) pct = 0.10;
+                    else pct = 0;
+                }
+                winnerReward = Math.floor(totalPot * pct);
+                bettorReward = Math.max(1, Math.floor(winnerReward / 2));
+            }
+        }
+
+        let repReward = 5;
+        if (isRussianRoulette) repReward = 200;
+        else if (rank === 1) repReward = 50;
+        else if (rank === 2) repReward = 20;
+        else if (rank === 3) repReward = 10;
+
+        let playerRewards = {};
+        const addReward = (dbId, gold, rep, type) => {
+            if (!dbId) return;
+            if (!playerRewards[dbId]) playerRewards[dbId] = { gold: 0, rep: 0, winCount: 0, playCount: 0, betWinCount: 0 };
+            playerRewards[dbId].gold += gold;
+            playerRewards[dbId].rep += rep;
+            if (type === 'win') { playerRewards[dbId].winCount++; playerRewards[dbId].playCount++; }
+            if (type === 'bet_win') { playerRewards[dbId].betWinCount++; }
+        };
+
+        addReward(user.dbId, winnerReward, repReward, 'win');
+        user.reputation = (user.reputation || 0) + repReward;
+
+        let winMsg = "";
+        if (isRussianRoulette) {
+            winMsg = `💀👑 RUS RULETİ BAŞARILI! ${user.name} hayatını riske attı ve tüm kasayı (${winnerReward || repReward} Ödül) TEK BAŞINA ALDI!`;
+        } else if (room.isBettingEnabled) {
+            winMsg = `🏆 ${user.name} doğru tahmin etti! (${rank}. oldu) -> Oyun kazancı: ${winnerReward} Altın. (Kelimesi: ${user.assignedWord})`;
+        } else {
+            winMsg = `🏆 ${user.name} doğru tahmin etti! (${rank}. oldu) -> Oyun kazancı: ${repReward} İtibar. (Kelimesi: ${user.assignedWord})`;
+        }
+        room.addChatLog({ system: true, message: winMsg, timestamp: Date.now() });
+        if (!room.roundLogs) room.roundLogs = [];
+        room.roundLogs.push(winMsg);
+
+        if (room.isBettingEnabled && bettorReward > 0 && !isRussianRoulette) {
+            const bettors = Object.keys(room.bets || {}).filter(uid => room.bets[uid] === user.id);
+            let bettorNames = [];
+
+            for (let uid of bettors) {
+                const bettorUser = room.users.find(u => u.id === uid);
+                if (bettorUser) {
+                    addReward(bettorUser.dbId, bettorReward, 5, 'bet_win');
+                    bettorUser.reputation = (bettorUser.reputation || 0) + 5;
+                    bettorNames.push(bettorUser.name);
+                }
+            }
+
+            if (bettorNames.length > 0) {
+                const betMsg = `🎲 Bahis Kazananları (${user.name} üzerine oynayanlar): ${bettorNames.join(', ')} -> Bahis kazancı: Ekstra ${bettorReward} Altın!`;
+                room.addChatLog({ system: true, message: betMsg, timestamp: Date.now() });
+                room.roundLogs.push(betMsg);
+            }
+        }
+
+        const updatePromises = Object.entries(playerRewards).map(([dbId, rewards]) => {
+            return User.findOneAndUpdate(
+                { _id: dbId },
+                { $inc: { gold: rewards.gold, reputation: rewards.rep } },
+                { new: true }
+            ).then(userDb => {
+                if (userDb && userDb.quests && userDb.quests.active) {
+                    let modified = false;
+                    userDb.quests.active.forEach(q => {
+                        if (q.type === 'win' && !q.isClaimed && q.progress < q.target) { q.progress += rewards.winCount; modified = true; }
+                        if (q.type === 'play' && !q.isClaimed && q.progress < q.target) { q.progress += rewards.playCount; modified = true; }
+                        if (q.type === 'bet_win' && !q.isClaimed && q.progress < q.target) { q.progress += rewards.betWinCount; modified = true; }
+                    });
+                    if (modified) {
+                        userDb.markModified('quests');
+                        return userDb.save().catch(e => console.error("Quest update err", e));
+                    }
+                }
+            }).catch(err => console.error("Aggregated reward update error:", err));
+        });
+        await Promise.all(updatePromises);
+
+        if (isRussianRoulette) {
+            room.endGame();
+            return;
+        }
+
+        const playingUsers = room.users.filter(u => u.status === 'playing');
+        if (playingUsers.length <= 1) {
+            room.endGame();
+            return;
+        }
+
+        if (room.users[room.currentTurnIndex]?.id === userId) {
+            room.nextTurn();
+        } else {
+            room.broadcastState();
+        }
+    } else {
+        let dmg = isRussianRoulette ? 3 : 1;
+        let shielded = false;
+        if (user.shieldActive) {
+            shielded = true;
+            user.shieldActive = false;
+            dmg -= 1;
+            room.io.to(room.code).emit("game:visual_effect", { type: 'shield_cast', targetId: user.id });
+        }
+
+        user.lives -= dmg;
+        if (isRussianRoulette) user.russianRouletteActive = false;
+
+        if (user.lives <= 0) {
+            user.status = 'spectator';
+            user.bloodTieTarget = null;
+            user.timeBomb = null;
+            if (isRussianRoulette) {
+                room.io.to(room.code).emit("game:visual_effect", { type: 'roulette_die', targetId: user.id });
+                room.addChatLog({ system: true, message: `💀 RUS RULETİ PATLADI! ${user.name} yanlış bildi ve elendi! Kelimesi: ${user.assignedWord}`, timestamp: Date.now() });
+            } else {
+                room.addChatLog({ system: true, message: `💀 ${user.name} tüm tahmin haklarını kaybetti ve izleyici oldu! Kelimesi: ${user.assignedWord}`, timestamp: Date.now() });
+            }
+        } else {
+            if (isRussianRoulette) {
+                room.addChatLog({ system: true, message: `🛡️ ${user.name} Rus Ruleti'nde yanlış bildi! Kalkanı parçalandı ve ağır yaralandı ama yaşıyor! (Kalan Can: ${user.lives})`, timestamp: Date.now() });
+            } else if (shielded) {
+                room.addChatLog({ system: true, message: `🛡️ ${user.name} yanlış tahminde bulundu! Gizli Kalkanı kırılarak onu korudu!`, timestamp: Date.now() });
+            } else {
+                room.addChatLog({ system: true, message: `${user.name} yanlış tahminde bulundu! (${guess}) (Kalan Can: ${user.lives})`, timestamp: Date.now() });
+            }
+        }
+
+        const playingUsers = room.users.filter(u => u.status === 'playing');
+        if (playingUsers.length <= 1) {
+            room.endGame();
+            return;
+        }
+
+        if (room.users[room.currentTurnIndex]?.id === userId) {
+            room.nextTurn();
+        } else {
+            room.broadcastState();
+        }
+    }
+}
+
+module.exports = {
+    guessWord
+};
+
+
+=========================
+DOSYA: server\game\handlers\objectionHandler.js
+=========================
+
+const User = require('../../models/User');
+function startObjection(room, userId) {
+    if (room.objection || room.gameState !== "PLAYING" || room.hasObjectionUsed) return;
+
+    const initiator = room.users.find(u => u.id === userId);
+    if (!initiator) return;
+
+    room.hasObjectionUsed = true;
+    room.pausedRemainingMs = room.turnStartTime + (room.turnTime * 1000) - Date.now();
+    if (room.timer) clearTimeout(room.timer);
+
+    room.objection = {
+        initiator: initiator.name,
+        votes: {},
+        endTime: Date.now() + 15000
+    };
+
+    room.objection.votes[userId] = true;
+    room.broadcastState();
+
+    room.objectionTimer = setTimeout(() => {
+        resolveObjection(room);
+    }, 15000);
+}
+
+function voteObjection(room, userId, vote) {
+    if (!room.objection || typeof vote !== 'boolean') return;
+
+    const user = room.users.find(u => u.id === userId);
+    if (!user || user.status !== 'playing' || user.disconnected) return;
+
+    room.objection.votes[userId] = vote;
+
+    const playingUsers = room.users.filter(u => u.status === 'playing' && !u.disconnected);
+    const voteCount = Object.keys(room.objection.votes).filter(vId => playingUsers.some(p => p.id === vId)).length;
+
+    if (voteCount >= playingUsers.length) {
+        if (room.objectionTimer) clearTimeout(room.objectionTimer);
+        resolveObjection(room);
+    } else {
+        room.broadcastState();
+    }
+}
+
+async function resolveObjection(room) {
+    if (!room.objection) return;
+
+    const playingUsers = room.users.filter(u => u.status === 'playing' && !u.disconnected);
+    let yesVotes = 0;
+    for (let v of Object.values(room.objection.votes)) {
+        if (v === true) yesVotes++;
+    }
+
+    const majority = Math.ceil(playingUsers.length / 2);
+
+    if (yesVotes >= majority) {
+        if (room.isBettingEnabled) {
+            for (let u of room.users) {
+                if (u.dbId) {
+                    await User.findByIdAndUpdate(u.dbId, { $inc: { gold: room.betAmount } }).catch(err => console.error(err));
+                }
+            }
+            room.io.to(room.code).emit("game:error", { message: `🚨 Şike itirazı kabul edildi! Oyun iptal edildi, herkese ${room.betAmount} Altın iade edildi.` });
+        } else {
+            room.io.to(room.code).emit("game:error", { message: `🚨 Çoğunluk kararı sağlandı! Eğlenceyi sabote edenler olduğu için oyun iptal edildi.` });
+        }
+
+        room.objection = null;
+        if (room.timer) clearTimeout(room.timer);
+        room.gameState = "LOBBY";
+        room.chatHistory = [];
+        room.broadcastState();
+    } else {
+        room.io.to(room.code).emit("game:error", { message: `❌ Şike itirazı reddedildi! Yeterli çoğunluk sağlanamadı.` });
+        room.objection = null;
+
+        room.turnStartTime = Date.now() - ((room.turnTime * 1000) - room.pausedRemainingMs);
+        room.timer = setTimeout(() => {
+            if (room.gameState === "PLAYING") room.nextTurn();
+        }, Math.max(5000, room.pausedRemainingMs));
+
+        room.broadcastState();
+    }
+}
+
+module.exports = {
+    startObjection,
+    voteObjection,
+    resolveObjection
+};
+
+
+=========================
+DOSYA: server\game\handlers\questionHandler.js
+=========================
+
+function askQuestion(room, userId, question) {
+    if (room.gameState !== "PLAYING") return;
+    if (room.activeQuestion) return;
+    if (typeof question !== 'string' || question.length > 150) return;
+    const currentUser = room.users[room.currentTurnIndex];
+    if (!currentUser || currentUser.id !== userId) return;
+    if (currentUser.russianRouletteActive) return;
+
+    const asked = currentUser.questionsAskedThisTurn || 0;
+
+    if (asked >= 1) {
+        if (currentUser.extraQuestions > 0) {
+            currentUser.extraQuestions--;
+        } else {
+            room.io.to(currentUser.id).emit("game:error", { message: "Bu turdaki soru hakkını doldurdun! Lütfen tahmin et veya sıranı bekle." });
+            return;
+        }
+    }
+
+    currentUser.questionsAskedThisTurn = asked + 1;
+
+    if (room.timer) {
+        clearTimeout(room.timer);
+        room.timer = null;
+    }
+
+    const remainingMs = room.turnStartTime + (room.turnTime * 1000) - Date.now();
+    room.pausedRemainingMs = Math.max(10000, remainingMs);
+
+    room.activeQuestion = {
+        askerId: userId,
+        question: question,
+        votes: {},
+        endTime: Date.now() + 15000
+    };
+
+    room.questionTimer = setTimeout(() => {
+        resolveQuestion(room);
+    }, 15000);
+
+    room.broadcastState();
+}
+
+function submitVote(room, userId, voteType) {
+    if (room.gameState !== "PLAYING" || !room.activeQuestion || typeof voteType !== 'string') return;
+    if (room.activeQuestion.askerId === userId) return;
+
+    const user = room.users.find(u => u.id === userId);
+    if (!user || user.status !== 'playing' || user.disconnected) return;
+
+    room.activeQuestion.votes[userId] = voteType;
+
+    const playingUsers = room.users.filter(u => u.status === 'playing' && !u.disconnected && u.id !== room.activeQuestion.askerId);
+    const validVotesCount = Object.keys(room.activeQuestion.votes).filter(vId => playingUsers.some(p => p.id === vId)).length;
+
+    if (validVotesCount >= playingUsers.length) {
+        resolveQuestion(room);
+    } else {
+        room.broadcastState();
+    }
+}
+
+function resolveQuestion(room) {
+    if (!room.activeQuestion) return;
+
+    const asker = room.users.find(u => u.id === room.activeQuestion.askerId);
+
+    let yesCount = 0, noCount = 0;
+    for (let vote of Object.values(room.activeQuestion.votes)) {
+        if (vote === 'yes') yesCount++;
+        else if (vote === 'no') noCount++;
+    }
+    const isYesMajority = yesCount > noCount;
+    const isNoMajority = noCount > yesCount;
+
+    if (asker && asker.extraQuestionChain) {
+        if (isYesMajority) {
+            asker.extraQuestions += 1;
+            room.addChatLog({ system: true, privateTo: asker.id, message: "Sistem (Özel): Sorun çoğunluktan 'Evet' oyu aldığı için +1 Soru Hakkı daha kazandın!", timestamp: Date.now() });
+        } else {
+            asker.extraQuestions = 0;
+            asker.extraQuestionChain = false;
+            room.addChatLog({ system: true, privateTo: asker.id, message: "Sistem (Özel): Sorun 'Evet' çoğunluğunu sağlayamadığı için Çift Şarjör serin kırıldı!", timestamp: Date.now() });
+        }
+    }
+
+    for (let u of room.users) {
+        if (u.bloodTieTarget === room.activeQuestion.askerId && u.status === 'playing') {
+            if (isYesMajority) {
+                room.addChatLog({ system: true, message: `🩸 Kan Bağı: Bağlı olduğun oyuncu EVET aldı! ${u.name}'in gizli bir harfi açıldı.`, timestamp: Date.now() });
+                room.openLettersForUser(u, 1);
+            } else if (isNoMajority) {
+                let dmg = 1;
+                if (u.shieldActive) {
+                    u.shieldActive = false;
+                    dmg -= 1;
+                    room.io.to(room.code).emit("game:visual_effect", { type: 'shield_cast', targetId: u.id });
+                    room.addChatLog({ system: true, message: `🛡️ 🩸 Kan Bağı: ${u.name} can kaybedecekti ancak Gizli Kalkanı onu korudu!`, timestamp: Date.now() });
+                }
+                u.lives -= dmg;
+                if (dmg > 0) {
+                    if (u.lives <= 0) {
+                        u.status = 'spectator';
+                        u.bloodTieTarget = null;
+                        u.timeBomb = null;
+                        room.addChatLog({ system: true, message: `🩸 Kan Bağı: Bağlı olduğun oyuncu HAYIR aldı! ${u.name} tüm canlarını kaybetti ve elendi!`, timestamp: Date.now() });
+                    } else {
+                        room.addChatLog({ system: true, message: `🩸 Kan Bağı: Bağlı olduğun oyuncu HAYIR aldı! ${u.name} 1 can kaybetti!`, timestamp: Date.now() });
+                    }
+                }
+            }
+        }
+    }
+
+    if (!room.resolvedQuestionsThisTurn) room.resolvedQuestionsThisTurn = [];
+    if (asker) {
+        asker.lastQuestion = room.activeQuestion;
+        if (!asker.lastQuestions) asker.lastQuestions = [];
+        asker.lastQuestions.push(room.activeQuestion);
+    }
+    room.resolvedQuestionsThisTurn.push(room.activeQuestion);
+    room.activeQuestion = null;
+    if (room.questionTimer) {
+        clearTimeout(room.questionTimer);
+        room.questionTimer = null;
+    }
+
+    const activePlayers = room.users.filter(x => x.status === 'playing');
+    if (activePlayers.length <= 1) {
+        room.endGame();
+        return;
+    }
+
+    room.turnStartTime = Date.now() - ((room.turnTime * 1000) - room.pausedRemainingMs);
+
+    room.timer = setTimeout(() => {
+        if (room.gameState === "PLAYING") {
+            room.nextTurn();
+        }
+    }, room.pausedRemainingMs);
+
+    room.broadcastState();
+}
+
+module.exports = {
+    askQuestion,
+    submitVote,
+    resolveQuestion
+};
+
+
+=========================
+DOSYA: server\game\jokers\Amnesia.js
+=========================
+
+const BaseJoker = require('./BaseJoker');
+
+class Amnesia extends BaseJoker {
+    constructor() {
+        super(15, "Amnezi", "gold");
+    }
+
+    execute(room, user, payload, context) {
+        const targetId = context.targetId;
+        if (targetId && typeof targetId === 'string') {
+            const target = room.users.find(u => u.id === targetId);
+            if (target && target.status === 'playing') {
+                if (target.shieldActive) {
+                    target.shieldActive = false;
+                    room.io.to(room.code).emit("game:visual_effect", { type: 'shield_cast', targetId: target.id });
+                    room.addChatLog({ system: true, message: `🧠 ${user.name} Amnezi kullanmak istedi ama ${target.name}'in Gizli Kalkanı buna engel oldu!`, timestamp: Date.now() });
+                } else {
+                    room.io.to(target.id).emit("game:clear_notepad");
+                    room.io.to(room.code).emit("game:visual_effect", { type: 'mind_wipe', targetId: target.id });
+                    room.addChatLog({ system: true, message: `🧠 AMNEZİ! ${user.name}, ${target.name} isimli oyuncunun hafızasını sildi! Not defteri artık bomboş...`, timestamp: Date.now() });
+                }
+                return true;
+            }
+        }
+        return false;
+    }
+}
+
+module.exports = Amnesia;
+
+
+=========================
+DOSYA: server\game\jokers\BaseJoker.js
+=========================
+
+class BaseJoker {
+    constructor(id, name, rarity = 'common') {
+        this.id = id;
+        this.name = name;
+        this.rarity = rarity;
+    }
+
+    /**
+     * Executes the joker effect.
+     * @param {object} room - Room instance
+     * @param {object} user - The player using the joker
+     * @param {object} payload - Data provided by player (targetId, newWord, etc.)
+     * @param {object} context - Execution context (e.g. initialTargetId, targetId with mirror resolved)
+     * @returns {boolean} Whether the joker was successfully consumed
+     */
+    execute(room, user, payload, context) {
+        throw new Error(`execute() not implemented for joker ${this.name} (id: ${this.id})`);
+    }
+}
+
+module.exports = BaseJoker;
+
+
+=========================
+DOSYA: server\game\jokers\BloodTie.js
+=========================
+
+const BaseJoker = require('./BaseJoker');
+
+class BloodTie extends BaseJoker {
+    constructor() {
+        super(5, "Kan Bağı", "prismatic");
+    }
+
+    execute(room, user, payload, context) {
+        const targetId = context.targetId;
+        if (targetId && typeof targetId === 'string') {
+            user.bloodTieTarget = targetId;
+            room.addChatLog({ system: true, message: `🩸 Kan Bağı kullanıldı! ${user.name} hedefini seçti, kaderleri artık bir!`, timestamp: Date.now() });
+            room.io.to(room.code).emit("game:visual_effect", { type: 'blood_tie', targetId: targetId });
+            room.io.to(room.code).emit("game:visual_effect", { type: 'blood_tie', targetId: user.id });
+            return true;
+        }
+        return false;
+    }
+}
+
+module.exports = BloodTie;
+
+
+=========================
+DOSYA: server\game\jokers\DoubleMagazine.js
+=========================
+
+const BaseJoker = require('./BaseJoker');
+
+class DoubleMagazine extends BaseJoker {
+    constructor() {
+        super(2, "Çift Şarjör", "gold");
+    }
+
+    execute(room, user, payload, context) {
+        user.extraQuestions = 1;
+        user.extraQuestionChain = true;
+        room.addChatLog({ system: true, message: `🔫 ${user.name}, Çift Şarjör kullandı! (Ekstra +1 soru hakkı kazandı ve aldığı her 'Evet' oyunda yeni bir hak kazanacak!)`, timestamp: Date.now() });
+        room.io.to(room.code).emit("game:visual_effect", { type: 'extra_ammo', targetId: user.id });
+        return true;
+    }
+}
+
+module.exports = DoubleMagazine;
+
+
+=========================
+DOSYA: server\game\jokers\LetterDetective.js
+=========================
+
+const BaseJoker = require('./BaseJoker');
+
+class LetterDetective extends BaseJoker {
+    constructor() {
+        super(14, "Harf Dedektifi", "common");
+    }
+
+    execute(room, user, payload, context) {
+        if (!payload.newWord || typeof payload.newWord !== 'string') {
+            room.io.to(user.id).emit("game:error", { message: "Lütfen aramak istediğiniz harfi girin!" });
+            return false;
+        }
+        
+        const letter = payload.newWord.trim().toLocaleUpperCase("tr-TR").charAt(0);
+        if (!/[A-ZÇĞİÖŞÜ0-9]/.test(letter)) {
+             room.io.to(user.id).emit("game:error", { message: "Lütfen geçerli bir harf girin!" });
+             return false;
+        }
+
+        if (user.lastDetectiveRound && (room.roundCount - user.lastDetectiveRound < 2)) {
+             room.io.to(user.id).emit("game:error", { message: "Bu jokeri tekrar kullanmak için 1 tur beklemelisin!" });
+             return false;
+        }
+
+        const myWord = (user.assignedWord || "").toLocaleUpperCase("tr-TR");
+        const count = myWord.split('').filter(c => c === letter).length;
+
+        room.addChatLog({ system: true, message: `🕵️‍♂️ ${user.name} Harf Dedektifi'ni kullandı! Kelimesinde bir harf arıyor...`, timestamp: Date.now() });
+
+        if (count > 0) {
+             room.addChatLog({ system: true, privateTo: user.id, message: `Sistem (Özel): Harika! Kelimende '${letter}' harfi BULUNUYOR! (${count} adet)`, timestamp: Date.now() });
+             if (!user.revealedLetters) user.revealedLetters = [];
+             if (!user.revealedLetters.includes(letter)) {
+                 user.revealedLetters.push(letter);
+             }
+        } else {
+             room.addChatLog({ system: true, privateTo: user.id, message: `Sistem (Özel): Maalesef, kelimende '${letter}' harfi YOK!`, timestamp: Date.now() });
+        }
+
+        user.lastDetectiveRound = room.roundCount;
+        user.detectiveUses = (user.detectiveUses || 0) + 1;
+
+        room.io.to(room.code).emit("game:visual_effect", { type: 'letter_reveal', targetId: user.id });
+
+        if (user.detectiveUses >= 3) {
+             room.addChatLog({ system: true, privateTo: user.id, message: `Sistem (Özel): Harf Dedektifi'nin görev süresi doldu (3/3).`, timestamp: Date.now() });
+        } else {
+             room.addChatLog({ system: true, privateTo: user.id, message: `Sistem (Özel): Harf Dedektifi için kalan kullanım hakkın: ${3 - user.detectiveUses}`, timestamp: Date.now() });
+        }
+
+        return true;
+    }
+}
+
+module.exports = LetterDetective;
+
+
+=========================
+DOSYA: server\game\jokers\LetterOpener.js
+=========================
+
+const BaseJoker = require('./BaseJoker');
+
+class LetterOpener extends BaseJoker {
+    constructor() {
+        super(1, "Harf Açıcı", "common");
+    }
+
+    execute(room, user, payload, context) {
+        room.addChatLog({ system: true, message: `🔍 ${user.name}, Harf Açıcı kullanarak gizli bir ipucu elde etti!`, timestamp: Date.now() });
+        room.openLettersForUser(user, 1);
+        room.io.to(room.code).emit("game:visual_effect", { type: 'letter_reveal', targetId: user.id });
+        return true;
+    }
+}
+
+module.exports = LetterOpener;
+
+
+=========================
+DOSYA: server\game\jokers\LifeSwap.js
+=========================
+
+const BaseJoker = require('./BaseJoker');
+
+class LifeSwap extends BaseJoker {
+    constructor() {
+        super(13, "Can Takası", "prismatic");
+    }
+
+    execute(room, user, payload, context) {
+        const targetId = context.targetId;
+        const initialTargetId = context.initialTargetId;
+
+        if (!targetId || typeof targetId !== 'string') return false;
+
+        const target = room.users.find(u => u.id === targetId);
+        if (!target || target.status !== 'playing') return false;
+
+        if (target.id === user.id && initialTargetId !== user.id) {
+            room.io.to(room.code).emit("game:visual_effect", { type: 'mind_wipe', targetId: user.id }); 
+            room.addChatLog({ system: true, message: `🤡 BÜYÜ GERİ TEPTİ! Ayna yüzünden ${user.name} kendi canını kendisiyle takas etti. Joker tamamen boşa gitti!`, timestamp: Date.now() });
+        } else if (target.shieldActive) {
+            target.shieldActive = false;
+            room.io.to(room.code).emit("game:visual_effect", { type: 'shield_cast', targetId: target.id });
+            room.addChatLog({ system: true, message: `🧛‍♂️ ${user.name} Can Takası yapmak istedi ama ${target.name}'in Gizli Kalkanı buna engel oldu!`, timestamp: Date.now() });
+        } else {
+            const tempLives = user.lives;
+            user.lives = target.lives;
+            target.lives = tempLives;
+
+            room.io.to(room.code).emit("game:visual_effect", { type: 'blood_tie', targetId: target.id });
+            room.io.to(room.code).emit("game:visual_effect", { type: 'blood_tie', targetId: user.id });
+
+            room.addChatLog({ system: true, message: `🧛‍♂️ İHANET! ${user.name}, ${target.name} ile canlarını takas etti!`, timestamp: Date.now() });
+
+            if (user.lives <= 0) {
+                user.status = 'spectator';
+                room.addChatLog({ system: true, message: `💀 ${user.name}, canı olmayan biriyle takas yapıp kendi kendini eledi!`, timestamp: Date.now() });
+            }
+            if (target.lives <= 0) {
+                target.status = 'spectator';
+                room.addChatLog({ system: true, message: `💀 ${target.name} canı kalmadığı için elendi! Kelimesi: ${target.assignedWord}`, timestamp: Date.now() });
+            }
+        }
+        return true;
+    }
+}
+
+module.exports = LifeSwap;
+
+
+=========================
+DOSYA: server\game\jokers\MindWiper.js
+=========================
+
+const BaseJoker = require('./BaseJoker');
+
+class MindWiper extends BaseJoker {
+    constructor() {
+        super(4, "Hafıza Silici", "prismatic");
+    }
+
+    execute(room, user, payload, context) {
+        const targetId = context.targetId;
+        const initialTargetId = context.initialTargetId;
+
+        if (!targetId || !payload.newWord || typeof payload.newWord !== 'string') {
+            return false;
+        }
+
+        const cleanWord = payload.newWord.trim().substring(0, 30);
+        if (!cleanWord) {
+            room.io.to(user.id).emit("game:error", { message: "Geçerli bir kelime girmelisiniz!" });
+            return false;
+        }
+
+        const target = room.users.find(u => u.id === targetId);
+        if (!target) return false;
+
+        // Ayna geri sekmesi kontrolü
+        if (target.id === user.id && initialTargetId !== user.id) {
+            room.pendingMirrorWordOwner = initialTargetId;
+            room.pendingMirrorWordTarget = user.id;
+            target.assignedWord = "AYNA SAHİBİ KELİME BEKLENİYOR"; 
+            target.revealedLetters = [];
+            
+            const mirrorOwner = room.users.find(u => u.id === initialTargetId);
+            room.addChatLog({ system: true, message: `🧠 Hafıza Silici geri tepti! ${target.name}'in kelimesi silindi! Ayna sahibi ${mirrorOwner ? mirrorOwner.name : ''} yeni kelimeyi belirliyor...`, timestamp: Date.now() });
+            room.addChatLog({ system: true, privateTo: initialTargetId, message: `Sistem (Özel): Ayna ile Hafıza Siliciyi yansıttın! Lütfen 30 saniye içinde chat alanına "/kelime YENIKELIME" yazarak rakibinin yeni kelimesini belirle (Örn: /kelime Karpuz).`, timestamp: Date.now() });
+
+            if (room.mirrorWordTimer) clearTimeout(room.mirrorWordTimer);
+            room.mirrorWordTimer = setTimeout(() => {
+                if (room.pendingMirrorWordOwner) {
+                    const mirrorOwnerStillHere = room.users.find(u => u.id === room.pendingMirrorWordOwner && !u.disconnected);
+                    const t = room.users.find(u => u.id === room.pendingMirrorWordTarget);
+                    if (t) {
+                        if (!mirrorOwnerStillHere) {
+                            t.assignedWord = "BİLİNMEYEN";
+                            room.addChatLog({ system: true, message: `⏳ Ayna sahibi oyundan koptuğu için ${t.name}'in kelimesi sıfırlandı!`, timestamp: Date.now() });
+                        } else {
+                            t.assignedWord = Math.random().toString(36).substring(2, 8).toUpperCase();
+                            room.addChatLog({ system: true, message: `⏳ Ayna sahibi süresinde kelime belirlemedi! ${t.name}'in kelimesi rastgele harflere dönüştü!`, timestamp: Date.now() });
+                        }
+                        room.broadcastState();
+                    }
+                    room.pendingMirrorWordOwner = null;
+                    room.pendingMirrorWordTarget = null;
+                }
+            }, 30000);
+        } else {
+            target.assignedWord = cleanWord; 
+            room.addChatLog({ system: true, message: `🧠 Hafıza Silici kullanıldı! ${target.name}'in kelimesi acımasızca değiştirildi!`, timestamp: Date.now() });
+            target.revealedLetters = [];
+            room.io.to(room.code).emit("game:visual_effect", { type: 'mind_wipe', targetId: target.id });
+        }
+
+        return true;
+    }
+}
+
+module.exports = MindWiper;
+
+
+=========================
+DOSYA: server\game\jokers\MirrorShield.js
+=========================
+
+const BaseJoker = require('./BaseJoker');
+
+class MirrorShield extends BaseJoker {
+    constructor() {
+        super(8, "Ayna Kalkanı", "gold");
+    }
+
+    execute(room, user, payload, context) {
+        user.mirrorRoundsLeft = 3;
+        room.addChatLog({ system: true, privateTo: user.id, message: "Sistem (Özel): Ayna (Kalkan) aktif! 3 tur boyunca sana atılan kötü niyetli jokerler atan kişiye geri sekecek.", timestamp: Date.now() });
+        room.io.to(user.id).emit("game:visual_effect", { type: 'mirror_cast', targetId: user.id });
+        return true;
+    }
+}
+
+module.exports = MirrorShield;
+
+
+=========================
+DOSYA: server\game\jokers\MysteryBox.js
+=========================
+
+const BaseJoker = require('./BaseJoker');
+
+class MysteryBox extends BaseJoker {
+    constructor(id, name, rarity, targetPool) {
+        super(id, name, rarity);
+        this.targetPool = targetPool;
+    }
+
+    execute(room, user, payload, context) {
+        const chosenJoker = this.targetPool[Math.floor(Math.random() * this.targetPool.length)];
+        user.joker = chosenJoker;
+        const rarityText = this.id === 11 ? "ALTIN" : "PRİZMATİK";
+        room.addChatLog({
+            system: true,
+            privateTo: user.id,
+            message: `Sistem (Özel): ${this.name}'yu açtın ve içinden ${rarityText} joker çıktı!`,
+            timestamp: Date.now()
+        });
+        user.hasUsedJoker = false;
+        return true;
+    }
+}
+
+module.exports = MysteryBox;
+
+
+=========================
+DOSYA: server\game\jokers\RussianRoulette.js
+=========================
+
+const BaseJoker = require('./BaseJoker');
+
+class RussianRoulette extends BaseJoker {
+    constructor() {
+        super(6, "Rus Ruleti", "prismatic");
+    }
+
+    execute(room, user, payload, context) {
+        user.russianRouletteActive = true;
+        room.addChatLog({ system: true, message: `💀 RUS RULETİ! ${user.name} hemen tahmin etmek zorunda!`, timestamp: Date.now() });
+        room.openLettersForUser(user, 2);
+        room.io.to(room.code).emit("game:visual_effect", { type: 'roulette_start', targetId: user.id });
+        return true;
+    }
+}
+
+module.exports = RussianRoulette;
+
+
+=========================
+DOSYA: server\game\jokers\SecretShield.js
+=========================
+
+const BaseJoker = require('./BaseJoker');
+
+class SecretShield extends BaseJoker {
+    constructor() {
+        super(9, "Gizli Kalkan", "gold");
+    }
+
+    execute(room, user, payload, context) {
+        user.shieldActive = true;
+        room.addChatLog({ system: true, privateTo: user.id, message: "Sistem (Özel): Gizli Kalkan aktif! Bir sonraki ölümcül hatanı veya bombayı engelleyecek.", timestamp: Date.now() });
+        room.io.to(user.id).emit("game:visual_effect", { type: 'shield_cast', targetId: user.id });
+        return true;
+    }
+}
+
+module.exports = SecretShield;
+
+
+=========================
+DOSYA: server\game\jokers\Silencer.js
+=========================
+
+const BaseJoker = require('./BaseJoker');
+
+class Silencer extends BaseJoker {
+    constructor() {
+        super(3, "Susturucu", "gold");
+    }
+
+    execute(room, user, payload, context) {
+        const targetId = context.targetId;
+        if (targetId && typeof targetId === 'string') {
+            const silenceTarget = room.users.find(u => u.id === targetId);
+            if (silenceTarget) {
+                silenceTarget.silencedTurns = 2;
+                room.addChatLog({ system: true, message: `🤫 Susturucu kullanıldı! ${silenceTarget.name}, 2 tur boyunca susturuldu.`, timestamp: Date.now() });
+                room.io.to(room.code).emit("game:visual_effect", { type: 'silence_cast', targetId: silenceTarget.id });
+                return true;
+            }
+        }
+        return false;
+    }
+}
+
+module.exports = Silencer;
+
+
+=========================
+DOSYA: server\game\jokers\Telepathy.js
+=========================
+
+const BaseJoker = require('./BaseJoker');
+
+class Telepathy extends BaseJoker {
+    constructor() {
+        super(16, "Telepati", "common");
+    }
+
+    execute(room, user, payload, context) {
+        const targetId = context.targetId;
+        if (targetId && typeof targetId === 'string') {
+            const target = room.users.find(u => u.id === targetId);
+            if (target && target.status === 'playing' && user.assignedWord && target.assignedWord) {
+                const myLetters = [...new Set(user.assignedWord.toLocaleUpperCase("tr-TR").replace(/[^A-ZÇĞİÖŞÜ0-9]/g, "").split(''))];
+                const targetLetters = [...new Set(target.assignedWord.toLocaleUpperCase("tr-TR").replace(/[^A-ZÇĞİÖŞÜ0-9]/g, "").split(''))];
+                
+                const commonLetters = myLetters.filter(l => targetLetters.includes(l));
+
+                room.io.to(room.code).emit("game:visual_effect", { type: 'letter_reveal', targetId: user.id });
+                room.io.to(room.code).emit("game:visual_effect", { type: 'letter_reveal', targetId: target.id });
+                room.addChatLog({ system: true, message: `🤝 TELEPATİ! ${user.name} ve ${target.name} zihinlerini birleştirdi!`, timestamp: Date.now() });
+
+                if (commonLetters.length > 0) {
+                    const commonStr = commonLetters.join(", ");
+                    room.addChatLog({ system: true, privateTo: user.id, message: `Sistem (Özel): ${target.name} ile kelimelerinizdeki ORTAK HARFLER şunlar: ${commonStr}`, timestamp: Date.now() });
+                    room.addChatLog({ system: true, privateTo: target.id, message: `Sistem (Özel): ${user.name} ile kelimelerinizdeki ORTAK HARFLER şunlar: ${commonStr}`, timestamp: Date.now() });
+                    
+                    commonLetters.forEach(char => {
+                        if (!user.revealedLetters) user.revealedLetters = [];
+                        if (!target.revealedLetters) target.revealedLetters = [];
+                        if (!user.revealedLetters.includes(char)) user.revealedLetters.push(char);
+                        if (!target.revealedLetters.includes(char)) target.revealedLetters.push(char);
+                    });
+                } else {
+                    room.addChatLog({ system: true, privateTo: user.id, message: `Sistem (Özel): ${target.name} ile hiçbir ortak harfiniz YOK!`, timestamp: Date.now() });
+                    room.addChatLog({ system: true, privateTo: target.id, message: `Sistem (Özel): ${user.name} ile hiçbir ortak harfiniz YOK!`, timestamp: Date.now() });
+                }
+
+                return true;
+            }
+        }
+        return false;
+    }
+}
+
+module.exports = Telepathy;
+
+
+=========================
+DOSYA: server\game\jokers\TimeBender.js
+=========================
+
+const BaseJoker = require('./BaseJoker');
+
+class TimeBender extends BaseJoker {
+    constructor() {
+        super(0, "Zaman Bükücü", "common");
+    }
+
+    execute(room, user, payload, context) {
+        if (room.currentTurnIndex !== -1 && room.users[room.currentTurnIndex].id === user.id) {
+            if (room.timer) clearTimeout(room.timer);
+            room.turnTimeLeft = (room.turnStartTime + (room.turnTime * 1000) - Date.now()) / 1000;
+            const newTime = room.turnTimeLeft + 60;
+            room.turnStartTime = Date.now() - (room.turnTime * 1000 - newTime * 1000); 
+            room.timer = setTimeout(() => { if (room.gameState === "PLAYING") room.nextTurn(); }, newTime * 1000);
+            room.addChatLog({ system: true, message: `⏳ ${user.name} Zaman Bükücü kullanarak süresine 1 dakika ekledi!`, timestamp: Date.now() });
+            room.io.to(room.code).emit("game:visual_effect", { type: 'time_bend', targetId: user.id });
+            return true;
+        }
+        return false;
+    }
+}
+
+module.exports = TimeBender;
+
+
+=========================
+DOSYA: server\game\jokers\TimeBomb.js
+=========================
+
+const BaseJoker = require('./BaseJoker');
+
+class TimeBomb extends BaseJoker {
+    constructor() {
+        super(7, "Saatli Bomba", "prismatic");
+    }
+
+    execute(room, user, payload, context) {
+        const targetId = context.targetId;
+        const initialTargetId = context.initialTargetId;
+
+        if (targetId && typeof targetId === 'string') {
+            const target = room.users.find(u => u.id === targetId);
+            if (target) {
+                const actualCaster = (targetId === user.id) ? initialTargetId : user.id;
+                target.timeBomb = { casterId: actualCaster, roundsLeft: 3 };
+                room.addChatLog({ system: true, message: `💣 SAATLİ BOMBA! ${target.name}'in üzerine bomba yerleştirildi. 3 tur içinde bilemezse patlayacak!`, timestamp: Date.now() });
+                room.io.to(room.code).emit("game:visual_effect", { type: 'bomb_plant', targetId: target.id });
+                return true;
+            }
+        }
+        return false;
+    }
+}
+
+module.exports = TimeBomb;
+
+
+=========================
+DOSYA: server\game\jokers\WordComparator.js
+=========================
+
+const BaseJoker = require('./BaseJoker');
+
+class WordComparator extends BaseJoker {
+    constructor() {
+        super(10, "Boyut Ölçer", "common");
+    }
+
+    execute(room, user, payload, context) {
+        const targetId = context.targetId;
+        if (targetId && typeof targetId === 'string') {
+            const target = room.users.find(u => u.id === targetId);
+            if (target && user.assignedWord && target.assignedWord) {
+                const mLen = user.assignedWord.replace(/\s/g, '').length;
+                const tLen = target.assignedWord.replace(/\s/g, '').length;
+                const cmp = mLen > tLen ? "DAHA UZUN" : mLen < tLen ? "DAHA KISA" : "AYNI UZUNLUKTA";
+                room.addChatLog({ system: true, privateTo: user.id, message: `Sistem (Özel): Senin kelimen ${target.name}'in kelimesinden ${cmp}.`, timestamp: Date.now() });
+                return true;
+            }
+        }
+        return false;
+    }
+}
+
+module.exports = WordComparator;
+
+
+=========================
+DOSYA: server\game\jokers\index.js
+=========================
+
+const User = require('../../models/User');
+
+const TimeBender = require('./TimeBender');
+const LetterOpener = require('./LetterOpener');
+const DoubleMagazine = require('./DoubleMagazine');
+const Silencer = require('./Silencer');
+const MindWiper = require('./MindWiper');
+const BloodTie = require('./BloodTie');
+const RussianRoulette = require('./RussianRoulette');
+const TimeBomb = require('./TimeBomb');
+const MirrorShield = require('./MirrorShield');
+const SecretShield = require('./SecretShield');
+const WordComparator = require('./WordComparator');
+const MysteryBox = require('./MysteryBox');
+const LifeSwap = require('./LifeSwap');
+const LetterDetective = require('./LetterDetective');
+const Amnesia = require('./Amnesia');
+const Telepathy = require('./Telepathy');
+
+class JokerManager {
+    constructor() {
+        this.strategies = new Map();
+        this.registerStrategies();
+    }
+
+    registerStrategies() {
+        this.strategies.set(0, new TimeBender());
+        this.strategies.set(1, new LetterOpener());
+        this.strategies.set(2, new DoubleMagazine());
+        this.strategies.set(3, new Silencer());
+        this.strategies.set(4, new MindWiper());
+        this.strategies.set(5, new BloodTie());
+        this.strategies.set(6, new RussianRoulette());
+        this.strategies.set(7, new TimeBomb());
+        this.strategies.set(8, new MirrorShield());
+        this.strategies.set(9, new SecretShield());
+        this.strategies.set(10, new WordComparator());
+        this.strategies.set(11, new MysteryBox(11, "Gümüş Sürpriz Kutu", "silver", [2, 3, 8, 12, 15]));
+        this.strategies.set(12, new MysteryBox(12, "Altın Sürpriz Kutu", "gold", [4, 5, 6, 7, 13]));
+        this.strategies.set(13, new LifeSwap());
+        this.strategies.set(14, new LetterDetective());
+        this.strategies.set(15, new Amnesia());
+        this.strategies.set(16, new Telepathy());
+    }
+
+    /**
+     * Executes a joker action for a user in a room.
+     * @param {object} room - Room instance
+     * @param {string} userId - User socket ID
+     * @param {object} payload - Action parameters (targetId, newWord, etc.)
+     */
+    executeJoker(room, userId, payload) {
+        if (room.gameState !== "PLAYING" || !payload || typeof payload !== 'object') return false;
+
+        if (room.roundCount < 3) {
+            room.io.to(userId).emit("game:error", { message: "Jokerler 3. turdan itibaren kullanılabilir!" });
+            return false;
+        }
+
+        const user = room.users.find(u => u.id === userId);
+        if (!user || user.status !== 'playing' || user.hasUsedJoker || user.joker === null) return false;
+
+        if (room.users[room.currentTurnIndex]?.id !== userId) {
+            room.io.to(userId).emit("game:error", { message: "Jokerini sadece kendi sıranda kullanabilirsin!" });
+            return false;
+        }
+
+        const jokerType = user.joker;
+        const strategy = this.strategies.get(jokerType);
+        if (!strategy) {
+            room.io.to(userId).emit("game:error", { message: "Bilinmeyen joker türü!" });
+            return false;
+        }
+
+        let targetId = payload.targetId;
+        const initialTargetId = targetId;
+
+        const forbiddenSelfTargets = [3, 4, 5, 7, 10, 13, 15, 16];
+        if (targetId === user.id && forbiddenSelfTargets.includes(jokerType)) {
+            room.io.to(userId).emit("game:error", { message: "Bu jokeri kendi üzerinde kullanamazsın!" });
+            return false;
+        }
+
+        if (jokerType === 7 && targetId && typeof targetId === 'string') {
+            const targetForBomb = room.users.find(u => u.id === targetId);
+            if (targetForBomb && targetForBomb.timeBomb) {
+                room.io.to(userId).emit("game:error", { message: "Bu oyuncunun üzerinde zaten aktif bir bomba var!" });
+                return false;
+            }
+        }
+
+        const reflectableJokers = [3, 4, 5, 7, 13, 15];
+        if (targetId && reflectableJokers.includes(jokerType)) {
+            const targetUser = room.users.find(u => u.id === targetId);
+            if (targetUser && targetUser.mirrorRoundsLeft > 0 && targetUser.id !== user.id) {
+                room.addChatLog({
+                    system: true,
+                    message: `🛡️ YANSIMA! Kötü niyetli joker, gizli Ayna Kalkanı'na çarpıp ${user.name}'e geri sekti!`,
+                    timestamp: Date.now()
+                });
+                targetId = user.id;
+            }
+        }
+
+        const context = { initialTargetId, targetId };
+        const jokerConsumed = strategy.execute(room, user, payload, context);
+
+        if (jokerConsumed) {
+            if (jokerType !== 11 && jokerType !== 12 && jokerType !== 14) {
+                user.hasUsedJoker = true;
+            } else if (jokerType === 14 && user.detectiveUses >= 3) {
+                user.hasUsedJoker = true;
+            }
+
+            if (user.dbId) {
+                User.findById(user.dbId).then(userDb => {
+                    if (userDb && userDb.quests && userDb.quests.active) {
+                        userDb.quests.active.forEach(q => {
+                            if (q.type === 'use_joker' && !q.isClaimed && q.progress < q.target) q.progress++;
+                        });
+                        userDb.markModified('quests');
+                        return userDb.save();
+                    }
+                }).catch(err => console.error("Joker quest update error:", err));
+            }
+        } else if (jokerType !== 14 || (user.detectiveUses === undefined || user.detectiveUses === 0)) {
+            room.io.to(userId).emit("game:error", { message: "Joker geçersiz bir hedefe uygulanamadı. Jokerin iade edildi!" });
+        }
+
+        room.broadcastState();
+        return jokerConsumed;
+    }
+}
+
+module.exports = new JokerManager();
 
 
 =========================

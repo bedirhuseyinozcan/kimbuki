@@ -1,27 +1,22 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { io, Socket } from "socket.io-client";
-import { Button, TextField } from "@mui/material";
-import { toast } from "react-toastify";
-
-import { User, GameState } from "@/components/game/types";
+import { useEffect } from "react";
+import { useParams } from "next/navigation";
+import { useGameSocket } from "@/hooks/useGameSocket";
 import Lobby from "@/components/game/Lobby";
 import WordSelection from "@/components/game/WordSelection";
 import JokerDraft from "@/components/game/JokerDraft";
 import GameScene from "@/components/game/GameScene";
 import GameOver from "@/components/game/GameOver";
 import BettingPhase from "@/components/game/BettingPhase";
-import { LiveKitRoom, RoomAudioRenderer, useRoomContext } from '@livekit/components-react';
-import '@livekit/components-styles';
-import { useLocalParticipant } from '@livekit/components-react';
+import { LiveKitRoom, RoomAudioRenderer, useRoomContext, useLocalParticipant } from "@livekit/components-react";
+import "@livekit/components-styles";
 
-if (typeof console !== 'undefined') {
+if (typeof console !== "undefined") {
     const originalError = console.error;
     console.error = (...args) => {
-        if (typeof args[0] === 'string' && (args[0].includes('Failed to set sink id') || args[0].includes('setSinkId error'))) {
-            return; 
+        if (typeof args[0] === "string" && (args[0].includes("Failed to set sink id") || args[0].includes("setSinkId error"))) {
+            return;
         }
         originalError(...args);
     };
@@ -30,9 +25,9 @@ if (typeof console !== 'undefined') {
 function LiveKitSpeakerSync() {
     const room = useRoomContext();
     useEffect(() => {
-        const savedSpeaker = typeof window !== 'undefined' ? localStorage.getItem('preferredSpeaker') : null;
+        const savedSpeaker = typeof window !== "undefined" ? localStorage.getItem("preferredSpeaker") : null;
         if (savedSpeaker && room) {
-            room.switchActiveDevice('audiooutput', savedSpeaker).catch(e => console.error("setSinkId error", e));
+            room.switchActiveDevice("audiooutput", savedSpeaker).catch((e) => console.error("setSinkId error", e));
         }
     }, [room]);
     return null;
@@ -40,184 +35,21 @@ function LiveKitSpeakerSync() {
 
 function LiveKitMicSync({ isVoiceEnabled }: { isVoiceEnabled: boolean }) {
     const { localParticipant } = useLocalParticipant();
-    
+
     useEffect(() => {
         if (localParticipant) {
-            localParticipant.setMicrophoneEnabled(isVoiceEnabled).catch(e => console.error("Mic sync error", e));
+            localParticipant.setMicrophoneEnabled(isVoiceEnabled).catch((e) => console.error("Mic sync error", e));
         }
     }, [isVoiceEnabled, localParticipant]);
-    
+
     return null;
 }
 
 export default function GamePage() {
     const { code } = useParams();
-    const router = useRouter();
-    const [socket, setSocket] = useState<Socket | null>(null);
-    const [gameState, setGameState] = useState<GameState | null>(null);
-    const [inviteUrl, setInviteUrl] = useState<string>("");
+    const game = useGameSocket(code);
 
-    const [isJoined, setIsJoined] = useState(false);
-    const [wordInput, setWordInput] = useState("");
-    const [chatInput, setChatInput] = useState("");
-    const [notepad, setNotepad] = useState("");
-    const [isNotepadLoaded, setIsNotepadLoaded] = useState(false);
-    const [guessDialogOpen, setGuessDialogOpen] = useState(false);
-    const [guessInput, setGuessInput] = useState("");
-    const [headRotations, setHeadRotations] = useState<{ [key: string]: { pitch: number, yaw: number } }>({});
-    const [taunts, setTaunts] = useState<{[key: string]: { type: string, id: number }}>({});
-    const [visualEffects, setVisualEffects] = useState<any[]>([]);
-
-    useEffect(() => {
-        if (code && typeof window !== 'undefined') {
-            const saved = localStorage.getItem(`kimbuki_notepad_${code}`);
-            if (saved) setNotepad(saved);
-            setIsNotepadLoaded(true);
-        }
-    }, [code]);
-
-    useEffect(() => {
-        if (isNotepadLoaded && code && typeof window !== 'undefined') {
-            localStorage.setItem(`kimbuki_notepad_${code}`, notepad);
-        }
-    }, [notepad, code, isNotepadLoaded]);
-
-    const myId = socket?.id || "";
-    const me = gameState?.users.find((u: User) => u.id === myId);
-    
-    const [token, setToken] = useState("");
-
-    useEffect(() => {
-        if (!me?.id || !code) return;
-        (async () => {
-            try {
-                const livekitIdentity = me.dbId || me.id;
-                const gameToken = localStorage.getItem("gameToken");
-                const resp = await fetch(`/api/livekit?room=${code}&username=${encodeURIComponent(livekitIdentity)}`, {
-                    headers: gameToken ? { "Authorization": `Bearer ${gameToken}` } : {}
-                });
-                const data = await resp.json();
-                if (data.token) {
-                    setToken(data.token);
-                }
-            } catch (e) {
-                console.error("LiveKit token fetch error", e);
-            }
-        })();
-    }, [me?.id, me?.dbId, code]);
-
-    const [checkingAuth, setCheckingAuth] = useState(true);
-
-    useEffect(() => {
-        if (code && typeof window !== 'undefined') {
-            setInviteUrl(`${window.location.origin}/game/${code}`);
-        }
-    }, [code]);
-
-    useEffect(() => {
-        const token = localStorage.getItem("gameToken");
-        if (!token) {
-            router.push(`/?invite=${code}`);
-            return;
-        }
-
-        fetch(`${process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:4000"}/api/auth/me`, {
-            headers: { "Authorization": `Bearer ${token}` }
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.username) {
-                connectToRoom(data);
-            } else {
-                localStorage.removeItem("gameToken");
-                router.push(`/?invite=${code}`);
-            }
-        })
-        .catch(() => {
-            router.push(`/?invite=${code}`);
-        });
-    }, [code]);
-
-    const connectToRoom = (user: any) => {
-        const token = localStorage.getItem("gameToken");
-        const s = io(process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:4000", {
-            auth: { token }
-        });
-        setSocket(s);
-
-        s.emit("room:join", { roomCode: code, name: user.username, avatar: user.avatar, pedestal: user.pedestal, nameColor: user.nameColor, title: user.title }, (res: any) => {
-            if (!res.ok) {
-                toast.error("Hata: " + res.error);
-                router.push("/");
-            } else {
-                setIsJoined(true);
-                setCheckingAuth(false);
-            }
-        });
-
-        s.on("game:state", (state: GameState) => setGameState(state));
-        s.on("game:hint_result", ({ hint }: { hint: string }) => {
-            toast.info(`💡 İPUCU: ${hint}`);
-        });
-        s.on("game:head_update", ({ userId, pitch, yaw }: any) => {
-            setHeadRotations(prev => ({ ...prev, [userId]: { pitch, yaw } }));
-        });
-        s.on("game:error", ({ message }: { message: string }) => {
-            toast.error(message);
-        });
-        s.on("game:closed", () => {
-            toast.error("Oda host tarafından kapatıldı!");
-            if (s) s.disconnect();
-            router.push("/");
-        });
-        s.on("game:clear_notepad", () => {
-            setNotepad("");
-            if (typeof window !== 'undefined') {
-                localStorage.removeItem(`kimbuki_notepad_${code}`);
-            }
-            toast.error("🧠 AMNEZİ! Biri hafızanı sildi, tüm notların kayboldu!", { autoClose: 5000, theme: "colored" });
-        });
-        s.on("game:play_taunt", ({ userId, type }: any) => {
-            const tauntId = Date.now();
-            setTaunts(prev => ({ ...prev, [userId]: { type, id: tauntId } }));
-            setTimeout(() => {
-                setTaunts(prev => {
-                    if (prev[userId]?.id === tauntId) {
-                        const next = { ...prev };
-                        delete next[userId];
-                        return next;
-                    }
-                    return prev;
-                });
-            }, 2500);
-        });
-        
-        s.on("game:visual_effect", async (payload: any) => {
-            const audio = await import("@/utils/audio");
-            if (payload.type === 'bomb_explode') audio.playExplosionSound();
-            else if (payload.type === 'roulette_die') audio.playGunshotSound();
-            else if (['mirror_cast', 'shield_cast', 'time_bend'].includes(payload.type)) audio.playMagicSound();
-            else if (payload.type === 'blood_tie') audio.playHeartbeatSound();
-            else if (payload.type === 'mind_wipe') audio.playGlitchSound();
-            else if (payload.type === 'silence_cast') audio.playSilenceSound();
-            else if (payload.type === 'extra_ammo') audio.playReloadSound();
-            else if (payload.type === 'letter_reveal') audio.playSparkleSound();
-            
-            const effId = Date.now() + Math.random();
-            setVisualEffects(prev => [...prev, { ...payload, id: effId }]);
-            setTimeout(() => {
-                setVisualEffects(prev => prev.filter(e => e.id !== effId));
-            }, 2500);
-        });
-    };
-
-    useEffect(() => {
-        return () => {
-            if (socket) socket.disconnect();
-        };
-    }, [socket]);
-
-    if (checkingAuth || !isJoined) {
+    if (game.checkingAuth || !game.isJoined) {
         return (
             <main className="flex min-h-screen flex-col items-center justify-center p-6 text-center bg-slate-900 text-white">
                 <div className="glass w-full max-w-sm p-8 rounded-3xl shadow-2xl animate-pulse border border-slate-700">
@@ -228,139 +60,124 @@ export default function GamePage() {
         );
     }
 
-    if (!gameState) return <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white text-2xl animate-pulse">Odaya bağlanıyor...</div>;
-
-    const handleStart = (settings: { category?: string, bettingEnabled?: boolean, jokersEnabled?: boolean, betAmount?: number, theme?: "day" | "night", map?: string }) => socket?.emit("game:start", settings);
-    
-    const handleSetWord = () => {
-        if (!wordInput.trim()) return;
-        socket?.emit("game:set_word", { word: wordInput });
-    };
-
-    const handleChat = (e?: React.FormEvent) => {
-        e?.preventDefault();
-        if (!chatInput.trim()) return;
-        socket?.emit("game:chat", { message: chatInput });
-        setChatInput("");
-    };
-
-    const handleSkip = () => {
-        socket?.emit("game:skip_turn");
-    };
-
-    const handleAskQuestion = (question: string) => {
-        socket?.emit("game:ask_question", { question });
-    };
-
-    const handleSubmitVote = (vote: string) => {
-        socket?.emit("game:submit_vote", { vote });
-    };
-
-    const handleGuess = () => {
-        if (!guessInput.trim()) return;
-        socket?.emit("game:guess", { guess: guessInput });
-        setGuessInput("");
-        setGuessDialogOpen(false);
-    };
-
-    const handleUseJoker = (payload: any) => {
-        socket?.emit("game:use_joker", payload);
-    };
-
-    const toggleVoice = async (enabled: boolean) => {
-        socket?.emit("game:toggle_voice", { enabled });
-    };
-
-    const copyLink = () => {
-        navigator.clipboard.writeText(inviteUrl);
-        toast.success("Davet linki kopyalandı!");
-    };
-
-    const handleLeaveRoom = () => {
-        socket?.emit("game:leave");
-        if (socket) socket.disconnect();
-        sessionStorage.removeItem("username");
-        router.push("/");
-    };
-
-    const handleSelectAvatar = (id: number) => {
-        socket?.emit("game:set_avatar", { avatarId: id });
-    };
-
-    const handleCloseRoom = () => {
-        toast(
-            ({ closeToast }) => (
-                <div className="flex flex-col gap-3">
-                    <p className="font-bold">Odayı kapatmak istediğine emin misin?</p>
-                    <p className="text-sm">Odada bulunan herkes atılacak.</p>
-                    <div className="flex gap-2 justify-end mt-2">
-                        <Button size="small" variant="outlined" color="inherit" onClick={closeToast}>İptal</Button>
-                        <Button size="small" variant="contained" color="error" onClick={() => {
-                                socket?.emit("room:close");
-                                if (socket) socket.disconnect();
-                                sessionStorage.removeItem("username");
-                                router.push("/");
-                                if (closeToast) closeToast();
-                            }}>Kapat</Button>
-                    </div>
-                </div>
-            ),
-            { autoClose: false, closeOnClick: false, draggable: false, position: "top-center" }
+    if (!game.gameState) {
+        return (
+            <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white text-2xl animate-pulse">
+                Odaya bağlanıyor...
+            </div>
         );
-    };
+    }
+
+    const { gameState, me, myId } = game;
 
     const renderGameState = () => {
         if (gameState.gameState === "LOBBY") {
-            return <Lobby gameState={gameState} me={me!} code={code as string} inviteUrl={inviteUrl} myId={myId!} onStart={handleStart} onCloseRoom={handleCloseRoom} onLeaveRoom={handleLeaveRoom} onCopyLink={copyLink} onSelectAvatar={handleSelectAvatar} onToggleVoice={toggleVoice} />;
+            return (
+                <Lobby
+                    gameState={gameState}
+                    me={me!}
+                    code={code as string}
+                    inviteUrl={game.inviteUrl}
+                    myId={myId!}
+                    onStart={game.handleStart}
+                    onCloseRoom={game.handleCloseRoom}
+                    onLeaveRoom={game.handleLeaveRoom}
+                    onCopyLink={game.copyLink}
+                    onSelectAvatar={game.handleSelectAvatar}
+                    onToggleVoice={game.toggleVoice}
+                />
+            );
         }
         if (gameState.gameState === "BETTING") {
-            return <BettingPhase gameState={gameState} me={me!} onPlaceBet={(targetId) => socket?.emit("game:place_bet", { targetId })} />;
+            return <BettingPhase gameState={gameState} me={me!} onPlaceBet={game.handlePlaceBet} />;
         }
         if (gameState.gameState === "WORD_SELECTION") {
-            return <WordSelection gameState={gameState} me={me!} wordInput={wordInput} setWordInput={setWordInput} onSetWord={handleSetWord} onEditWord={() => socket?.emit("game:edit_word")} onShuffleTargets={() => socket?.emit("game:shuffle_targets")} onLeaveRoom={handleLeaveRoom} />;
+            return (
+                <WordSelection
+                    gameState={gameState}
+                    me={me!}
+                    wordInput={game.wordInput}
+                    setWordInput={game.setWordInput}
+                    onSetWord={game.handleSetWord}
+                    onEditWord={game.handleEditWord}
+                    onShuffleTargets={game.handleShuffleTargets}
+                    onLeaveRoom={game.handleLeaveRoom}
+                />
+            );
         }
         if (gameState.gameState === "JOKER_DRAFT") {
-            return <JokerDraft gameState={gameState} me={me!} onSelectJoker={(jokerId) => socket?.emit("game:select_joker", { jokerId })} />;
+            return <JokerDraft gameState={gameState} me={me!} onSelectJoker={game.handleSelectJoker} />;
         }
         if (gameState.gameState === "PLAYING") {
-            return <GameScene 
-                gameState={gameState} me={me!} myId={myId!} 
-                chatInput={chatInput} setChatInput={setChatInput} handleChat={handleChat}
-                notepad={notepad} setNotepad={setNotepad}
-                handleSkip={handleSkip}
-                guessInput={guessInput} setGuessInput={setGuessInput} handleGuess={handleGuess}
-                guessDialogOpen={guessDialogOpen} setGuessDialogOpen={setGuessDialogOpen}
-                onLeaveRoom={handleLeaveRoom}
-                onAskQuestion={handleAskQuestion}
-                onSubmitVote={handleSubmitVote}
-                onUseJoker={handleUseJoker}
-                onToggleVoice={toggleVoice}
-                onStartObjection={() => socket?.emit("game:start_objection")}
-                onVoteObjection={(vote) => socket?.emit("game:vote_objection", { vote })}
-                headRotations={headRotations}
-                onHeadRotation={(pitch, yaw) => socket?.emit("game:head_rotation", { pitch, yaw })}
-                taunts={taunts}
-                onTaunt={(type) => socket?.emit("game:taunt", { type })}
-                visualEffects={visualEffects}
-            />;
+            return (
+                <GameScene
+                    gameState={gameState}
+                    me={me!}
+                    myId={myId!}
+                    chatInput={game.chatInput}
+                    setChatInput={game.setChatInput}
+                    handleChat={game.handleChat}
+                    notepad={game.notepad}
+                    setNotepad={game.setNotepad}
+                    handleSkip={game.handleSkip}
+                    guessInput={game.guessInput}
+                    setGuessInput={game.setGuessInput}
+                    handleGuess={game.handleGuess}
+                    guessDialogOpen={game.guessDialogOpen}
+                    setGuessDialogOpen={game.setGuessDialogOpen}
+                    onLeaveRoom={game.handleLeaveRoom}
+                    onAskQuestion={game.handleAskQuestion}
+                    onSubmitVote={game.handleSubmitVote}
+                    onUseJoker={game.handleUseJoker}
+                    onToggleVoice={game.toggleVoice}
+                    onStartObjection={game.handleStartObjection}
+                    onVoteObjection={game.handleVoteObjection}
+                    headRotations={game.headRotations}
+                    onHeadRotation={game.handleHeadRotation}
+                    taunts={game.taunts}
+                    onTaunt={game.handleTaunt}
+                    visualEffects={game.visualEffects}
+                />
+            );
         }
         if (gameState.gameState === "ROUND_END") {
-            return <GameOver gameState={gameState} me={me!} onStart={() => handleStart({ category: gameState.category || "Karışık", bettingEnabled: gameState.isBettingEnabled, jokersEnabled: gameState.isJokersEnabled, betAmount: gameState.betAmount })} onLeaveRoom={handleLeaveRoom} />;
+            return (
+                <GameOver
+                    gameState={gameState}
+                    me={me!}
+                    onStart={() =>
+                        game.handleStart({
+                            category: gameState.category || "Karışık",
+                            bettingEnabled: gameState.isBettingEnabled,
+                            jokersEnabled: gameState.isJokersEnabled,
+                            betAmount: gameState.betAmount,
+                        })
+                    }
+                    onLeaveRoom={game.handleLeaveRoom}
+                />
+            );
         }
         return null;
     };
 
     const roomOptions = {
         audioCaptureDefaults: {
-            deviceId: typeof window !== 'undefined' ? (localStorage.getItem('preferredMic') || undefined) : undefined,
+            deviceId: typeof window !== "undefined" ? localStorage.getItem("preferredMic") || undefined : undefined,
             echoCancellation: true,
             autoGainControl: true,
             noiseSuppression: true,
-        }
+        },
     };
 
     return (
-        <LiveKitRoom video={false} audio={me?.isVoiceEnabled || false} token={token} serverUrl={process.env.NEXT_PUBLIC_LIVEKIT_URL} connect={!!token} options={roomOptions}>
+        <LiveKitRoom
+            video={false}
+            audio={me?.isVoiceEnabled || false}
+            token={game.token}
+            serverUrl={process.env.NEXT_PUBLIC_LIVEKIT_URL}
+            connect={!!game.token}
+            options={roomOptions}
+        >
             {renderGameState()}
             <RoomAudioRenderer />
             <LiveKitSpeakerSync />
