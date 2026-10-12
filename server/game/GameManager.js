@@ -60,10 +60,7 @@ class GameManager {
         socket.on("game:start", (settings) => this.handleStartGame(socket, settings));
         socket.on("game:place_bet", (payload) => this.handlePlaceBet(socket, payload?.targetId));
         
-        socket.on("game:start_objection", () => {
-            const room = this.getRoomBySocket(socket);
-            if (room) room.startObjection(socket.id);
-        });
+        socket.on("game:start_objection", () => this.handleStartObjection(socket));
 
         socket.on("game:vote_objection", (payload) => {
             const room = this.getRoomBySocket(socket);
@@ -255,12 +252,26 @@ class GameManager {
 
     handleEditWord(socket) {
         const room = this.getRoomBySocket(socket);
-        if (room) room.editWord(socket.id);
+        if (!room) return;
+        const user = room.users.find(u => u.id === socket.id);
+        const val = payloadValidator.validateEditWord(user, room);
+        if (!val.ok) {
+            socket.emit("game:error", { message: val.error });
+            return;
+        }
+        room.editWord(socket.id);
     }
 
     handleShuffleTargets(socket) {
         const room = this.getRoomBySocket(socket);
-        if (room) room.shuffleTargets(socket.id);
+        if (!room) return;
+        const user = room.users.find(u => u.id === socket.id);
+        const val = payloadValidator.validateShuffleTargets(user, room);
+        if (!val.ok) {
+            socket.emit("game:error", { message: val.error });
+            return;
+        }
+        room.shuffleTargets(socket.id);
     }
 
     handleChat(socket, rawMessage) {
@@ -299,7 +310,14 @@ class GameManager {
 
     handleSkipTurn(socket) {
         const room = this.getRoomBySocket(socket);
-        if (room) room.skipTurn(socket.id);
+        if (!room) return;
+        const user = room.users.find(u => u.id === socket.id);
+        const val = payloadValidator.validateSkipTurn(user, room);
+        if (!val.ok) {
+            socket.emit("game:error", { message: val.error });
+            return;
+        }
+        room.skipTurn(socket.id);
     }
 
     handleGuess(socket, rawGuess) {
@@ -314,15 +332,28 @@ class GameManager {
         room.guessWord(socket.id, val.data);
     }
 
-    handleUseJoker(socket, payload) {
+    handleUseJoker(socket, rawPayload) {
         const room = this.getRoomBySocket(socket);
         if (!room) return;
-        const rateCheck = payloadValidator.checkActionRateLimit(socket.id, 'use_joker', 800);
-        if (!rateCheck.ok) {
-            socket.emit("game:error", { message: rateCheck.error });
+        const user = room.users.find(u => u.id === socket.id);
+        const val = payloadValidator.validateUseJoker(rawPayload, user, room);
+        if (!val.ok) {
+            socket.emit("game:error", { message: val.error });
             return;
         }
-        room.useJoker(socket.id, payload);
+        room.useJoker(socket.id, val.data);
+    }
+
+    handleStartObjection(socket) {
+        const room = this.getRoomBySocket(socket);
+        if (!room) return;
+        const user = room.users.find(u => u.id === socket.id);
+        const val = payloadValidator.validateStartObjection(user, room);
+        if (!val.ok) {
+            socket.emit("game:error", { message: val.error });
+            return;
+        }
+        room.startObjection(socket.id);
     }
 
     handleHeadRotation(socket, payload) {
