@@ -15,6 +15,9 @@ import { playTurnSound, playWinSound } from "@/utils/audio";
 import confetti from "canvas-confetti";
 import { motion, AnimatePresence } from "framer-motion";
 import Scene3D from "./Scene3D";
+import Notepad from "./ui/Notepad";
+import ChatPanel from "./ui/ChatPanel";
+import ActionMenu from "./ui/ActionMenu";
 
 interface GameSceneProps {
     gameState: GameState;
@@ -251,60 +254,14 @@ export default function GameScene({
 
             <div className="w-full h-full flex-1 relative z-10 mt-12 md:mt-10 px-2 pb-2 md:px-6 md:pb-0 pointer-events-none flex flex-col justify-end gap-2 md:flex-row md:gap-6">
                 
-                <div className="order-2 md:order-1 w-full md:w-1/4 md:max-w-[400px] md:self-start glass p-3 rounded-2xl flex flex-col border border-slate-700/50 pointer-events-auto shadow-2xl bg-slate-900/60 backdrop-blur-lg transition-all duration-300 h-auto max-h-[85vh] overflow-y-auto custom-scrollbar">
-                    <h3 onClick={() => handleToggle('notepad')} className="font-bold text-lg flex items-center justify-between gap-2 text-yellow-400 cursor-pointer select-none hover:text-yellow-300">
-                        <span className="flex items-center gap-2">📝 Not Defterim</span>
-                        <span className="text-sm bg-slate-800/80 px-2 py-1 rounded-lg">{isNotepadOpen ? '▲ Gizle' : '▼ Aç'}</span>
-                    </h3>
-                    {isNotepadOpen && (
-                        <textarea placeholder="Örn: Gerçek bir insan mı? Yaşıyor mu?..." value={notepad} onChange={e => setNotepad(e.target.value)} spellCheck="false" className="w-full bg-yellow-900/20 rounded-xl text-slate-200 p-3 mt-2 border border-yellow-500/30 focus:border-yellow-500/60 outline-none resize-none h-[150px] md:h-[250px] custom-scrollbar shrink-0" />
-                    )}
-                    
-                    {myJokerMeta && (
-                        <div className={`mt-4 p-3 rounded-xl border ${me.hasUsedJoker ? 'bg-slate-800/50 border-slate-700/50 opacity-60' : (myJokerMeta.rarity === 'prismatic' ? 'bg-fuchsia-900/30 border-fuchsia-500/30' : myJokerMeta.rarity === 'gold' ? 'bg-amber-900/30 border-amber-500/30' : 'bg-slate-700/30 border-slate-400/30')}`}>
-                            <h4 className={`font-bold text-sm flex items-center gap-1 mb-1 ${me.hasUsedJoker ? 'text-slate-400' : (myJokerMeta.rarity === 'prismatic' ? 'text-fuchsia-400' : myJokerMeta.rarity === 'gold' ? 'text-amber-400' : 'text-slate-200')}`}>
-                                🃏 {myJokerMeta.name} {me.hasUsedJoker && <span className="text-red-400 text-xs ml-auto">(Kullanıldı)</span>}
-                            </h4>
-                            <p className="text-xs text-slate-300">{myJokerMeta.desc}</p>
-                            
-                            {(me.shieldActive || (me.mirrorRoundsLeft ?? 0) > 0) && (
-                                <div className="mt-2 flex flex-wrap gap-1.5 pt-2 border-t border-slate-700/50">
-                                    {me.shieldActive && (
-                                        <Chip size="small" label="🛡️ Gizli Kalkan Aktif" color="info" className="font-bold text-xs" />
-                                    )}
-                                    {(me.mirrorRoundsLeft ?? 0) > 0 ? (
-                                        <Chip size="small" label={`🪞 Ayna (${me.mirrorRoundsLeft} Tur)`} color="secondary" className="font-bold text-xs" />
-                                    ) : null}
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    {me?.lastQuestions && me.lastQuestions.length > 0 && (
-                        <div className="mt-4 flex flex-col gap-3 overflow-y-auto custom-scrollbar max-h-[300px] pr-2">
-                            {me.lastQuestions.map((q: any, i: number) => (
-                                <div key={i} className="p-3 rounded-xl border bg-cyan-900/30 border-cyan-500/30">
-                                    <h4 className="font-bold text-sm text-cyan-400 mb-1">{me.lastQuestions!.length > 1 ? `${i + 1}. Sorum` : 'Son Sorduğum Soru'}</h4>
-                                    <p className="text-sm font-bold text-slate-200 mb-2 break-words break-all">"{q.question}"</p>
-                                    <div className="flex gap-2 text-xs flex-wrap">
-                                        {Object.entries(q.votes).map(([voterId, vote]) => {
-                                            const voter = gameState.users.find((u: any) => u.id === voterId);
-                                            if (!voter) return null;
-                                            const voteColor = vote === 'yes' ? 'text-green-400' : vote === 'no' ? 'text-red-400' : 'text-yellow-400';
-                                            const voteText = vote === 'yes' ? 'Evet' : vote === 'no' ? 'Hayır' : 'Bazen';
-                                            return (
-                                                <div key={voterId} className="bg-slate-800/80 px-2 py-1 rounded border border-slate-700">
-                                                    <span className="text-slate-400 mr-1">{voter.name}:</span>
-                                                    <span className={`font-bold ${voteColor}`}>{voteText}</span>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
+                <Notepad
+                    notepad={notepad}
+                    setNotepad={setNotepad}
+                    isNotepadOpen={isNotepadOpen}
+                    onToggle={() => handleToggle('notepad')}
+                    me={me}
+                    gameState={gameState}
+                />
 
                 <div className="order-3 md:order-2 w-full md:flex-1 md:w-auto flex flex-col pointer-events-none z-20 md:justify-between">
                     <div className="hidden md:flex justify-between items-center bg-slate-900/80 backdrop-blur-md border border-slate-700/50 p-4 rounded-2xl relative z-10 pointer-events-auto shadow-2xl">
@@ -321,92 +278,37 @@ export default function GameScene({
                    
                     <div className="hidden md:block flex-1" />
                  
-                    <div className="bg-slate-900/80 backdrop-blur-md border border-slate-700/50 rounded-2xl transition-all duration-300 flex flex-col z-10 relative pointer-events-auto shadow-2xl">
-                        <div onClick={() => handleToggle('chat')} className="p-3 flex justify-between items-center cursor-pointer border-b border-slate-700/50">
-                            <span className="font-bold text-sm text-violet-400 flex items-center gap-2">💬 Sohbet</span>
-                            <span className="text-xs bg-slate-800 px-2 py-1 rounded-lg text-slate-300">{isChatOpen ? '▼ Gizle' : '▲ Aç'}</span>
-                        </div>
-
-                        <div className={`group ${isChatOpen ? 'flex flex-col' : 'hidden'}`}>
-                            <div className="h-40 group-focus-within:h-64 md:group-focus-within:h-72 transition-all duration-300 ease-in-out overflow-y-auto p-4 space-y-2 custom-scrollbar pointer-events-auto">
-                                {gameState.chatHistory.map((msg: any, i: number) => {
-                                    let colorClass = "text-violet-400";
-                                    if (!msg.system && msg.nameColor) {
-                                        const found = NAME_COLORS.find(c => c.id === msg.nameColor);
-                                        if (found) colorClass = found.className;
-                                    }
-                                    return (
-                                        <div key={i} className={`text-sm ${msg.system ? (msg.message.includes('Sistem (Özel)') ? 'text-fuchsia-400 font-bold' : 'text-cyan-400 text-center italic my-2') : ''}`}>
-                                            {!msg.system && <strong className={colorClass}>{msg.name}: </strong>}
-                                            <span className={`break-words break-all ${msg.system ? (msg.message.includes('Sistem (Özel)') ? '' : 'font-bold') : 'text-slate-200'}`}>{msg.message}</span>
-                                        </div>
-                                    );
-                                })}
-                                <div ref={chatEndRef} />
-                            </div>
-                            <form onSubmit={handleChat} className="p-2 border-t border-slate-700 flex gap-2 pointer-events-auto">
-                                <TextField fullWidth size="small" slotProps={{ htmlInput: { maxLength: 120 } }} placeholder={me?.status === 'playing' ? "Soru sor veya cevapla..." : "İzleyici sohbeti..."} value={chatInput} onChange={e => setChatInput(e.target.value)} sx={{ input: { color: 'white' }, '& .MuiOutlinedInput-root': { '& fieldset': { borderColor: '#475569' }, '&:hover fieldset': { borderColor: '#94a3b8' }, '&.Mui-focused fieldset': { borderColor: '#06b6d4' } } }} />
-                                <IconButton type="submit" color="primary" className="bg-violet-600 hover:bg-violet-500 text-white rounded-lg px-4"><SendIcon /></IconButton>
-                            </form>
-                        </div>
-                    </div>
+                    <ChatPanel
+                        chatHistory={gameState.chatHistory}
+                        chatInput={chatInput}
+                        setChatInput={setChatInput}
+                        handleChat={handleChat}
+                        isChatOpen={isChatOpen}
+                        onToggle={() => handleToggle('chat')}
+                        isPlayer={me?.status === 'playing'}
+                    />
                 </div>
 
-                <div className="order-1 md:order-3 w-full md:w-1/4 md:max-w-[400px] flex flex-col gap-3 pointer-events-auto z-40">
-                    {me?.status === 'playing' && gameState.gameState === "PLAYING" && (
-                        <div className="glass rounded-2xl flex flex-col border border-slate-700/50 shadow-xl bg-slate-900/60 backdrop-blur-lg overflow-hidden transition-all duration-300">
-                            
-                            <div onClick={() => handleToggle('actions')} className="p-3 md:hidden flex justify-between items-center cursor-pointer border-b border-slate-700/50 bg-slate-800/80">
-                                <span className="font-bold text-sm text-green-400 flex items-center gap-2">⚡ Aksiyonlar</span>
-                                <span className="text-xs bg-slate-700 px-2 py-1 rounded-lg text-slate-300">{isActionsOpen ? '▼ Gizle' : '▲ Aç'}</span>
-                            </div>
-
-                            <div className={`p-4 flex-col justify-center items-center gap-3 ${isActionsOpen ? 'flex' : 'hidden md:flex'}`}>
-                                <motion.div whileHover={{ scale: isMyTurn ? 1.05 : 1 }} whileTap={{ scale: isMyTurn ? 0.95 : 1 }} className="w-full">
-                                    <Button variant="contained" color="info" size="medium" fullWidth startIcon={<QuestionAnswerIcon />} onClick={() => setQuestionDialogOpen(true)} disabled={!isMyTurn || ((me?.questionsAskedThisTurn ?? 0) >= 1 && (me?.extraQuestions ?? 0) <= 0) || !!gameState.activeQuestion || isRussianRoulette} className={`py-3 rounded-xl border-2 font-bold ${isMyTurn && !gameState.activeQuestion && !isRussianRoulette ? 'bg-cyan-600 shadow-lg shadow-cyan-500/30' : 'opacity-50'}`}>
-                                        Soru Sor & Oylat
-                                    </Button>
-                                </motion.div>
-
-                                <div className="w-full h-px bg-slate-700 my-2"></div>
-
-                                <motion.div whileHover={{ scale: isMyTurn ? 1.05 : 1 }} whileTap={{ scale: isMyTurn ? 0.95 : 1 }} className="w-full">
-                                    <Button variant="contained" color="success" size="medium" fullWidth onClick={() => setGuessDialogOpen(true)} disabled={!isMyTurn} className={`py-3 rounded-xl text-lg font-bold shadow-lg shadow-green-500/20 ${!isMyTurn ? 'opacity-50' : ''}`}>
-                                        TAHMİN ET
-                                    </Button>
-                                </motion.div>
-
-                                <motion.div whileHover={{ scale: isMyTurn ? 1.05 : 1 }} whileTap={{ scale: isMyTurn ? 0.95 : 1 }} className="w-full">
-                                    <Button variant="outlined" color="warning" size="medium" fullWidth startIcon={<SkipNextIcon />} onClick={handleSkip} disabled={!isMyTurn || isRussianRoulette} className={`py-3 rounded-xl border-2 ${isMyTurn && !isRussianRoulette ? 'hover:bg-warning-main/10' : 'opacity-50'}`}>
-                                        Turu Geç
-                                    </Button>
-                                </motion.div>
-
-                                {me?.joker !== undefined && me?.joker !== null && !me?.hasUsedJoker && (
-                                    <motion.div whileHover={{ scale: isMyTurn ? 1.05 : 1 }} whileTap={{ scale: isMyTurn ? 0.95 : 1 }} className="w-full mt-2">
-                                        <Button 
-                                            variant="contained" 
-                                            color="secondary" 
-                                            size="medium" 
-                                            fullWidth 
-                                            onClick={() => setJokerDialogOpen(true)}
-                                            disabled={currentRound < 3 || isRussianRoulette || !isMyTurn}
-                                            className={`py-3 rounded-xl border-2 font-bold ${currentRound >= 3 && !isRussianRoulette && isMyTurn ? 'bg-fuchsia-600 shadow-[0_0_15px_rgba(192,38,211,0.5)]' : 'opacity-50'}`}
-                                        >
-                                            {currentRound < 3 ? '🃏 Joker (3. Turda Açılır)' : '🃏 Joker Kullan'}
-                                        </Button>
-                                    </motion.div>
-                                )}
-
-                                <motion.div whileHover={{ scale: !gameState.hasObjectionUsed ? 1.05 : 1 }} whileTap={{ scale: !gameState.hasObjectionUsed ? 0.95 : 1 }} className="w-full mt-4">
-                                    <Button variant="outlined" color="error" size="medium" fullWidth onClick={onStartObjection} disabled={gameState.hasObjectionUsed || isRussianRoulette} className={`py-2 rounded-xl border-2 font-bold ${!gameState.hasObjectionUsed && !isRussianRoulette ? 'border-red-500/80 text-red-400 shadow-[0_0_15px_rgba(239,68,68,0.2)] hover:bg-red-500/20' : 'opacity-50'}`}>
-                                        🚨 ŞİKEYE İTİRAZ ET {gameState.hasObjectionUsed && '(Kullanıldı)'}
-                                    </Button>
-                                </motion.div>
-                            </div>
-                        </div>
-                    )}
-                </div>
+                {me?.status === 'playing' && gameState.gameState === "PLAYING" && (
+                    <ActionMenu
+                        isMyTurn={isMyTurn}
+                        currentRound={currentRound}
+                        isRussianRoulette={!!isRussianRoulette}
+                        hasActiveQuestion={!!gameState.activeQuestion}
+                        questionsAskedThisTurn={me?.questionsAskedThisTurn ?? 0}
+                        extraQuestions={me?.extraQuestions ?? 0}
+                        hasJoker={me?.joker !== undefined && me?.joker !== null}
+                        hasUsedJoker={!!me?.hasUsedJoker}
+                        hasObjectionUsed={!!gameState.hasObjectionUsed}
+                        isActionsOpen={isActionsOpen}
+                        onToggle={() => handleToggle('actions')}
+                        onOpenQuestionDialog={() => setQuestionDialogOpen(true)}
+                        onOpenGuessDialog={() => setGuessDialogOpen(true)}
+                        onSkip={handleSkip}
+                        onOpenJokerDialog={() => setJokerDialogOpen(true)}
+                        onStartObjection={onStartObjection}
+                    />
+                )}
             </div>
 
             <Dialog open={jokerDialogOpen} onClose={() => setJokerDialogOpen(false)} slotProps={{ paper: { className: "!bg-white !text-slate-900 !rounded-2xl min-w-[300px]" } }}>
