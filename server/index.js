@@ -22,6 +22,12 @@ app.get("/health", (req, res) => {
 });
 
 
+if (!process.env.JWT_SECRET) {
+  console.error("FATAL ERROR: JWT_SECRET ortam değişkeni tanımlanmamış!");
+  process.exit(1);
+}
+const JWT_SECRET = process.env.JWT_SECRET;
+
 const io = new Server(server, {
   cors: { origin: "*", methods: ["GET", "POST"] },
 });
@@ -31,7 +37,7 @@ const jwt = require("jsonwebtoken");
 io.use((socket, next) => {
   const token = socket.handshake.auth?.token;
   if (token) {
-    jwt.verify(token, process.env.JWT_SECRET || "gizli_anahtar_buraya", (err, decoded) => {
+    jwt.verify(token, JWT_SECRET, (err, decoded) => {
       if (!err && decoded) {
         socket.data.userId = decoded.id;
       }

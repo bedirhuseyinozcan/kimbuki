@@ -3,7 +3,11 @@ const router = express.Router();
 const User = require("../models/User");
 const jwt = require("jsonwebtoken");
 
-const JWT_SECRET = process.env.JWT_SECRET || "kimbuki_super_secret_key_2026";
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+    console.error("FATAL ERROR: JWT_SECRET ortam değişkeni tanımlanmamış!");
+    process.exit(1);
+}
 
 const authMiddleware = (req, res, next) => {
     const token = req.header("Authorization")?.replace("Bearer ", "");
@@ -61,62 +65,59 @@ router.post("/buy", authMiddleware, async (req, res) => {
             return res.status(400).json({ error: "Böyle bir eşya bulunamadı." });
         }
 
-        const user = await User.findById(req.user.id);
-        if (!user) return res.status(404).json({ error: "Kullanıcı bulunamadı." });
+        let collectionKey = 'unlockedAvatars';
+        if (itemToBuy.type === 'pedestal') collectionKey = 'unlockedPedestals';
+        else if (itemToBuy.type === 'color') collectionKey = 'unlockedNameColors';
+        else if (itemToBuy.type === 'title') collectionKey = 'unlockedTitles';
 
-        if (!user.unlockedAvatars) user.unlockedAvatars = ['Warrior'];
-        if (!user.unlockedPedestals) user.unlockedPedestals = ['default_stone'];
-        if (!user.unlockedNameColors) user.unlockedNameColors = ['text-white'];
-        if (!user.unlockedTitles) user.unlockedTitles = [];
+        const updatedUser = await User.findOneAndUpdate(
+            {
+                _id: req.user.id,
+                gold: { $gte: itemToBuy.price },
+                [collectionKey]: { $ne: itemId }
+            },
+            {
+                $inc: { gold: -itemToBuy.price },
+                $addToSet: { [collectionKey]: itemId }
+            },
+            { new: true }
+        );
 
-        let collection;
-        if (itemToBuy.type === 'avatar') collection = user.unlockedAvatars;
-        else if (itemToBuy.type === 'pedestal') collection = user.unlockedPedestals;
-        else if (itemToBuy.type === 'color') collection = user.unlockedNameColors;
-        else if (itemToBuy.type === 'title') collection = user.unlockedTitles;
-
-        if (itemToBuy.type === 'pedestal' && !collection.includes('default_stone')) {
-            collection.push('default_stone');
+        if (!updatedUser) {
+            const existingUser = await User.findById(req.user.id);
+            if (!existingUser) {
+                return res.status(404).json({ error: "Kullanıcı bulunamadı." });
+            }
+            if (existingUser[collectionKey]?.includes(itemId)) {
+                return res.status(400).json({ error: "Bu eşyaya zaten sahipsiniz." });
+            }
+            if (existingUser.gold < itemToBuy.price) {
+                return res.status(400).json({ error: "Yeterli altınınız yok." });
+            }
+            return res.status(400).json({ error: "Satın alma işlemi gerçekleştirilemedi." });
         }
-        if (itemToBuy.type === 'avatar' && !collection.includes('Warrior')) {
-            collection.push('Warrior');
-        }
-        if (itemToBuy.type === 'color' && !collection.includes('text-white')) {
-            collection.push('text-white');
-        }
 
-        if (collection.includes(itemId)) {
-            return res.status(400).json({ error: "Bu eşyaya zaten sahipsiniz." });
-        }
-
-        if (user.gold < itemToBuy.price) {
-            return res.status(400).json({ error: "Yeterli altınınız yok." });
-        }
-
-        user.gold -= itemToBuy.price;
-        collection.push(itemId);
-        
-        if (user.quests && user.quests.active) {
-            user.quests.active.forEach(q => {
-                if (q.type === 'buy_avatar' && !q.isClaimed && q.progress < q.target) q.progress++;
+        if (itemToBuy.type === 'avatar' && updatedUser.quests && updatedUser.quests.active) {
+            let questUpdated = false;
+            updatedUser.quests.active.forEach(q => {
+                if (q.type === 'buy_avatar' && !q.isClaimed && q.progress < q.target) {
+                    q.progress++;
+                    questUpdated = true;
+                }
             });
-            user.markModified('quests');
+            if (questUpdated) {
+                updatedUser.markModified('quests');
+                await updatedUser.save();
+            }
         }
-        
-        user.markModified('unlockedAvatars');
-        user.markModified('unlockedPedestals');
-        user.markModified('unlockedNameColors');
-        user.markModified('unlockedTitles');
-
-        await user.save();
 
         res.json({
             message: "Satın alma başarılı!",
-            gold: user.gold,
-            unlockedAvatars: user.unlockedAvatars,
-            unlockedPedestals: user.unlockedPedestals,
-            unlockedNameColors: user.unlockedNameColors,
-            unlockedTitles: user.unlockedTitles
+            gold: updatedUser.gold,
+            unlockedAvatars: updatedUser.unlockedAvatars,
+            unlockedPedestals: updatedUser.unlockedPedestals,
+            unlockedNameColors: updatedUser.unlockedNameColors,
+            unlockedTitles: updatedUser.unlockedTitles
         });
     } catch (error) {
         console.error("Shop buy error:", error);
