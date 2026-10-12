@@ -1,4 +1,4 @@
-const User = require('../models/User');
+const RewardService = require('./services/RewardService');
 const JokerManager = require('./jokers');
 const questionHandler = require('./handlers/questionHandler');
 const guessHandler = require('./handlers/guessHandler');
@@ -38,57 +38,80 @@ class Room {
         }
     }
 
-    addUser(socketId, name, dbId, avatar, pedestal = 'default_stone', reputation = 0, nameColor = 'text-white', title = '') {
-        if (dbId) {
-            const existingUser = this.users.find(u => u.dbId === dbId);
-            if (existingUser) {
-                const oldId = existingUser.id;
-                if (existingUser.disconnectTimer) {
-                    clearTimeout(existingUser.disconnectTimer);
-                    existingUser.disconnectTimer = null;
-                }
-                existingUser.id = socketId;
-                existingUser.disconnected = false;
-                existingUser.reputation = reputation;
-                existingUser.avatar = avatar || existingUser.avatar;
-                existingUser.pedestal = pedestal || existingUser.pedestal;
-                existingUser.nameColor = nameColor || existingUser.nameColor;
-                existingUser.title = (title !== undefined) ? title : existingUser.title;
-                
-                this.users.forEach(u => {
-                    if (u.targetId === oldId) u.targetId = socketId;
-                    if (u.bloodTieTarget === oldId) u.bloodTieTarget = socketId;
-                    if (u.timeBomb && u.timeBomb.casterId === oldId) u.timeBomb.casterId = socketId;
-                });
-                
-                if (this.bets) {
-                    if (this.bets[oldId]) {
-                        this.bets[socketId] = this.bets[oldId];
-                        delete this.bets[oldId];
-                    }
-                    for (let b in this.bets) {
-                        if (this.bets[b] === oldId) this.bets[b] = socketId;
-                    }
-                }
-                if (this.pendingMirrorWordOwner === oldId) this.pendingMirrorWordOwner = socketId;
-                if (this.pendingMirrorWordTarget === oldId) this.pendingMirrorWordTarget = socketId;
-                if (this.objection && this.objection.votes[oldId] !== undefined) {
-                    this.objection.votes[socketId] = this.objection.votes[oldId];
-                    delete this.objection.votes[oldId];
-                }
+    sendInitChat(socketId) {
+        const user = this.users.find(u => u.id === socketId);
+        if (!user) return;
+        const history = this.chatHistory
+            .filter(c => !c.privateTo || c.privateTo === socketId)
+            .map(c => ({
+                system: c.system,
+                userId: c.userId,
+                name: c.name,
+                nameColor: c.nameColor,
+                message: c.message,
+                timestamp: c.timestamp
+            }));
+        this.io.to(socketId).emit("game:init_chat", { chatHistory: history });
+    }
 
-                const winnerIndex = this.winners.indexOf(oldId);
-                if (winnerIndex !== -1) this.winners[winnerIndex] = socketId;
-                if (this.activeQuestion) {
-                    if (this.activeQuestion.askerId === oldId) this.activeQuestion.askerId = socketId;
-                    if (this.activeQuestion.votes[oldId]) {
-                        this.activeQuestion.votes[socketId] = this.activeQuestion.votes[oldId];
-                        delete this.activeQuestion.votes[oldId];
-                    }
-                }
-                this.broadcastState();
-                return;
+    addUser(socketId, name, dbId, avatar, pedestal = 'default_stone', reputation = 0, nameColor = 'text-white', title = '') {
+        const existingUser = this.users.find(u => (dbId && u.dbId === dbId) || (u.disconnected && u.name === name));
+        if (existingUser) {
+            const oldId = existingUser.id;
+            if (existingUser.disconnectTimer) {
+                clearTimeout(existingUser.disconnectTimer);
+                existingUser.disconnectTimer = null;
             }
+            existingUser.id = socketId;
+            existingUser.disconnected = false;
+            existingUser.reputation = reputation;
+            existingUser.avatar = avatar || existingUser.avatar;
+            existingUser.pedestal = pedestal || existingUser.pedestal;
+            existingUser.nameColor = nameColor || existingUser.nameColor;
+            existingUser.title = (title !== undefined) ? title : existingUser.title;
+            
+            this.users.forEach(u => {
+                if (u.targetId === oldId) u.targetId = socketId;
+                if (u.bloodTieTarget === oldId) u.bloodTieTarget = socketId;
+                if (u.timeBomb && u.timeBomb.casterId === oldId) u.timeBomb.casterId = socketId;
+            });
+            
+            if (this.bets) {
+                if (this.bets[oldId]) {
+                    this.bets[socketId] = this.bets[oldId];
+                    delete this.bets[oldId];
+                }
+                for (let b in this.bets) {
+                    if (this.bets[b] === oldId) this.bets[b] = socketId;
+                }
+            }
+            if (this.pendingMirrorWordOwner === oldId) this.pendingMirrorWordOwner = socketId;
+            if (this.pendingMirrorWordTarget === oldId) this.pendingMirrorWordTarget = socketId;
+            if (this.objection && this.objection.votes[oldId] !== undefined) {
+                this.objection.votes[socketId] = this.objection.votes[oldId];
+                delete this.objection.votes[oldId];
+            }
+
+            const winnerIndex = this.winners.indexOf(oldId);
+            if (winnerIndex !== -1) this.winners[winnerIndex] = socketId;
+            if (this.activeQuestion) {
+                if (this.activeQuestion.askerId === oldId) this.activeQuestion.askerId = socketId;
+                if (this.activeQuestion.votes[oldId]) {
+                    this.activeQuestion.votes[socketId] = this.activeQuestion.votes[oldId];
+                    delete this.activeQuestion.votes[oldId];
+                }
+            }
+
+            this.addChatLog({
+                system: true,
+                message: `🔄 ${existingUser.name} oyuna tekrar bağlandı!`,
+                timestamp: Date.now()
+            });
+
+            this.io.to(socketId).emit("game:reconnected", { message: "Odaya yeniden bağlandınız!" });
+            this.sendInitChat(socketId);
+            this.broadcastState();
+            return;
         }
 
         const isHost = this.users.length === 0;
@@ -126,6 +149,7 @@ class Room {
             lastTauntTime: 0,
             lastHeadRotTime: 0
         });
+        this.sendInitChat(socketId);
         this.broadcastState();
     }
 
@@ -154,6 +178,12 @@ class Room {
         if (!user) return this.users.length === 0;
 
         user.disconnected = true;
+
+        this.addChatLog({
+            system: true,
+            message: `⚠️ ${user.name} bağlantısı koptu (yeniden bağlanması için 60sn bekleniyor)...`,
+            timestamp: Date.now()
+        });
 
         if (user.isHost) {
             user.isHost = false;
@@ -312,33 +342,11 @@ class Room {
         this.roundCount = 1;
 
         if (this.isBettingEnabled) {
-            const User = require('../models/User');
-            let failedUser = null;
-            const deductedUsers = [];
-            for (let u of activeUsers) {
-                if (u.dbId) {
-                    const updatedUser = await User.findOneAndUpdate(
-                        { _id: u.dbId, gold: { $gte: this.betAmount } },
-                        { $inc: { gold: -this.betAmount } },
-                        { new: true }
-                    );
-                    if (!updatedUser) {
-                        failedUser = u;
-                        break;
-                    } else {
-                        deductedUsers.push(u.dbId);
-                    }
-                } else {
-                    failedUser = u;
-                    break;
-                }
-            }
-
-            if (failedUser) {
-                for (let dbId of deductedUsers) {
-                    await User.findByIdAndUpdate(dbId, { $inc: { gold: this.betAmount } });
-                }
-                this.io.to(this.code).emit("game:error", { message: `${failedUser.name} isimli oyuncunun yeterli altını (${this.betAmount}) yok veya giriş yapmamış!` });
+            const betResult = await RewardService.deductBetFees(activeUsers, this.betAmount);
+            if (!betResult.ok) {
+                this.io.to(this.code).emit("game:error", {
+                    message: `${betResult.failedUser?.name || 'Bir oyuncunun'} yeterli altını (${this.betAmount}) yok veya giriş yapmamış!`
+                });
                 if (this.gameState === "ROUND_END") {
                     this.gameState = "LOBBY";
                     this.broadcastState();
@@ -808,27 +816,7 @@ class Room {
         if (this.betTimer) clearTimeout(this.betTimer);
         if (this.jokerDraftTimer) clearTimeout(this.jokerDraftTimer);
         
-        const User = require('../models/User');
-        for (let u of this.users) {
-            if (u.dbId && !this.winners.includes(u.id)) {
-                
-                u.reputation += 5; 
-                
-                User.findById(u.dbId).then(userDb => {
-                    if (userDb) {
-                        userDb.reputation += 5;
-                        if (userDb.quests && userDb.quests.active) {
-                            userDb.quests.active.forEach(q => {
-                                if (q.type === 'play' && !q.isClaimed && q.progress < q.target) q.progress++;
-                            });
-                            userDb.markModified('quests');
-                        }
-                        return userDb.save();
-                    }
-                }).catch(err => console.error("Reputation update error:", err));
-            }
-        }
-        
+        RewardService.grantParticipationRewards(this.users, this.winners);
         this.broadcastState();
     }
 
@@ -848,6 +836,7 @@ class Room {
                 hasSubmittedWord: u.hasSubmittedWord,
                 isVoiceEnabled: u.isVoiceEnabled,
                 lives: u.lives,
+                disconnected: !!u.disconnected,
                 joker: u.id === user.id ? u.joker : null,
                 jokerChoices: u.id === user.id ? u.jokerChoices : undefined,
                 hasDrafted: u.hasDrafted,
@@ -877,14 +866,6 @@ class Room {
                 users: usersPayload,
                 currentTurnUserId: this.gameState === "PLAYING" ? this.users[this.currentTurnIndex]?.id : null,
                 turnEndsAt: this.gameState === "PLAYING" ? (this.activeQuestion ? Date.now() + this.pausedRemainingMs : this.turnStartTime + (this.turnTime * 1000)) : null,
-                chatHistory: this.chatHistory.filter(c => !c.privateTo || c.privateTo === user.id).map(c => ({
-                    system: c.system,
-                    userId: c.userId,
-                    name: c.name,
-                    nameColor: c.nameColor,
-                    message: c.message,
-                    timestamp: c.timestamp
-                })),
                 winners: this.winners,
                 objection: this.objection,
                 hasObjectionUsed: this.hasObjectionUsed,

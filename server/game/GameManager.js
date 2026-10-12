@@ -1,4 +1,6 @@
 const Room = require("./Room");
+const RewardService = require("./services/RewardService");
+const payloadValidator = require("./validators/payloadValidator");
 
 class GameManager {
     constructor(io) {
@@ -12,42 +14,99 @@ class GameManager {
     handleConnection(socket) {
         console.log("New client connected:", socket.id);
 
-        socket.on("room:create", ({ name, avatar, pedestal, nameColor, title }, cb) => this.handleCreateRoom(socket, name, socket.data.userId, avatar, pedestal, nameColor, title, cb));
-        socket.on("room:join", ({ roomCode, name, avatar, pedestal, nameColor, title }, cb) => this.handleJoinRoom(socket, roomCode, name, socket.data.userId, avatar, pedestal, nameColor, title, cb));
-        socket.on("game:update_avatar", ({ avatarIndex }) => this.handleUpdateAvatar(socket, avatarIndex));
-        socket.on("game:start", (settings = {}) => this.handleStartGame(socket, settings));
-        socket.on("game:place_bet", ({ targetId }) => this.handlePlaceBet(socket, targetId));
+        socket.on("game:ping", (payload) => {
+            socket.emit("game:pong", {
+                clientTimestamp: payload?.clientTimestamp,
+                serverTimestamp: Date.now()
+            });
+        });
+
+        socket.on("room:create", (payload, cb) => {
+            const val = payloadValidator.validateRoomCreate(payload);
+            if (!val.ok) {
+                return cb?.({ ok: false, error: val.error });
+            }
+            this.handleCreateRoom(
+                socket,
+                val.data.name,
+                socket.data?.userId,
+                val.data.avatar,
+                val.data.pedestal,
+                val.data.nameColor,
+                val.data.title,
+                cb
+            );
+        });
+
+        socket.on("room:join", (payload, cb) => {
+            const val = payloadValidator.validateRoomJoin(payload);
+            if (!val.ok) {
+                return cb?.({ ok: false, error: val.error });
+            }
+            this.handleJoinRoom(
+                socket,
+                val.data.roomCode,
+                val.data.name,
+                socket.data?.userId,
+                val.data.avatar,
+                val.data.pedestal,
+                val.data.nameColor,
+                val.data.title,
+                cb
+            );
+        });
+
+        socket.on("game:update_avatar", (payload) => this.handleUpdateAvatar(socket, payload?.avatarIndex));
+        socket.on("game:start", (settings) => this.handleStartGame(socket, settings));
+        socket.on("game:place_bet", (payload) => this.handlePlaceBet(socket, payload?.targetId));
+        
         socket.on("game:start_objection", () => {
             const room = this.getRoomBySocket(socket);
             if (room) room.startObjection(socket.id);
         });
-        socket.on("game:vote_objection", ({ vote }) => {
+
+        socket.on("game:vote_objection", (payload) => {
             const room = this.getRoomBySocket(socket);
-            if (room) room.voteObjection(socket.id, vote);
+            if (!room) return;
+            const user = room.users.find(u => u.id === socket.id);
+            const val = payloadValidator.validateVoteObjection(payload?.vote, user, room);
+            if (!val.ok) {
+                socket.emit("game:error", { message: val.error });
+                return;
+            }
+            room.voteObjection(socket.id, val.data);
         });
-        socket.on("game:set_word", ({ word }) => this.handleSetWord(socket, word));
+
+        socket.on("game:set_word", (payload) => this.handleSetWord(socket, payload?.word));
         socket.on("game:edit_word", () => this.handleEditWord(socket));
         socket.on("game:shuffle_targets", () => this.handleShuffleTargets(socket));
-        socket.on("game:select_joker", ({ jokerId }) => this.handleSelectJoker(socket, jokerId));
-        socket.on("game:chat", ({ message }) => this.handleChat(socket, message));
-        socket.on("game:ask_question", ({ question }) => this.handleAskQuestion(socket, question));
-        socket.on("game:submit_vote", ({ vote }) => this.handleSubmitVote(socket, vote));
+        socket.on("game:select_joker", (payload) => this.handleSelectJoker(socket, payload?.jokerId));
+        socket.on("game:chat", (payload) => this.handleChat(socket, payload?.message));
+        socket.on("game:ask_question", (payload) => this.handleAskQuestion(socket, payload?.question));
+        socket.on("game:submit_vote", (payload) => this.handleSubmitVote(socket, payload?.vote));
         socket.on("game:skip_turn", () => this.handleSkipTurn(socket));
-        socket.on("game:guess", ({ guess }) => this.handleGuess(socket, guess));
-        socket.on("game:set_avatar", ({ avatarId }) => this.handleSetAvatar(socket, avatarId));
-        socket.on("game:toggle_voice", ({ enabled }) => this.handleToggleVoice(socket, enabled));
-        socket.on("game:use_joker", (payload) => this.handleUseJoker(socket, payload));
+        socket.on("game:guess", (payload) => this.handleGuess(socket, payload?.guess));
+        socket.on("game:set_avatar", (payload) => this.handleSetAvatar(socket, payload?.avatarId));
+        socket.on("game:toggle_voice", (payload) => this.handleToggleVoice(socket, payload?.enabled));
+        socket.on("game:use_joker", (payload) => this.handleUseJoker(socket, payload || {}));
         socket.on("game:head_rotation", (payload) => this.handleHeadRotation(socket, payload));
         socket.on("room:close", () => this.handleCloseRoom(socket));
 
-        socket.on("game:taunt", ({ type }) => this.handleTaunt(socket, type));
+        socket.on("game:taunt", (payload) => this.handleTaunt(socket, payload?.type));
         socket.on("game:leave", () => this.handleLeave(socket));
         socket.on("disconnect", () => this.handleDisconnect(socket));
     }
 
-    handleSelectJoker(socket, jokerId) {
+    handleSelectJoker(socket, rawJokerId) {
         const room = this.getRoomBySocket(socket);
-        if (room) room.selectJoker(socket.id, jokerId);
+        if (!room) return;
+        const user = room.users.find(u => u.id === socket.id);
+        const val = payloadValidator.validateSelectJoker(rawJokerId, user, room);
+        if (!val.ok) {
+            socket.emit("game:error", { message: val.error });
+            return;
+        }
+        room.selectJoker(socket.id, val.data);
     }
 
     handleLeave(socket) {
@@ -96,13 +155,7 @@ class GameManager {
 
             socket.join(code);
             
-            let reputation = 0;
-            if (userId) {
-                const User = require('../models/User');
-                const userDoc = await User.findById(userId);
-                if (userDoc) reputation = userDoc.reputation || 0;
-            }
-
+            const reputation = await RewardService.getUserReputation(userId);
             room.addUser(socket.id, name, userId, avatar, pedestal, reputation, nameColor, title);
 
             cb?.({ ok: true, roomCode: code });
@@ -118,7 +171,9 @@ class GameManager {
             let room = this.rooms.get(code);
 
             if (room) {
-                const isReconnecting = userId ? room.users.some(u => u.dbId === userId) : false;
+                const isReconnecting = (userId ? room.users.some(u => u.dbId === userId) : false)
+                    || room.users.some(u => u.disconnected && u.name === name);
+
                 if (room.gameState !== "LOBBY" && !isReconnecting) {
                     cb?.({ ok: false, error: "Oyun zaten başladı! Bu odaya şu an katılamazsınız." });
                     return;
@@ -130,13 +185,7 @@ class GameManager {
 
             socket.join(code);
             
-            let reputation = 0;
-            if (userId) {
-                const User = require('../models/User');
-                const userDoc = await User.findById(userId);
-                if (userDoc) reputation = userDoc.reputation || 0;
-            }
-
+            const reputation = await RewardService.getUserReputation(userId);
             room.addUser(socket.id, name, userId, avatar, pedestal, reputation, nameColor, title);
 
             cb?.({ ok: true });
@@ -161,23 +210,47 @@ class GameManager {
     handleToggleVoice(socket, enabled) {
         const room = this.getRoomBySocket(socket);
         if (room) {
-            room.updateVoice(socket.id, enabled);
+            room.updateVoice(socket.id, Boolean(enabled));
         }
     }
 
-    handleStartGame(socket, settings) {
+    handleStartGame(socket, rawSettings) {
         const room = this.getRoomBySocket(socket);
-        if (room) room.startGame(settings);
+        if (!room) {
+            socket.emit("game:error", { message: "Oda bulunamadı." });
+            return;
+        }
+        const user = room.users.find(u => u.id === socket.id);
+        const val = payloadValidator.validateGameStart(rawSettings, user, room);
+        if (!val.ok) {
+            socket.emit("game:error", { message: val.error });
+            return;
+        }
+        room.startGame(val.data);
     }
 
-    handlePlaceBet(socket, targetId) {
+    handlePlaceBet(socket, rawTargetId) {
         const room = this.getRoomBySocket(socket);
-        if (room) room.placeBet(socket.id, targetId);
+        if (!room) return;
+        const user = room.users.find(u => u.id === socket.id);
+        const val = payloadValidator.validatePlaceBet(rawTargetId, user, room);
+        if (!val.ok) {
+            socket.emit("game:error", { message: val.error });
+            return;
+        }
+        room.placeBet(socket.id, val.data);
     }
 
-    handleSetWord(socket, word) {
+    handleSetWord(socket, rawWord) {
         const room = this.getRoomBySocket(socket);
-        if (room) room.setWord(socket.id, word);
+        if (!room) return;
+        const user = room.users.find(u => u.id === socket.id);
+        const val = payloadValidator.validateSetWord(rawWord, user, room);
+        if (!val.ok) {
+            socket.emit("game:error", { message: val.error });
+            return;
+        }
+        room.setWord(socket.id, val.data);
     }
 
     handleEditWord(socket) {
@@ -190,19 +263,38 @@ class GameManager {
         if (room) room.shuffleTargets(socket.id);
     }
 
-    handleChat(socket, message) {
+    handleChat(socket, rawMessage) {
+        const val = payloadValidator.validateChat(rawMessage, socket.id);
+        if (!val.ok) {
+            socket.emit("game:error", { message: val.error });
+            return;
+        }
         const room = this.getRoomBySocket(socket);
-        if (room) room.handleChat(socket.id, message);
+        if (room) room.handleChat(socket.id, val.data);
     }
 
-    handleAskQuestion(socket, question) {
+    handleAskQuestion(socket, rawQuestion) {
         const room = this.getRoomBySocket(socket);
-        if (room) room.askQuestion(socket.id, question);
+        if (!room) return;
+        const user = room.users.find(u => u.id === socket.id);
+        const val = payloadValidator.validateAskQuestion(rawQuestion, user, room);
+        if (!val.ok) {
+            socket.emit("game:error", { message: val.error });
+            return;
+        }
+        room.askQuestion(socket.id, val.data);
     }
 
-    handleSubmitVote(socket, vote) {
+    handleSubmitVote(socket, rawVote) {
         const room = this.getRoomBySocket(socket);
-        if (room) room.submitVote(socket.id, vote);
+        if (!room) return;
+        const user = room.users.find(u => u.id === socket.id);
+        const val = payloadValidator.validateSubmitVote(rawVote, user, room);
+        if (!val.ok) {
+            socket.emit("game:error", { message: val.error });
+            return;
+        }
+        room.submitVote(socket.id, val.data);
     }
 
     handleSkipTurn(socket) {
@@ -210,24 +302,44 @@ class GameManager {
         if (room) room.skipTurn(socket.id);
     }
 
-    handleGuess(socket, guess) {
+    handleGuess(socket, rawGuess) {
         const room = this.getRoomBySocket(socket);
-        if (room) room.guessWord(socket.id, guess);
+        if (!room) return;
+        const user = room.users.find(u => u.id === socket.id);
+        const val = payloadValidator.validateGuess(rawGuess, user, room);
+        if (!val.ok) {
+            socket.emit("game:error", { message: val.error });
+            return;
+        }
+        room.guessWord(socket.id, val.data);
     }
 
     handleUseJoker(socket, payload) {
         const room = this.getRoomBySocket(socket);
-        if (room) room.useJoker(socket.id, payload);
+        if (!room) return;
+        const rateCheck = payloadValidator.checkActionRateLimit(socket.id, 'use_joker', 800);
+        if (!rateCheck.ok) {
+            socket.emit("game:error", { message: rateCheck.error });
+            return;
+        }
+        room.useJoker(socket.id, payload);
     }
 
     handleHeadRotation(socket, payload) {
+        const val = payloadValidator.validateHeadRotation(payload, socket.id);
+        if (!val.ok) return;
         const room = this.getRoomBySocket(socket);
-        if (room) room.broadcastHeadRotation(socket.id, payload);
+        if (room) room.broadcastHeadRotation(socket.id, val.data);
     }
 
-    handleTaunt(socket, type) {
+    handleTaunt(socket, rawType) {
+        const val = payloadValidator.validateTaunt(rawType, socket.id);
+        if (!val.ok) {
+            socket.emit("game:error", { message: val.error });
+            return;
+        }
         const room = this.getRoomBySocket(socket);
-        if (room) room.playTaunt(socket.id, type);
+        if (room) room.playTaunt(socket.id, val.data);
     }
 
     handleDisconnect(socket) {

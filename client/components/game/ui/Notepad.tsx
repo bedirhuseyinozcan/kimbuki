@@ -1,24 +1,25 @@
 import React from "react";
 import { Chip } from "@mui/material";
 import { User, GameState, JOKERS } from "../types";
+import { useGameNotepad } from "@/context/GameContext";
 
 interface NotepadProps {
-    notepad: string;
-    setNotepad: (val: string) => void;
+    notepad?: string;
+    setNotepad?: (val: string) => void;
     isNotepadOpen: boolean;
     onToggle: () => void;
-    me: User;
-    gameState: GameState;
+    me?: User;
+    gameState?: GameState;
 }
 
-export default function Notepad({
-    notepad,
-    setNotepad,
-    isNotepadOpen,
-    onToggle,
-    me,
-    gameState
-}: NotepadProps) {
+export default function Notepad(props: NotepadProps) {
+    const ctx = useGameNotepad();
+    const notepad = props.notepad ?? ctx.notepad;
+    const setNotepad = props.setNotepad ?? ctx.setNotepad;
+    const me = props.me ?? ctx.me;
+    const gameState = props.gameState ?? ctx.gameState;
+    const { isNotepadOpen, onToggle } = props;
+
     const myJokerMeta = JOKERS.find(j => j.id === me?.joker);
 
     return (

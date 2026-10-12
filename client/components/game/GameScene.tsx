@@ -18,45 +18,70 @@ import Scene3D from "./Scene3D";
 import Notepad from "./ui/Notepad";
 import ChatPanel from "./ui/ChatPanel";
 import ActionMenu from "./ui/ActionMenu";
+import JokerGuideDialog from './JokerGuideDialog';
+import { useGameContext } from "@/context/GameContext";
 
-interface GameSceneProps {
-    gameState: GameState;
-    me: User;
-    myId: string;
-    chatInput: string;
-    setChatInput: (val: string) => void;
-    handleChat: (e?: React.FormEvent) => void;
-    notepad: string;
-    setNotepad: (val: string) => void;
-    handleSkip: () => void;
-    guessInput: string;
-    setGuessInput: (val: string) => void;
-    handleGuess: () => void;
-    guessDialogOpen: boolean;
-    setGuessDialogOpen: (val: boolean) => void;
-    onLeaveRoom: () => void;
-    onAskQuestion: (q: string) => void;
-    onSubmitVote: (v: string) => void;
-    onUseJoker: (payload: any) => void;
-    onToggleVoice: (enabled: boolean) => void;
-    onStartObjection: () => void;
-    onVoteObjection: (vote: boolean) => void;
-    headRotations: { [key: string]: { pitch: number, yaw: number } };
-    onHeadRotation: (pitch: number, yaw: number) => void;
-    taunts: { [key: string]: { type: string, id: number } };
-    onTaunt: (type: string) => void;
-    visualEffects: any[];
+export interface GameSceneProps {
+    gameState?: GameState;
+    me?: User;
+    myId?: string;
+    chatInput?: string;
+    setChatInput?: (val: string) => void;
+    handleChat?: (e?: React.FormEvent) => void;
+    notepad?: string;
+    setNotepad?: (val: string) => void;
+    handleSkip?: () => void;
+    guessInput?: string;
+    setGuessInput?: (val: string) => void;
+    handleGuess?: () => void;
+    guessDialogOpen?: boolean;
+    setGuessDialogOpen?: (val: boolean) => void;
+    onLeaveRoom?: () => void;
+    onAskQuestion?: (q: string) => void;
+    onSubmitVote?: (v: string) => void;
+    onUseJoker?: (payload: any) => void;
+    onToggleVoice?: (enabled: boolean) => void;
+    onStartObjection?: () => void;
+    onVoteObjection?: (vote: boolean) => void;
+    headRotations?: { [key: string]: { pitch: number, yaw: number } };
+    onHeadRotation?: (pitch: number, yaw: number) => void;
+    taunts?: { [key: string]: { type: string, id: number } };
+    onTaunt?: (type: string) => void;
+    visualEffects?: any[];
 }
 
-import JokerGuideDialog from './JokerGuideDialog';
+export default function GameScene(props: GameSceneProps = {}) {
+    const ctx = useGameContext();
+    const gameState = props.gameState ?? ctx.gameState;
+    const me = props.me ?? ctx.me;
+    const myId = props.myId ?? ctx.myId;
+    const isMyTurn = ctx.isMyTurn;
+    const currentTurnUser = ctx.currentTurnUser;
+    const actions = ctx.actions;
 
-export default function GameScene({
-    gameState, me, myId, chatInput, setChatInput, handleChat, notepad, setNotepad, handleSkip, guessInput, setGuessInput, handleGuess,
-    guessDialogOpen, setGuessDialogOpen, onLeaveRoom, onAskQuestion, onSubmitVote, onUseJoker, onToggleVoice,
-    onStartObjection, onVoteObjection, headRotations, onHeadRotation, taunts, onTaunt, visualEffects
-}: GameSceneProps) {
-    const isMyTurn = gameState.currentTurnUserId === myId;
-    const currentTurnUser = gameState.users.find((u: User) => u.id === gameState.currentTurnUserId);
+    const chatInput = props.chatInput ?? ctx.chatInput;
+    const setChatInput = props.setChatInput ?? ctx.setChatInput;
+    const handleChat = props.handleChat ?? actions.chat;
+    const notepad = props.notepad ?? ctx.notepad;
+    const setNotepad = props.setNotepad ?? ctx.setNotepad;
+    const handleSkip = props.handleSkip ?? actions.skip;
+    const guessInput = props.guessInput ?? ctx.guessInput;
+    const setGuessInput = props.setGuessInput ?? ctx.setGuessInput;
+    const handleGuess = props.handleGuess ?? actions.guess;
+    const guessDialogOpen = props.guessDialogOpen ?? ctx.guessDialogOpen;
+    const setGuessDialogOpen = props.setGuessDialogOpen ?? ctx.setGuessDialogOpen;
+    const onLeaveRoom = props.onLeaveRoom ?? actions.leaveRoom;
+    const onAskQuestion = props.onAskQuestion ?? actions.askQuestion;
+    const onSubmitVote = props.onSubmitVote ?? actions.submitVote;
+    const onUseJoker = props.onUseJoker ?? actions.useJoker;
+    const onToggleVoice = props.onToggleVoice ?? actions.toggleVoice;
+    const onStartObjection = props.onStartObjection ?? actions.startObjection;
+    const onVoteObjection = props.onVoteObjection ?? actions.voteObjection;
+    const headRotations = props.headRotations ?? ctx.headRotations;
+    const onHeadRotation = props.onHeadRotation ?? actions.headRotation;
+    const taunts = props.taunts ?? ctx.taunts;
+    const onTaunt = props.onTaunt ?? actions.taunt;
+    const visualEffects = props.visualEffects ?? ctx.visualEffects;
     const chatEndRef = useRef<HTMLDivElement>(null);
 
     const [timeLeft, setTimeLeft] = useState(0);
@@ -279,7 +304,7 @@ export default function GameScene({
                     <div className="hidden md:block flex-1" />
                  
                     <ChatPanel
-                        chatHistory={gameState.chatHistory}
+                        chatHistory={gameState.chatHistory || []}
                         chatInput={chatInput}
                         setChatInput={setChatInput}
                         handleChat={handleChat}
@@ -368,7 +393,7 @@ export default function GameScene({
                 </DialogContent>
                 <DialogActions className="p-4 pt-0">
                     {!isRussianRoulette && <Button onClick={() => setGuessDialogOpen(false)} className="!text-slate-500">İptal</Button>}
-                    <Button onClick={handleGuess} variant="contained" color="success" className="px-6 font-bold">Dene</Button>
+                    <Button onClick={() => handleGuess()} variant="contained" color="success" className="px-6 font-bold">Dene</Button>
                 </DialogActions>
             </Dialog>
 

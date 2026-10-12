@@ -65,7 +65,7 @@ export type GameState = {
     users: User[];
     currentTurnUserId: string | null;
     turnEndsAt: number | null;
-    chatHistory: any[];
+    chatHistory?: any[];
     winners: string[];
     hasObjectionUsed?: boolean;
 };

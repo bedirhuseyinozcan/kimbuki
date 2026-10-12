@@ -1,4 +1,4 @@
-const User = require('../../models/User');
+const RewardService = require('../services/RewardService');
 
 const TimeBender = require('./TimeBender');
 const LetterOpener = require('./LetterOpener');
@@ -113,15 +113,7 @@ class JokerManager {
             }
 
             if (user.dbId) {
-                User.findById(user.dbId).then(userDb => {
-                    if (userDb && userDb.quests && userDb.quests.active) {
-                        userDb.quests.active.forEach(q => {
-                            if (q.type === 'use_joker' && !q.isClaimed && q.progress < q.target) q.progress++;
-                        });
-                        userDb.markModified('quests');
-                        return userDb.save();
-                    }
-                }).catch(err => console.error("Joker quest update error:", err));
+                RewardService.progressQuest(user.dbId, 'use_joker');
             }
         } else if (jokerType !== 14 || (user.detectiveUses === undefined || user.detectiveUses === 0)) {
             room.io.to(userId).emit("game:error", { message: "Joker geçersiz bir hedefe uygulanamadı. Jokerin iade edildi!" });
