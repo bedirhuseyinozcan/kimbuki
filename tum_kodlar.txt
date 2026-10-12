@@ -8583,7 +8583,7 @@ const payloadValidator = {
         if (!room) {
             return { ok: false, error: "Oda bulunamadı." };
         }
-        if (room.gameState !== "LOBBY") {
+        if (room.gameState !== "LOBBY" && room.gameState !== "ROUND_END") {
             return { ok: false, error: "Oyun zaten başlamış durumda!" };
         }
         const activeUsers = room.users.filter(u => !u.disconnected);
