@@ -99,6 +99,7 @@ export default function GamePage() {
         headRotations: game.headRotations,
         taunts: game.taunts,
         visualEffects: game.visualEffects,
+        isSubmitting: game.isSubmitting,
         isConnected: game.isConnected,
         isReconnecting: game.isReconnecting,
         pingMs: game.pingMs,
