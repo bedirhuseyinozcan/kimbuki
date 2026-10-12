@@ -192,10 +192,21 @@ export function useGameSocket(
         s.on("game:state", (state: GameState) => {
             clearSubmitting();
             setGuessDialogOpen(false);
-            setGameState((prev) => ({
-                ...state,
-                chatHistory: prev?.chatHistory || state.chatHistory || [],
-            }));
+            setGameState((prev) => {
+                const isNewGameStarting = prev?.gameState === "ROUND_END" &&
+                    (state.gameState === "BETTING" || state.gameState === "WORD_SELECTION" || state.gameState === "LOBBY");
+
+                if (isNewGameStarting) {
+                    optionsRef.current?.onClearNotepad?.();
+                    setGuessInput("");
+                    setWordInput("");
+                }
+
+                return {
+                    ...state,
+                    chatHistory: isNewGameStarting ? [] : (prev?.chatHistory || state.chatHistory || []),
+                };
+            });
         });
 
         s.on("game:init_chat", ({ chatHistory }: { chatHistory: any[] }) => {
@@ -240,6 +251,12 @@ export function useGameSocket(
             toast.error("Oda host tarafından kapatıldı!");
             s.disconnect();
             router.push("/");
+        });
+
+        s.on("game:reset_notepad", () => {
+            if (optionsRef.current?.onClearNotepad) {
+                optionsRef.current.onClearNotepad();
+            }
         });
 
         s.on("game:clear_notepad", () => {

@@ -341,6 +341,13 @@ class Room {
         this.objection = null;
         this.roundCount = 1;
 
+        this.chatHistory = [];
+        this.roundLogs = [];
+        this.winners = [];
+        this.io.to(this.code).emit("game:init_chat", { chatHistory: [] });
+        this.io.to(this.code).emit("game:reset_notepad");
+        this.addChatLog({ system: true, message: "🎮 Yeni oyun başladı! Bol şans!", timestamp: Date.now() });
+
         if (this.isBettingEnabled) {
             const betResult = await RewardService.deductBetFees(activeUsers, this.betAmount);
             if (!betResult.ok) {
@@ -355,9 +362,6 @@ class Room {
             }
 
             this.gameState = "BETTING";
-            this.chatHistory = [];
-            this.roundLogs = [];
-            this.winners = [];
             this.bettingEndTime = Date.now() + 10000;
             
             for (let i = 0; i < this.users.length; i++) {
@@ -381,9 +385,6 @@ class Room {
     startWordSelection() {
         if (this.betTimer) clearTimeout(this.betTimer);
         this.gameState = "WORD_SELECTION";
-        this.chatHistory = [];
-        this.roundLogs = [];
-        this.winners = [];
 
         const activeUsers = this.users.filter(u => !u.disconnected);
 
