@@ -40,12 +40,13 @@ function LiveKitSpeakerSync() {
 
 function LiveKitMicSync({ isVoiceEnabled }: { isVoiceEnabled: boolean }) {
     const { localParticipant } = useLocalParticipant();
+    const room = useRoomContext();
 
     useEffect(() => {
-        if (localParticipant) {
+        if (localParticipant && room && room.state === "connected") {
             localParticipant.setMicrophoneEnabled(isVoiceEnabled).catch((e) => console.error("Mic sync error", e));
         }
-    }, [isVoiceEnabled, localParticipant]);
+    }, [isVoiceEnabled, localParticipant, room]);
 
     return null;
 }
@@ -56,7 +57,7 @@ export default function GamePage() {
     const game = useGameSocket(code, {
         onClearNotepad: notepad.clearNotepad,
     });
-    const livekit = useLiveKit(code, game.me ? (game.me.dbId || game.me.id) : undefined);
+    const livekit = useLiveKit(code, game.me ? (game.me.dbId || game.me.name || game.me.id) : undefined);
 
     if (game.checkingAuth || !game.isJoined) {
         return (
@@ -186,7 +187,7 @@ export default function GamePage() {
             />
             <LiveKitRoom
                 video={false}
-                audio={me?.isVoiceEnabled || false}
+                audio={Boolean(livekit.token && me?.isVoiceEnabled)}
                 token={livekit.token}
                 serverUrl={process.env.NEXT_PUBLIC_LIVEKIT_URL}
                 connect={!!livekit.token}

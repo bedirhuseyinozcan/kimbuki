@@ -21,13 +21,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Yetkilendirme gerekli: Token bulunamadı' }, { status: 401 });
   }
 
+  let authenticatedUserId: string = "";
   try {
     const secretKey = new TextEncoder().encode(jwtSecret);
     const { payload } = await jwtVerify(token, secretKey);
-
-    if (payload.id && payload.id !== username) {
-      return NextResponse.json({ error: 'Yetkisiz erişim: Kullanıcı kimliği uyuşmuyor' }, { status: 403 });
-    }
+    authenticatedUserId = (payload.id as string) || (payload.sub as string) || "";
   } catch {
     return NextResponse.json({ error: 'Geçersiz veya süresi dolmuş token' }, { status: 401 });
   }
@@ -40,7 +38,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Server misconfigured' }, { status: 500 });
   }
 
-  const at = new AccessToken(apiKey, apiSecret, { identity: username });
+  const identity = authenticatedUserId || username;
+  const at = new AccessToken(apiKey, apiSecret, { identity, name: username });
   at.addGrant({ room, roomJoin: true, canPublish: true, canSubscribe: true });
 
   const livekitToken = await at.toJwt();

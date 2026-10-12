@@ -133,7 +133,14 @@ export default function GameScene(props: GameSceneProps = {}) {
     };
 
     const handleUseJokerSubmit = () => {
-        onUseJoker({ targetId: jokerTarget, newWord: jokerWord });
+        const payload: { targetId?: string; newWord?: string } = {};
+        if (myJokerMeta?.requiresTarget && jokerTarget) {
+            payload.targetId = jokerTarget;
+        }
+        if (myJokerMeta?.requiresWord && jokerWord.trim()) {
+            payload.newWord = jokerWord.trim();
+        }
+        onUseJoker(payload);
         setJokerDialogOpen(false);
         setJokerTarget("");
         setJokerWord("");
@@ -323,14 +330,14 @@ export default function GameScene(props: GameSceneProps = {}) {
                 )}
             </div>
 
-            <Dialog open={jokerDialogOpen} onClose={() => setJokerDialogOpen(false)} slotProps={{ paper: { className: "!bg-white !text-slate-900 !rounded-2xl min-w-[300px]" } }}>
+            <Dialog open={jokerDialogOpen} onClose={() => { if (!isSubmitting) { setJokerDialogOpen(false); setJokerTarget(""); setJokerWord(""); } }} slotProps={{ paper: { className: "!bg-white !text-slate-900 !rounded-2xl min-w-[300px]" } }}>
                 <DialogTitle className="text-center font-bold text-fuchsia-600">🃏 {myJokerMeta?.name || 'Joker'}</DialogTitle>
                 <DialogContent>
                     <p className="text-center text-slate-600 mt-2 font-medium">{myJokerMeta?.desc}</p>
                     
                     <div className="flex flex-col gap-4 mt-6">
                         {myJokerMeta?.requiresTarget && (
-                            <TextField select label="Oyuncu Seç" value={jokerTarget} onChange={e => setJokerTarget(e.target.value)}>
+                            <TextField select label="Oyuncu Seç" value={jokerTarget} onChange={e => setJokerTarget(e.target.value)} disabled={isSubmitting}>
                                 {gameState.users.filter((u:User) => u.id !== myId && u.status === 'playing').map((u:User) => (
                                     <MenuItem key={u.id} value={u.id}>{u.name}</MenuItem>
                                 ))}
@@ -340,6 +347,7 @@ export default function GameScene(props: GameSceneProps = {}) {
                             <TextField 
                                 label={myJokerMeta.id === 14 ? "Harf Girin" : "Yeni Kelime"} 
                                 value={jokerWord} 
+                                disabled={isSubmitting}
                                 onChange={e => {
                                     if (myJokerMeta.id === 14) {
                                         setJokerWord(e.target.value.substring(0, 1));
@@ -352,13 +360,13 @@ export default function GameScene(props: GameSceneProps = {}) {
                     </div>
                 </DialogContent>
                 <DialogActions className="p-4 pt-0 justify-between">
-                    <Button onClick={() => setJokerDialogOpen(false)} disabled={isSubmitting} className="!text-slate-500">İptal</Button>
+                    <Button onClick={() => { setJokerDialogOpen(false); setJokerTarget(""); setJokerWord(""); }} disabled={isSubmitting} className="!text-slate-500">İptal</Button>
                     <Button 
                         onClick={handleUseJokerSubmit} 
                         variant="contained" 
                         color="secondary" 
                         className="px-6 font-bold flex items-center gap-2" 
-                        disabled={isSubmitting || (myJokerMeta?.requiresTarget && !jokerTarget) || (myJokerMeta?.requiresWord && !jokerWord)}
+                        disabled={isSubmitting || (Boolean(myJokerMeta?.requiresTarget) && !jokerTarget) || (Boolean(myJokerMeta?.requiresWord) && !jokerWord.trim())}
                     >
                         {isSubmitting ? (
                             <>
