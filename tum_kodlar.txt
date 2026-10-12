@@ -1978,6 +1978,7 @@ export default function GamePage() {
         isConnected: game.isConnected,
         isReconnecting: game.isReconnecting,
         pingMs: game.pingMs,
+        timeOffset: game.timeOffset,
         connectionError: game.connectionError,
     };
 
@@ -2000,7 +2001,7 @@ export default function GamePage() {
             );
         }
         if (gameState.gameState === "BETTING") {
-            return <BettingPhase gameState={gameState} me={me} onPlaceBet={game.handlePlaceBet} />;
+            return <BettingPhase gameState={gameState} me={me} onPlaceBet={game.handlePlaceBet} timeOffset={game.timeOffset} />;
         }
         if (gameState.gameState === "WORD_SELECTION") {
             return (
@@ -2017,7 +2018,7 @@ export default function GamePage() {
             );
         }
         if (gameState.gameState === "JOKER_DRAFT") {
-            return <JokerDraft gameState={gameState} me={me} onSelectJoker={game.handleSelectJoker} />;
+            return <JokerDraft gameState={gameState} me={me} onSelectJoker={game.handleSelectJoker} timeOffset={game.timeOffset} />;
         }
         if (gameState.gameState === "PLAYING") {
             return <GameScene />;
@@ -2339,23 +2340,26 @@ interface BettingPhaseProps {
     gameState: GameState;
     me: User;
     onPlaceBet: (targetId: string) => void;
+    timeOffset?: number;
 }
 
 export default function BettingPhase({
-    gameState, me, onPlaceBet
+    gameState, me, onPlaceBet, timeOffset = 0
 }: BettingPhaseProps) {
     const [timeLeft, setTimeLeft] = useState(10);
     const [selectedId, setSelectedId] = useState<string | null>(null);
 
     useEffect(() => {
         if (!gameState.bettingEndTime) return;
-        const interval = setInterval(() => {
-            const left = Math.max(0, Math.floor(((gameState.bettingEndTime || 0) - Date.now()) / 1000));
+        const updateTimer = () => {
+            const serverTimeNow = Date.now() + timeOffset;
+            const left = Math.max(0, Math.floor(((gameState.bettingEndTime || 0) - serverTimeNow) / 1000));
             setTimeLeft(left);
-            if (left <= 0) clearInterval(interval);
-        }, 1000);
+        };
+        updateTimer();
+        const interval = setInterval(updateTimer, 500);
         return () => clearInterval(interval);
-    }, [gameState.bettingEndTime]);
+    }, [gameState.bettingEndTime, timeOffset]);
 
     const handleBet = (id: string) => {
         if (selectedId) return;
@@ -2538,6 +2542,7 @@ export default function GameScene(props: GameSceneProps = {}) {
     const currentTurnUser = ctx.currentTurnUser;
     const actions = ctx.actions;
     const isSubmitting = ctx.isSubmitting;
+    const timeOffset = ctx.timeOffset ?? 0;
 
     const chatInput = props.chatInput ?? ctx.chatInput;
     const setChatInput = props.setChatInput ?? ctx.setChatInput;
@@ -2639,30 +2644,30 @@ export default function GameScene(props: GameSceneProps = {}) {
 
     useEffect(() => {
         if (!gameState.turnEndsAt) { setTimeLeft(0); return; }
-        if (gameState.activeQuestion) {
-            const remaining = Math.max(0, Math.floor((gameState.turnEndsAt - Date.now()) / 1000));
-            setTimeLeft(remaining);
-            return; 
-        }
         const updateTimer = () => {
-            const remaining = Math.max(0, Math.floor((gameState.turnEndsAt! - Date.now()) / 1000));
+            const serverTimeNow = Date.now() + timeOffset;
+            const remaining = Math.max(0, Math.floor((gameState.turnEndsAt! - serverTimeNow) / 1000));
             setTimeLeft(remaining);
         };
         updateTimer();
+        if (gameState.activeQuestion) {
+            return; 
+        }
         const interval = setInterval(updateTimer, 500);
         return () => clearInterval(interval);
-    }, [gameState.turnEndsAt, gameState.activeQuestion]);
+    }, [gameState.turnEndsAt, gameState.activeQuestion, timeOffset]);
 
     useEffect(() => {
         if (!gameState.activeQuestion?.endTime) { setQuestionTimeLeft(0); return; }
         const updateQTimer = () => {
-            const remaining = Math.max(0, Math.floor((gameState.activeQuestion!.endTime! - Date.now()) / 1000));
+            const serverTimeNow = Date.now() + timeOffset;
+            const remaining = Math.max(0, Math.floor((gameState.activeQuestion!.endTime! - serverTimeNow) / 1000));
             setQuestionTimeLeft(remaining);
         };
         updateQTimer();
         const interval = setInterval(updateQTimer, 500);
         return () => clearInterval(interval);
-    }, [gameState.activeQuestion?.endTime]);
+    }, [gameState.activeQuestion?.endTime, timeOffset]);
 
     const previousTurnRef = useRef<string | null>(null);
     const previousWinnersRef = useRef<number>(0);
@@ -3002,21 +3007,24 @@ interface JokerDraftProps {
     gameState: GameState;
     me: User;
     onSelectJoker: (jokerId: number) => void;
+    timeOffset?: number;
 }
 
-export default function JokerDraft({ gameState, me, onSelectJoker }: JokerDraftProps) {
+export default function JokerDraft({ gameState, me, onSelectJoker, timeOffset = 0 }: JokerDraftProps) {
     const [timeLeft, setTimeLeft] = useState(15);
     const [selected, setSelected] = useState<number | null>(null);
 
     useEffect(() => {
         if (!gameState.jokerDraftEndTime) return;
-        const interval = setInterval(() => {
-            const left = Math.max(0, Math.floor(((gameState.jokerDraftEndTime || 0) - Date.now()) / 1000));
+        const updateTimer = () => {
+            const serverTimeNow = Date.now() + timeOffset;
+            const left = Math.max(0, Math.floor(((gameState.jokerDraftEndTime || 0) - serverTimeNow) / 1000));
             setTimeLeft(left);
-            if (left <= 0) clearInterval(interval);
-        }, 1000);
+        };
+        updateTimer();
+        const interval = setInterval(updateTimer, 500);
         return () => clearInterval(interval);
-    }, [gameState.jokerDraftEndTime]);
+    }, [gameState.jokerDraftEndTime, timeOffset]);
 
     const handleSelect = (jokerId: number) => {
         if (selected !== null || me?.hasDrafted) return;
@@ -4582,6 +4590,7 @@ export interface GameContextValue {
     isConnected: boolean;
     isReconnecting: boolean;
     pingMs: number | null;
+    timeOffset: number;
     connectionError: string | null;
 }
 
@@ -4702,6 +4711,7 @@ export function useGameSocket(
     const [isConnected, setIsConnected] = useState(false);
     const [isReconnecting, setIsReconnecting] = useState(false);
     const [pingMs, setPingMs] = useState<number | null>(null);
+    const [timeOffset, setTimeOffset] = useState<number>(0);
     const [connectionError, setConnectionError] = useState<string | null>(null);
 
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -4826,9 +4836,15 @@ export function useGameSocket(
             toast.success(data?.message || "Odaya yeniden bağlandınız!", { toastId: "reconnect-success" });
         });
 
-        s.on("game:pong", ({ clientTimestamp }: { clientTimestamp: number }) => {
+        s.on("game:pong", ({ clientTimestamp, serverTimestamp }: { clientTimestamp: number; serverTimestamp?: number }) => {
             if (clientTimestamp) {
-                setPingMs(Date.now() - clientTimestamp);
+                const now = Date.now();
+                const ping = now - clientTimestamp;
+                setPingMs(ping);
+                if (typeof serverTimestamp === "number") {
+                    const offset = serverTimestamp - (now - ping / 2);
+                    setTimeOffset(offset);
+                }
             }
         });
 
@@ -5184,6 +5200,7 @@ export function useGameSocket(
         isConnected,
         isReconnecting,
         pingMs,
+        timeOffset,
         connectionError,
         isSubmitting,
 

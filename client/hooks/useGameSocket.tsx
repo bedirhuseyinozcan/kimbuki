@@ -59,6 +59,7 @@ export function useGameSocket(
     const [isConnected, setIsConnected] = useState(false);
     const [isReconnecting, setIsReconnecting] = useState(false);
     const [pingMs, setPingMs] = useState<number | null>(null);
+    const [timeOffset, setTimeOffset] = useState<number>(0);
     const [connectionError, setConnectionError] = useState<string | null>(null);
 
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -183,9 +184,15 @@ export function useGameSocket(
             toast.success(data?.message || "Odaya yeniden bağlandınız!", { toastId: "reconnect-success" });
         });
 
-        s.on("game:pong", ({ clientTimestamp }: { clientTimestamp: number }) => {
+        s.on("game:pong", ({ clientTimestamp, serverTimestamp }: { clientTimestamp: number; serverTimestamp?: number }) => {
             if (clientTimestamp) {
-                setPingMs(Date.now() - clientTimestamp);
+                const now = Date.now();
+                const ping = now - clientTimestamp;
+                setPingMs(ping);
+                if (typeof serverTimestamp === "number") {
+                    const offset = serverTimestamp - (now - ping / 2);
+                    setTimeOffset(offset);
+                }
             }
         });
 
@@ -541,6 +548,7 @@ export function useGameSocket(
         isConnected,
         isReconnecting,
         pingMs,
+        timeOffset,
         connectionError,
         isSubmitting,
 

@@ -104,6 +104,7 @@ export default function GamePage() {
         isConnected: game.isConnected,
         isReconnecting: game.isReconnecting,
         pingMs: game.pingMs,
+        timeOffset: game.timeOffset,
         connectionError: game.connectionError,
     };
 
@@ -126,7 +127,7 @@ export default function GamePage() {
             );
         }
         if (gameState.gameState === "BETTING") {
-            return <BettingPhase gameState={gameState} me={me} onPlaceBet={game.handlePlaceBet} />;
+            return <BettingPhase gameState={gameState} me={me} onPlaceBet={game.handlePlaceBet} timeOffset={game.timeOffset} />;
         }
         if (gameState.gameState === "WORD_SELECTION") {
             return (
@@ -143,7 +144,7 @@ export default function GamePage() {
             );
         }
         if (gameState.gameState === "JOKER_DRAFT") {
-            return <JokerDraft gameState={gameState} me={me} onSelectJoker={game.handleSelectJoker} />;
+            return <JokerDraft gameState={gameState} me={me} onSelectJoker={game.handleSelectJoker} timeOffset={game.timeOffset} />;
         }
         if (gameState.gameState === "PLAYING") {
             return <GameScene />;

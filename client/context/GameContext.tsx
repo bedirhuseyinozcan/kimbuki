@@ -37,6 +37,7 @@ export interface GameContextValue {
     isConnected: boolean;
     isReconnecting: boolean;
     pingMs: number | null;
+    timeOffset: number;
     connectionError: string | null;
 }
 
