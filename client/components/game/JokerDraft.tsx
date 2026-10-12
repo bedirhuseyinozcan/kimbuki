@@ -24,12 +24,12 @@ export default function JokerDraft({ gameState, me, onSelectJoker }: JokerDraftP
     }, [gameState.jokerDraftEndTime]);
 
     const handleSelect = (jokerId: number) => {
-        if (selected !== null || me.hasDrafted) return;
+        if (selected !== null || me?.hasDrafted) return;
         setSelected(jokerId);
         onSelectJoker(jokerId);
     };
 
-    if (me.hasDrafted || selected !== null) {
+    if (me?.hasDrafted || selected !== null) {
         return (
             <main className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center p-4">
                 <div className="glass p-8 rounded-3xl text-center shadow-2xl animate-pulse">

@@ -1,7 +1,8 @@
-const User = require('../../models/User');
+const RewardService = require('../services/RewardService');
 
 async function guessWord(room, userId, guess) {
-    if (room.gameState !== "PLAYING" || typeof guess !== 'string') return;
+    try {
+        if (room.gameState !== "PLAYING" || typeof guess !== 'string') return;
 
     const currentUser = room.users[room.currentTurnIndex];
     if (!currentUser || currentUser.id !== userId) return;
@@ -58,42 +59,17 @@ async function guessWord(room, userId, guess) {
             user.timeBomb = null;
         }
 
-        let winnerReward = 0;
-        let bettorReward = 0;
         const rank = room.winners.length;
+        const playersCount = room.initialPlayerCount || room.users.length;
+        const totalPot = playersCount * (room.betAmount || 50);
 
-        if (room.isBettingEnabled) {
-            const playersCount = room.initialPlayerCount || room.users.length;
-            const totalPot = playersCount * room.betAmount;
-            let pct = 0;
-
-            if (isRussianRoulette) {
-                winnerReward = totalPot;
-                bettorReward = 0;
-            } else {
-                if (playersCount <= 2) {
-                    pct = rank === 1 ? 1.0 : 0;
-                } else if (playersCount === 3) {
-                    pct = rank === 1 ? 0.60 : (rank === 2 ? 0.40 : 0);
-                } else if (playersCount === 4) {
-                    pct = rank === 1 ? 0.50 : (rank === 2 ? 0.30 : (rank === 3 ? 0.20 : 0));
-                } else {
-                    if (rank === 1) pct = 0.40;
-                    else if (rank === 2) pct = 0.30;
-                    else if (rank === 3) pct = 0.20;
-                    else if (rank === 4) pct = 0.10;
-                    else pct = 0;
-                }
-                winnerReward = Math.floor(totalPot * pct);
-                bettorReward = Math.max(1, Math.floor(winnerReward / 2));
-            }
-        }
-
-        let repReward = 5;
-        if (isRussianRoulette) repReward = 200;
-        else if (rank === 1) repReward = 50;
-        else if (rank === 2) repReward = 20;
-        else if (rank === 3) repReward = 10;
+        const { winnerReward, bettorReward, repReward } = RewardService.calculatePotDistribution({
+            isBettingEnabled: room.isBettingEnabled,
+            totalPot,
+            playersCount,
+            rank,
+            isRussianRoulette
+        });
 
         let playerRewards = {};
         const addReward = (dbId, gold, rep, type) => {
@@ -140,27 +116,7 @@ async function guessWord(room, userId, guess) {
             }
         }
 
-        const updatePromises = Object.entries(playerRewards).map(([dbId, rewards]) => {
-            return User.findOneAndUpdate(
-                { _id: dbId },
-                { $inc: { gold: rewards.gold, reputation: rewards.rep } },
-                { new: true }
-            ).then(userDb => {
-                if (userDb && userDb.quests && userDb.quests.active) {
-                    let modified = false;
-                    userDb.quests.active.forEach(q => {
-                        if (q.type === 'win' && !q.isClaimed && q.progress < q.target) { q.progress += rewards.winCount; modified = true; }
-                        if (q.type === 'play' && !q.isClaimed && q.progress < q.target) { q.progress += rewards.playCount; modified = true; }
-                        if (q.type === 'bet_win' && !q.isClaimed && q.progress < q.target) { q.progress += rewards.betWinCount; modified = true; }
-                    });
-                    if (modified) {
-                        userDb.markModified('quests');
-                        return userDb.save().catch(e => console.error("Quest update err", e));
-                    }
-                }
-            }).catch(err => console.error("Aggregated reward update error:", err));
-        });
-        await Promise.all(updatePromises);
+        await RewardService.grantBatchRewards(playerRewards);
 
         if (isRussianRoulette) {
             room.endGame();
@@ -223,6 +179,12 @@ async function guessWord(room, userId, guess) {
             room.broadcastState();
         }
     }
+} catch (error) {
+    console.error(`[guessHandler] Error in guessWord for user ${userId} in room ${room?.code}:`, error);
+    if (room && room.io && userId) {
+        room.io.to(userId).emit("game:error", { message: "Tahmin işlenirken bir sunucu hatası oluştu. Lütfen tekrar deneyin." });
+    }
+}
 }
 
 module.exports = {

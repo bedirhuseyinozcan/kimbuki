@@ -1,4 +1,4 @@
-const User = require('../../models/User');
+const RewardService = require('../services/RewardService');
 function startObjection(room, userId) {
     if (room.objection || room.gameState !== "PLAYING" || room.hasObjectionUsed) return;
 
@@ -43,43 +43,47 @@ function voteObjection(room, userId, vote) {
 }
 
 async function resolveObjection(room) {
-    if (!room.objection) return;
+    try {
+        if (!room.objection) return;
 
-    const playingUsers = room.users.filter(u => u.status === 'playing' && !u.disconnected);
-    let yesVotes = 0;
-    for (let v of Object.values(room.objection.votes)) {
-        if (v === true) yesVotes++;
-    }
-
-    const majority = Math.ceil(playingUsers.length / 2);
-
-    if (yesVotes >= majority) {
-        if (room.isBettingEnabled) {
-            for (let u of room.users) {
-                if (u.dbId) {
-                    await User.findByIdAndUpdate(u.dbId, { $inc: { gold: room.betAmount } }).catch(err => console.error(err));
-                }
-            }
-            room.io.to(room.code).emit("game:error", { message: `🚨 Şike itirazı kabul edildi! Oyun iptal edildi, herkese ${room.betAmount} Altın iade edildi.` });
-        } else {
-            room.io.to(room.code).emit("game:error", { message: `🚨 Çoğunluk kararı sağlandı! Eğlenceyi sabote edenler olduğu için oyun iptal edildi.` });
+        const playingUsers = room.users.filter(u => u.status === 'playing' && !u.disconnected);
+        let yesVotes = 0;
+        for (let v of Object.values(room.objection.votes)) {
+            if (v === true) yesVotes++;
         }
 
-        room.objection = null;
-        if (room.timer) clearTimeout(room.timer);
-        room.gameState = "LOBBY";
-        room.chatHistory = [];
-        room.broadcastState();
-    } else {
-        room.io.to(room.code).emit("game:error", { message: `❌ Şike itirazı reddedildi! Yeterli çoğunluk sağlanamadı.` });
-        room.objection = null;
+        const majority = Math.ceil(playingUsers.length / 2);
 
-        room.turnStartTime = Date.now() - ((room.turnTime * 1000) - room.pausedRemainingMs);
-        room.timer = setTimeout(() => {
-            if (room.gameState === "PLAYING") room.nextTurn();
-        }, Math.max(5000, room.pausedRemainingMs));
+        if (yesVotes >= majority) {
+            if (room.isBettingEnabled) {
+                const dbIds = room.users.map(u => u.dbId).filter(Boolean);
+                await RewardService.refundBetFees(dbIds, room.betAmount);
+                room.io.to(room.code).emit("game:error", { message: `🚨 Şike itirazı kabul edildi! Oyun iptal edildi, herkese ${room.betAmount} Altın iade edildi.` });
+            } else {
+                room.io.to(room.code).emit("game:error", { message: `🚨 Çoğunluk kararı sağlandı! Eğlenceyi sabote edenler olduğu için oyun iptal edildi.` });
+            }
 
-        room.broadcastState();
+            room.objection = null;
+            if (room.timer) clearTimeout(room.timer);
+            room.gameState = "LOBBY";
+            room.chatHistory = [];
+            room.broadcastState();
+        } else {
+            room.io.to(room.code).emit("game:error", { message: `❌ Şike itirazı reddedildi! Yeterli çoğunluk sağlanamadı.` });
+            room.objection = null;
+
+            room.turnStartTime = Date.now() - ((room.turnTime * 1000) - room.pausedRemainingMs);
+            room.timer = setTimeout(() => {
+                if (room.gameState === "PLAYING") room.nextTurn();
+            }, Math.max(5000, room.pausedRemainingMs));
+
+            room.broadcastState();
+        }
+    } catch (error) {
+        console.error(`[objectionHandler] Error in resolveObjection in room ${room?.code}:`, error);
+        if (room && room.io && room.code) {
+            room.io.to(room.code).emit("game:error", { message: "İtiraz çözümlenirken bir sunucu hatası oluştu." });
+        }
     }
 }
 

@@ -1,4 +1,4 @@
-import React, { useRef, Suspense } from 'react';
+import React, { useRef, Suspense, useMemo, useEffect } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Html, ContactShadows, useGLTF } from '@react-three/drei';
 import { SkeletonUtils } from 'three-stdlib';
@@ -167,48 +167,58 @@ function AvatarModel({ url, isWinner, targetRot }: { url: string, isWinner: bool
     );
 }
 
+const sharedParticleSphereGeo = new THREE.SphereGeometry(0.5, 16, 16);
+const sharedRingTorusGeo = new THREE.TorusGeometry(1, 0.1, 16, 32);
+const sharedMirrorSphereGeo = new THREE.SphereGeometry(1.5, 32, 32);
+const sharedFallbackCylinderGeo = new THREE.CylinderGeometry(0.5, 0.5, 1, 32);
+const sharedFallbackBoxGeo = new THREE.BoxGeometry(0.5, 1, 0.5);
+
+const sharedGoldPedestalGeo = new THREE.CylinderGeometry(0.8, 0.9, 0.5, 32);
+const sharedLavaPedestalCylinderGeo = new THREE.CylinderGeometry(0.7, 0.8, 0.4, 16);
+const sharedLavaPedestalTorusGeo = new THREE.TorusGeometry(0.65, 0.12, 16, 32);
+const sharedIcePedestalBoxGeo = new THREE.BoxGeometry(1.5, 0.5, 1.5);
+const sharedCloudPedestalSphere1 = new THREE.SphereGeometry(0.6, 16, 16);
+const sharedCloudPedestalSphere2 = new THREE.SphereGeometry(0.5, 16, 16);
+const sharedCloudPedestalSphere3 = new THREE.SphereGeometry(0.45, 16, 16);
+const sharedDefaultPedestalGeo = new THREE.CylinderGeometry(0.7, 0.75, 0.5, 8);
+
 function PedestalNode({ type }: { type: string }) {
     switch (type) {
         case 'gold_pedestal':
             return (
-                <mesh position={[0, 0.25, 0]} castShadow receiveShadow>
-                    <cylinderGeometry args={[0.8, 0.9, 0.5, 32]} />
+                <mesh position={[0, 0.25, 0]} castShadow receiveShadow geometry={sharedGoldPedestalGeo}>
                     <meshStandardMaterial color="#fbbf24" roughness={0.3} metalness={0.8} />
                 </mesh>
             );
         case 'lava_ring':
             return (
                 <group position={[0, 0.25, 0]}>
-                    <mesh castShadow receiveShadow>
-                        <cylinderGeometry args={[0.7, 0.8, 0.4, 16]} />
+                    <mesh castShadow receiveShadow geometry={sharedLavaPedestalCylinderGeo}>
                         <meshStandardMaterial color="#1c1917" roughness={0.9} />
                     </mesh>
-                    <mesh position={[0, 0.2, 0]} rotation={[Math.PI / 2, 0, 0]}>
-                        <torusGeometry args={[0.65, 0.12, 16, 32]} />
+                    <mesh position={[0, 0.2, 0]} rotation={[Math.PI / 2, 0, 0]} geometry={sharedLavaPedestalTorusGeo}>
                         <meshStandardMaterial color="#ef4444" emissive="#dc2626" emissiveIntensity={2} toneMapped={false} />
                     </mesh>
                 </group>
             );
         case 'ice_block':
             return (
-                <mesh position={[0, 0.25, 0]} castShadow receiveShadow>
-                    <boxGeometry args={[1.5, 0.5, 1.5]} />
+                <mesh position={[0, 0.25, 0]} castShadow receiveShadow geometry={sharedIcePedestalBoxGeo}>
                     <meshPhysicalMaterial color="#bae6fd" transmission={0.9} opacity={1} transparent roughness={0.1} thickness={0.5} />
                 </mesh>
             );
         case 'cloud_base':
             return (
                 <group position={[0, 0.25, 0]}>
-                    <mesh position={[0, 0, 0]} castShadow receiveShadow><sphereGeometry args={[0.6, 16, 16]} /><meshStandardMaterial color="#ffffff" roughness={1} /></mesh>
-                    <mesh position={[0.4, -0.1, 0.3]} castShadow receiveShadow><sphereGeometry args={[0.5, 16, 16]} /><meshStandardMaterial color="#ffffff" roughness={1} /></mesh>
-                    <mesh position={[-0.4, -0.1, 0.3]} castShadow receiveShadow><sphereGeometry args={[0.5, 16, 16]} /><meshStandardMaterial color="#ffffff" roughness={1} /></mesh>
-                    <mesh position={[0.2, -0.1, -0.4]} castShadow receiveShadow><sphereGeometry args={[0.45, 16, 16]} /><meshStandardMaterial color="#ffffff" roughness={1} /></mesh>
+                    <mesh position={[0, 0, 0]} castShadow receiveShadow geometry={sharedCloudPedestalSphere1}><meshStandardMaterial color="#ffffff" roughness={1} /></mesh>
+                    <mesh position={[0.4, -0.1, 0.3]} castShadow receiveShadow geometry={sharedCloudPedestalSphere2}><meshStandardMaterial color="#ffffff" roughness={1} /></mesh>
+                    <mesh position={[-0.4, -0.1, 0.3]} castShadow receiveShadow geometry={sharedCloudPedestalSphere2}><meshStandardMaterial color="#ffffff" roughness={1} /></mesh>
+                    <mesh position={[0.2, -0.1, -0.4]} castShadow receiveShadow geometry={sharedCloudPedestalSphere3}><meshStandardMaterial color="#ffffff" roughness={1} /></mesh>
                 </group>
             );
         default:
             return (
-                <mesh position={[0, 0.25, 0]} castShadow receiveShadow>
-                    <cylinderGeometry args={[0.7, 0.75, 0.5, 8]} />
+                <mesh position={[0, 0.25, 0]} castShadow receiveShadow geometry={sharedDefaultPedestalGeo}>
                     <meshStandardMaterial color="#475569" roughness={0.9} metalness={0.1} />
                 </mesh>
             );
@@ -217,34 +227,66 @@ function PedestalNode({ type }: { type: string }) {
 
 function ParticleBurst({ color }: { color: string }) {
     const meshRef = useRef<THREE.Mesh>(null);
+    const materialRef = useRef<THREE.MeshStandardMaterial>(null);
+
     useFrame((state, delta) => {
         if (meshRef.current) {
             meshRef.current.scale.addScalar(delta * 20);
-            const mat = meshRef.current.material as THREE.MeshStandardMaterial;
-            mat.opacity = Math.max(0, mat.opacity - delta * 2);
+        }
+        if (materialRef.current) {
+            materialRef.current.opacity = Math.max(0, materialRef.current.opacity - delta * 2);
         }
     });
+
+    useEffect(() => {
+        return () => {
+            materialRef.current?.dispose();
+        };
+    }, []);
+
     return (
-        <mesh ref={meshRef} position={[0, 1.5, 0]}>
-            <sphereGeometry args={[0.5, 16, 16]} />
-            <meshStandardMaterial color={color} transparent opacity={0.8} emissive={color} emissiveIntensity={2} />
+        <mesh ref={meshRef} position={[0, 1.5, 0]} geometry={sharedParticleSphereGeo}>
+            <meshStandardMaterial
+                ref={materialRef}
+                color={color}
+                transparent
+                opacity={0.8}
+                emissive={color}
+                emissiveIntensity={2}
+            />
         </mesh>
     );
 }
 
 function RingBurst({ color }: { color: string }) {
     const meshRef = useRef<THREE.Mesh>(null);
+    const materialRef = useRef<THREE.MeshStandardMaterial>(null);
+
     useFrame((state, delta) => {
         if (meshRef.current) {
             meshRef.current.scale.addScalar(delta * 10);
-            const mat = meshRef.current.material as THREE.MeshStandardMaterial;
-            mat.opacity = Math.max(0, mat.opacity - delta * 1.5);
+        }
+        if (materialRef.current) {
+            materialRef.current.opacity = Math.max(0, materialRef.current.opacity - delta * 1.5);
         }
     });
+
+    useEffect(() => {
+        return () => {
+            materialRef.current?.dispose();
+        };
+    }, []);
+
     return (
-        <mesh ref={meshRef} position={[0, 0.2, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-            <torusGeometry args={[1, 0.1, 16, 32]} />
-            <meshStandardMaterial color={color} transparent opacity={1} emissive={color} emissiveIntensity={2} />
+        <mesh ref={meshRef} position={[0, 0.2, 0]} rotation={[-Math.PI / 2, 0, 0]} geometry={sharedRingTorusGeo}>
+            <meshStandardMaterial
+                ref={materialRef}
+                color={color}
+                transparent
+                opacity={1}
+                emissive={color}
+                emissiveIntensity={2}
+            />
         </mesh>
     );
 }
@@ -265,7 +307,9 @@ function PlayerNode({ u, index, totalUsers, isCurrentTurn, isMe, isWinner, activ
     const bomb = u.timeBomb;
     const hasMirror = isMe && (u.mirrorRoundsLeft && u.mirrorRoundsLeft > 0);
     
-    const myEffects = visualEffects?.filter((e: any) => e.targetId === u.id || e.userId === u.id) || [];
+    const myEffects = useMemo(() => {
+        return visualEffects?.filter((e: any) => e.targetId === u.id || e.userId === u.id) || [];
+    }, [visualEffects, u.id]);
     
     return (
         <group ref={groupRef} position={[x, 0, z]} rotation={[0, -angle - Math.PI / 2, 0]}>
@@ -287,8 +331,7 @@ function PlayerNode({ u, index, totalUsers, isCurrentTurn, isMe, isWinner, activ
             })}
 
             {hasMirror && (
-                <mesh position={[0, 1.2, 0]}>
-                    <sphereGeometry args={[1.5, 32, 32]} />
+                <mesh position={[0, 1.2, 0]} geometry={sharedMirrorSphereGeo}>
                     <meshPhysicalMaterial color="#38bdf8" transmission={0.9} opacity={0.3} transparent roughness={0.1} />
                 </mesh>
             )}
@@ -297,13 +340,12 @@ function PlayerNode({ u, index, totalUsers, isCurrentTurn, isMe, isWinner, activ
                 <group ref={bodyRef}>
                     {userAvatar.model || u.avatar.includes('default') ? (
                         <Suspense fallback={
-                            <mesh position={[0, 1, 0]}><boxGeometry args={[0.5, 1, 0.5]}/><meshStandardMaterial color="gray"/></mesh>
+                            <mesh position={[0, 1, 0]} geometry={sharedFallbackBoxGeo}><meshStandardMaterial color="gray"/></mesh>
                         }>
                             <AvatarModel url={userAvatar.model || "Warrior.gltf"} isWinner={isWinner} targetRot={targetRot} />
                         </Suspense>
                     ) : (
-                        <mesh position={[0, 1, 0]} castShadow receiveShadow>
-                            <cylinderGeometry args={[0.5, 0.5, 1, 32]} />
+                        <mesh position={[0, 1, 0]} castShadow receiveShadow geometry={sharedFallbackCylinderGeo}>
                             <meshStandardMaterial color="gray" />
                         </mesh>
                     )}

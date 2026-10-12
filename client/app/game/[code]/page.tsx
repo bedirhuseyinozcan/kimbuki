@@ -3,12 +3,17 @@
 import { useEffect } from "react";
 import { useParams } from "next/navigation";
 import { useGameSocket } from "@/hooks/useGameSocket";
+import { useLiveKit } from "@/hooks/useLiveKit";
+import { useNotepad } from "@/hooks/useNotepad";
 import Lobby from "@/components/game/Lobby";
 import WordSelection from "@/components/game/WordSelection";
 import JokerDraft from "@/components/game/JokerDraft";
 import GameScene from "@/components/game/GameScene";
 import GameOver from "@/components/game/GameOver";
 import BettingPhase from "@/components/game/BettingPhase";
+import ConnectionStatus from "@/components/game/ui/ConnectionStatus";
+import { GameProvider, GameContextValue } from "@/context/GameContext";
+import { User } from "@/components/game/types";
 import { LiveKitRoom, RoomAudioRenderer, useRoomContext, useLocalParticipant } from "@livekit/components-react";
 import "@livekit/components-styles";
 
@@ -47,7 +52,11 @@ function LiveKitMicSync({ isVoiceEnabled }: { isVoiceEnabled: boolean }) {
 
 export default function GamePage() {
     const { code } = useParams();
-    const game = useGameSocket(code);
+    const notepad = useNotepad(code);
+    const game = useGameSocket(code, {
+        onClearNotepad: notepad.clearNotepad,
+    });
+    const livekit = useLiveKit(code, game.me ? (game.me.dbId || game.me.id) : undefined);
 
     if (game.checkingAuth || !game.isJoined) {
         return (
@@ -60,7 +69,7 @@ export default function GamePage() {
         );
     }
 
-    if (!game.gameState) {
+    if (!game.gameState || !game.me) {
         return (
             <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white text-2xl animate-pulse">
                 Odaya bağlanıyor...
@@ -69,13 +78,39 @@ export default function GamePage() {
     }
 
     const { gameState, me, myId } = game;
+    const isMyTurn = gameState.currentTurnUserId === myId;
+    const currentTurnUser = gameState.users.find((u: User) => u.id === gameState.currentTurnUserId);
+
+    const gameContextValue: GameContextValue = {
+        gameState,
+        me,
+        myId: myId!,
+        isMyTurn,
+        currentTurnUser,
+        actions: game.actions,
+        notepad: notepad.notepad,
+        setNotepad: notepad.setNotepad,
+        chatInput: game.chatInput,
+        setChatInput: game.setChatInput,
+        guessInput: game.guessInput,
+        setGuessInput: game.setGuessInput,
+        guessDialogOpen: game.guessDialogOpen,
+        setGuessDialogOpen: game.setGuessDialogOpen,
+        headRotations: game.headRotations,
+        taunts: game.taunts,
+        visualEffects: game.visualEffects,
+        isConnected: game.isConnected,
+        isReconnecting: game.isReconnecting,
+        pingMs: game.pingMs,
+        connectionError: game.connectionError,
+    };
 
     const renderGameState = () => {
         if (gameState.gameState === "LOBBY") {
             return (
                 <Lobby
                     gameState={gameState}
-                    me={me!}
+                    me={me}
                     code={code as string}
                     inviteUrl={game.inviteUrl}
                     myId={myId!}
@@ -89,13 +124,13 @@ export default function GamePage() {
             );
         }
         if (gameState.gameState === "BETTING") {
-            return <BettingPhase gameState={gameState} me={me!} onPlaceBet={game.handlePlaceBet} />;
+            return <BettingPhase gameState={gameState} me={me} onPlaceBet={game.handlePlaceBet} />;
         }
         if (gameState.gameState === "WORD_SELECTION") {
             return (
                 <WordSelection
                     gameState={gameState}
-                    me={me!}
+                    me={me}
                     wordInput={game.wordInput}
                     setWordInput={game.setWordInput}
                     onSetWord={game.handleSetWord}
@@ -106,45 +141,16 @@ export default function GamePage() {
             );
         }
         if (gameState.gameState === "JOKER_DRAFT") {
-            return <JokerDraft gameState={gameState} me={me!} onSelectJoker={game.handleSelectJoker} />;
+            return <JokerDraft gameState={gameState} me={me} onSelectJoker={game.handleSelectJoker} />;
         }
         if (gameState.gameState === "PLAYING") {
-            return (
-                <GameScene
-                    gameState={gameState}
-                    me={me!}
-                    myId={myId!}
-                    chatInput={game.chatInput}
-                    setChatInput={game.setChatInput}
-                    handleChat={game.handleChat}
-                    notepad={game.notepad}
-                    setNotepad={game.setNotepad}
-                    handleSkip={game.handleSkip}
-                    guessInput={game.guessInput}
-                    setGuessInput={game.setGuessInput}
-                    handleGuess={game.handleGuess}
-                    guessDialogOpen={game.guessDialogOpen}
-                    setGuessDialogOpen={game.setGuessDialogOpen}
-                    onLeaveRoom={game.handleLeaveRoom}
-                    onAskQuestion={game.handleAskQuestion}
-                    onSubmitVote={game.handleSubmitVote}
-                    onUseJoker={game.handleUseJoker}
-                    onToggleVoice={game.toggleVoice}
-                    onStartObjection={game.handleStartObjection}
-                    onVoteObjection={game.handleVoteObjection}
-                    headRotations={game.headRotations}
-                    onHeadRotation={game.handleHeadRotation}
-                    taunts={game.taunts}
-                    onTaunt={game.handleTaunt}
-                    visualEffects={game.visualEffects}
-                />
-            );
+            return <GameScene />;
         }
         if (gameState.gameState === "ROUND_END") {
             return (
                 <GameOver
                     gameState={gameState}
-                    me={me!}
+                    me={me}
                     onStart={() =>
                         game.handleStart({
                             category: gameState.category || "Karışık",
@@ -170,18 +176,26 @@ export default function GamePage() {
     };
 
     return (
-        <LiveKitRoom
-            video={false}
-            audio={me?.isVoiceEnabled || false}
-            token={game.token}
-            serverUrl={process.env.NEXT_PUBLIC_LIVEKIT_URL}
-            connect={!!game.token}
-            options={roomOptions}
-        >
-            {renderGameState()}
-            <RoomAudioRenderer />
-            <LiveKitSpeakerSync />
-            <LiveKitMicSync isVoiceEnabled={me?.isVoiceEnabled || false} />
-        </LiveKitRoom>
+        <GameProvider value={gameContextValue}>
+            <ConnectionStatus
+                isConnected={game.isConnected}
+                isReconnecting={game.isReconnecting}
+                pingMs={game.pingMs}
+                connectionError={game.connectionError}
+            />
+            <LiveKitRoom
+                video={false}
+                audio={me?.isVoiceEnabled || false}
+                token={livekit.token}
+                serverUrl={process.env.NEXT_PUBLIC_LIVEKIT_URL}
+                connect={!!livekit.token}
+                options={roomOptions}
+            >
+                {renderGameState()}
+                <RoomAudioRenderer />
+                <LiveKitSpeakerSync />
+                <LiveKitMicSync isVoiceEnabled={me?.isVoiceEnabled || false} />
+            </LiveKitRoom>
+        </GameProvider>
     );
 }

@@ -1,4 +1,4 @@
-﻿import { Button, TextField, Chip } from "@mui/material";
+import { Button, TextField, Chip } from "@mui/material";
 import { User, GameState } from "./types";
 
 interface WordSelectionProps {
@@ -23,7 +23,7 @@ export default function WordSelection({
                 {gameState.isBettingEnabled && (
                     <div className="absolute top-0 left-0 right-0 bg-yellow-500/20 border-b border-yellow-500/50 p-2 flex justify-center items-center gap-2">
                         <span className="text-xl">💰</span>
-                        <span className="text-yellow-400 font-bold text-sm">BAHİS MODU AKTİF (-50 Altın)</span>
+                        <span className="text-yellow-400 font-bold text-sm">BAHİS MODU AKTİF (-{gameState.betAmount || 50} Altın)</span>
                     </div>
                 )}
                 <div className="flex items-center justify-center gap-3 mb-2">

@@ -35,7 +35,7 @@ export default function BettingPhase({
         <main className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center p-4 relative">
             <div className="absolute top-4 left-4 z-20 flex gap-2 pointer-events-auto">
                 <div className="bg-yellow-500/20 border border-yellow-500/50 text-yellow-400 font-bold px-4 py-2 rounded-full backdrop-blur-md">
-                    💰 -50 ALTIN GİRİŞ ÜCRETİ KESİLDİ
+                    💰 -{gameState.betAmount || 50} ALTIN GİRİŞ ÜCRETİ KESİLDİ
                 </div>
             </div>
 
@@ -59,7 +59,7 @@ export default function BettingPhase({
                             <Avatar className={`w-24 h-24 shadow-lg border-2 border-slate-700 text-4xl ${userAvatar.color}`}>
                                 {userAvatar.icon ? <div className="text-[3rem]">{userAvatar.icon}</div> : u.name.charAt(0).toUpperCase()}
                             </Avatar>
-                            <span className="font-bold text-lg text-white">{u.name} {u.id === me.id && '(Sen)'}</span>
+                            <span className="font-bold text-lg text-white">{u.name} {u.id === me?.id && '(Sen)'}</span>
                             {selectedId === u.id && <span className="text-yellow-400 font-black">💰 {(gameState.betAmount || 50) * 2} Altın</span>}
                         </div>
                     )})}

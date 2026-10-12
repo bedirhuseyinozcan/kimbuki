@@ -1,13 +1,53 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { io, Socket } from "socket.io-client";
 import { toast } from "react-toastify";
 import { Button } from "@mui/material";
 import { User, GameState } from "@/components/game/types";
 
-export function useGameSocket(code: string | string[] | undefined) {
+export interface UseGameSocketOptions {
+    onClearNotepad?: () => void;
+}
+
+export interface GameStartSettings {
+    category?: string;
+    bettingEnabled?: boolean;
+    jokersEnabled?: boolean;
+    betAmount?: number;
+    theme?: "day" | "night";
+    map?: string;
+}
+
+export interface GameActions {
+    start: (settings: GameStartSettings) => void;
+    setWord: (customWord?: string) => void;
+    chat: (e?: React.FormEvent, customMsg?: string) => void;
+    skip: () => void;
+    askQuestion: (question: string) => void;
+    submitVote: (vote: string) => void;
+    guess: (customGuess?: string) => void;
+    useJoker: (payload: any) => void;
+    toggleVoice: (enabled: boolean) => Promise<void>;
+    copyLink: () => void;
+    leaveRoom: () => void;
+    selectAvatar: (id: number) => void;
+    placeBet: (targetId: string) => void;
+    editWord: () => void;
+    shuffleTargets: () => void;
+    selectJoker: (jokerId: number) => void;
+    startObjection: () => void;
+    voteObjection: (vote: boolean) => void;
+    headRotation: (pitch: number, yaw: number) => void;
+    taunt: (type: string) => void;
+    closeRoom: () => void;
+}
+
+export function useGameSocket(
+    code: string | string[] | undefined,
+    options?: UseGameSocketOptions
+) {
     const router = useRouter();
     const [socket, setSocket] = useState<Socket | null>(null);
     const [gameState, setGameState] = useState<GameState | null>(null);
@@ -16,89 +56,130 @@ export function useGameSocket(code: string | string[] | undefined) {
     const [isJoined, setIsJoined] = useState(false);
     const [checkingAuth, setCheckingAuth] = useState(true);
 
+    const [isConnected, setIsConnected] = useState(false);
+    const [isReconnecting, setIsReconnecting] = useState(false);
+    const [pingMs, setPingMs] = useState<number | null>(null);
+    const [connectionError, setConnectionError] = useState<string | null>(null);
+
     const [wordInput, setWordInput] = useState("");
     const [chatInput, setChatInput] = useState("");
-    const [notepad, setNotepad] = useState("");
-    const [isNotepadLoaded, setIsNotepadLoaded] = useState(false);
     const [guessDialogOpen, setGuessDialogOpen] = useState(false);
     const [guessInput, setGuessInput] = useState("");
 
     const [headRotations, setHeadRotations] = useState<{ [key: string]: { pitch: number; yaw: number } }>({});
     const [taunts, setTaunts] = useState<{ [key: string]: { type: string; id: number } }>({});
     const [visualEffects, setVisualEffects] = useState<any[]>([]);
-    const [token, setToken] = useState("");
 
-    useEffect(() => {
-        if (code && typeof window !== "undefined") {
-            const saved = localStorage.getItem(`kimbuki_notepad_${code}`);
-            if (saved) setNotepad(saved);
-            setIsNotepadLoaded(true);
-        }
-    }, [code]);
+    const optionsRef = useRef(options);
+    optionsRef.current = options;
 
-    useEffect(() => {
-        if (isNotepadLoaded && code && typeof window !== "undefined") {
-            localStorage.setItem(`kimbuki_notepad_${code}`, notepad);
-        }
-    }, [notepad, code, isNotepadLoaded]);
+    const userRef = useRef<any>(null);
+
+    const wordInputRef = useRef(wordInput);
+    wordInputRef.current = wordInput;
+
+    const chatInputRef = useRef(chatInput);
+    chatInputRef.current = chatInput;
+
+    const guessInputRef = useRef(guessInput);
+    guessInputRef.current = guessInput;
 
     const myId = socket?.id || "";
     const me = gameState?.users.find((u: User) => u.id === myId);
 
-    useEffect(() => {
-        if (!me?.id || !code) return;
-        (async () => {
-            try {
-                const livekitIdentity = me.dbId || me.id;
-                const gameToken = localStorage.getItem("gameToken");
-                const resp = await fetch(`/api/livekit?room=${code}&username=${encodeURIComponent(livekitIdentity)}`, {
-                    headers: gameToken ? { Authorization: `Bearer ${gameToken}` } : {},
-                });
-                const data = await resp.json();
-                if (data.token) {
-                    setToken(data.token);
-                }
-            } catch (e) {
-                console.error("LiveKit token fetch error", e);
-            }
-        })();
-    }, [me?.id, me?.dbId, code]);
-
+    
     useEffect(() => {
         if (code && typeof window !== "undefined") {
-            setInviteUrl(`${window.location.origin}/game/${code}`);
+            const roomCode = Array.isArray(code) ? code[0] : code;
+            setInviteUrl(`${window.location.origin}/game/${roomCode}`);
         }
     }, [code]);
 
     const connectToRoom = useCallback((user: any) => {
+        userRef.current = user;
         const token = localStorage.getItem("gameToken");
         const s = io(process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:4000", {
             auth: { token },
+            reconnection: true,
+            reconnectionAttempts: Infinity,
+            reconnectionDelay: 1000,
+            reconnectionDelayMax: 5000,
+            timeout: 10000,
         });
         setSocket(s);
 
-        s.emit(
-            "room:join",
-            {
-                roomCode: code,
-                name: user.username,
-                avatar: user.avatar,
-                pedestal: user.pedestal,
-                nameColor: user.nameColor,
-                title: user.title,
-            },
-            (res: any) => {
-                if (!res.ok) {
-                    toast.error("Hata: " + res.error);
-                    router.push("/");
-                } else {
-                    setIsJoined(true);
-                    setCheckingAuth(false);
-                }
-            }
-        );
+        const roomCode = Array.isArray(code) ? code[0] : code;
 
-        s.on("game:state", (state: GameState) => setGameState(state));
+        const emitJoin = () => {
+            if (!userRef.current) return;
+            s.emit(
+                "room:join",
+                {
+                    roomCode,
+                    name: userRef.current.username,
+                    avatar: userRef.current.avatar,
+                    pedestal: userRef.current.pedestal,
+                    nameColor: userRef.current.nameColor,
+                    title: userRef.current.title,
+                },
+                (res: any) => {
+                    if (!res.ok) {
+                        toast.error("Hata: " + res.error);
+                        router.push("/");
+                    } else {
+                        setIsJoined(true);
+                        setCheckingAuth(false);
+                    }
+                }
+            );
+        };
+
+        s.on("connect", () => {
+            setIsConnected(true);
+            setIsReconnecting(false);
+            setConnectionError(null);
+            emitJoin();
+        });
+
+        s.on("disconnect", (reason) => {
+            setIsConnected(false);
+            if (reason !== "io client disconnect") {
+                setIsReconnecting(true);
+            }
+        });
+
+        s.on("connect_error", (err) => {
+            setIsConnected(false);
+            setIsReconnecting(true);
+            setConnectionError(err?.message || "Sunucuya bağlanılamıyor...");
+        });
+
+        s.on("game:reconnected", (data) => {
+            toast.success(data?.message || "Odaya yeniden bağlandınız!", { toastId: "reconnect-success" });
+        });
+
+        s.on("game:pong", ({ clientTimestamp }: { clientTimestamp: number }) => {
+            if (clientTimestamp) {
+                setPingMs(Date.now() - clientTimestamp);
+            }
+        });
+
+        s.on("game:state", (state: GameState) => {
+            setGameState((prev) => ({
+                ...state,
+                chatHistory: prev?.chatHistory || state.chatHistory || [],
+            }));
+        });
+
+        s.on("game:init_chat", ({ chatHistory }: { chatHistory: any[] }) => {
+            setGameState((prev) => {
+                if (!prev) return prev;
+                return {
+                    ...prev,
+                    chatHistory: chatHistory || [],
+                };
+            });
+        });
 
         s.on("game:new_chat", (chatMsg: any) => {
             setGameState((prev) => {
@@ -134,9 +215,8 @@ export function useGameSocket(code: string | string[] | undefined) {
         });
 
         s.on("game:clear_notepad", () => {
-            setNotepad("");
-            if (typeof window !== "undefined") {
-                localStorage.removeItem(`kimbuki_notepad_${code}`);
+            if (optionsRef.current?.onClearNotepad) {
+                optionsRef.current.onClearNotepad();
             }
             toast.error("🧠 AMNEZİ! Biri hafızanı sildi, tüm notların kayboldu!", { autoClose: 5000, theme: "colored" });
         });
@@ -176,6 +256,18 @@ export function useGameSocket(code: string | string[] | undefined) {
     }, [code, router]);
 
     useEffect(() => {
+        if (!socket || !isConnected) return;
+        socket.emit("game:ping", { clientTimestamp: Date.now() });
+
+        const interval = setInterval(() => {
+            socket.emit("game:ping", { clientTimestamp: Date.now() });
+        }, 5000);
+
+        return () => clearInterval(interval);
+    }, [socket, isConnected]);
+
+
+    useEffect(() => {
         const gameToken = localStorage.getItem("gameToken");
         if (!gameToken) {
             router.push(`/?invite=${code}`);
@@ -199,110 +291,109 @@ export function useGameSocket(code: string | string[] | undefined) {
             });
     }, [code, router, connectToRoom]);
 
+    // Socket temizleme
     useEffect(() => {
         return () => {
             if (socket) socket.disconnect();
         };
     }, [socket]);
 
-    // Game Actions
-    const handleStart = (settings: {
-        category?: string;
-        bettingEnabled?: boolean;
-        jokersEnabled?: boolean;
-        betAmount?: number;
-        theme?: "day" | "night";
-        map?: string;
-    }) => socket?.emit("game:start", settings);
 
-    const handleSetWord = () => {
-        if (!wordInput.trim()) return;
-        socket?.emit("game:set_word", { word: wordInput });
-    };
+    const handleStart = useCallback((settings: GameStartSettings) => {
+        socket?.emit("game:start", settings);
+    }, [socket]);
 
-    const handleChat = (e?: React.FormEvent) => {
+    const handleSetWord = useCallback((customWord?: string) => {
+        const word = (typeof customWord === "string" ? customWord : wordInputRef.current).trim();
+        if (!word) return;
+        socket?.emit("game:set_word", { word });
+    }, [socket]);
+
+    const handleChat = useCallback((e?: React.FormEvent, customMsg?: string) => {
         e?.preventDefault();
-        if (!chatInput.trim()) return;
-        socket?.emit("game:chat", { message: chatInput });
+        const msg = (typeof customMsg === "string" ? customMsg : chatInputRef.current).trim();
+        if (!msg) return;
+        socket?.emit("game:chat", { message: msg });
         setChatInput("");
-    };
+    }, [socket]);
 
-    const handleSkip = () => {
+    const handleSkip = useCallback(() => {
         socket?.emit("game:skip_turn");
-    };
+    }, [socket]);
 
-    const handleAskQuestion = (question: string) => {
+    const handleAskQuestion = useCallback((question: string) => {
         socket?.emit("game:ask_question", { question });
-    };
+    }, [socket]);
 
-    const handleSubmitVote = (vote: string) => {
+    const handleSubmitVote = useCallback((vote: string) => {
         socket?.emit("game:submit_vote", { vote });
-    };
+    }, [socket]);
 
-    const handleGuess = () => {
-        if (!guessInput.trim()) return;
-        socket?.emit("game:guess", { guess: guessInput });
+    const handleGuess = useCallback((customGuess?: string) => {
+        const guess = (typeof customGuess === "string" ? customGuess : guessInputRef.current).trim();
+        if (!guess) return;
+        socket?.emit("game:guess", { guess });
         setGuessInput("");
         setGuessDialogOpen(false);
-    };
+    }, [socket]);
 
-    const handleUseJoker = (payload: any) => {
+    const handleUseJoker = useCallback((payload: any) => {
         socket?.emit("game:use_joker", payload);
-    };
+    }, [socket]);
 
-    const toggleVoice = async (enabled: boolean) => {
+    const toggleVoice = useCallback(async (enabled: boolean) => {
         socket?.emit("game:toggle_voice", { enabled });
-    };
+    }, [socket]);
 
-    const copyLink = () => {
+    const copyLink = useCallback(() => {
         navigator.clipboard.writeText(inviteUrl);
         toast.success("Davet linki kopyalandı!");
-    };
+    }, [inviteUrl]);
 
-    const handleLeaveRoom = () => {
+    const handleLeaveRoom = useCallback(() => {
         socket?.emit("game:leave");
         if (socket) socket.disconnect();
         sessionStorage.removeItem("username");
         router.push("/");
-    };
+    }, [socket, router]);
 
-    const handleSelectAvatar = (id: number) => {
+    const handleSelectAvatar = useCallback((id: number) => {
         socket?.emit("game:set_avatar", { avatarId: id });
-    };
+    }, [socket]);
 
-    const handlePlaceBet = (targetId: string) => {
+    const handlePlaceBet = useCallback((targetId: string) => {
         socket?.emit("game:place_bet", { targetId });
-    };
+    }, [socket]);
 
-    const handleEditWord = () => {
+    const handleEditWord = useCallback(() => {
         socket?.emit("game:edit_word");
-    };
+    }, [socket]);
 
-    const handleShuffleTargets = () => {
+    const handleShuffleTargets = useCallback(() => {
         socket?.emit("game:shuffle_targets");
-    };
+    }, [socket]);
 
-    const handleSelectJoker = (jokerId: number) => {
+    const handleSelectJoker = useCallback((jokerId: number) => {
         socket?.emit("game:select_joker", { jokerId });
-    };
+    }, [socket]);
 
-    const handleStartObjection = () => {
+    const handleStartObjection = useCallback(() => {
         socket?.emit("game:start_objection");
-    };
+    }, [socket]);
 
-    const handleVoteObjection = (vote: boolean) => {
+    const handleVoteObjection = useCallback((vote: boolean) => {
         socket?.emit("game:vote_objection", { vote });
-    };
+    }, [socket]);
 
-    const handleHeadRotation = (pitch: number, yaw: number) => {
+    const handleHeadRotation = useCallback((pitch: number, yaw: number) => {
         socket?.emit("game:head_rotation", { pitch, yaw });
-    };
+    }, [socket]);
 
-    const handleTaunt = (type: string) => {
+    const handleTaunt = useCallback((type: string) => {
         socket?.emit("game:taunt", { type });
-    };
+    }, [socket]);
 
-    const handleCloseRoom = () => {
+    const handleCloseRoom = useCallback(() => {
         toast(
             ({ closeToast }) => (
                 <div className="flex flex-col gap-3">
@@ -331,22 +422,73 @@ export function useGameSocket(code: string | string[] | undefined) {
             ),
             { autoClose: false, closeOnClick: false, draggable: false, position: "top-center" }
         );
-    };
+    }, [socket, router]);
+
+    const actions: GameActions = useMemo(() => ({
+        start: handleStart,
+        setWord: handleSetWord,
+        chat: handleChat,
+        skip: handleSkip,
+        askQuestion: handleAskQuestion,
+        submitVote: handleSubmitVote,
+        guess: handleGuess,
+        useJoker: handleUseJoker,
+        toggleVoice,
+        copyLink,
+        leaveRoom: handleLeaveRoom,
+        selectAvatar: handleSelectAvatar,
+        placeBet: handlePlaceBet,
+        editWord: handleEditWord,
+        shuffleTargets: handleShuffleTargets,
+        selectJoker: handleSelectJoker,
+        startObjection: handleStartObjection,
+        voteObjection: handleVoteObjection,
+        headRotation: handleHeadRotation,
+        taunt: handleTaunt,
+        closeRoom: handleCloseRoom,
+    }), [
+        handleStart,
+        handleSetWord,
+        handleChat,
+        handleSkip,
+        handleAskQuestion,
+        handleSubmitVote,
+        handleGuess,
+        handleUseJoker,
+        toggleVoice,
+        copyLink,
+        handleLeaveRoom,
+        handleSelectAvatar,
+        handlePlaceBet,
+        handleEditWord,
+        handleShuffleTargets,
+        handleSelectJoker,
+        handleStartObjection,
+        handleVoteObjection,
+        handleHeadRotation,
+        handleTaunt,
+        handleCloseRoom,
+    ]);
 
     return {
+       
         socket,
         gameState,
         inviteUrl,
         isJoined,
         checkingAuth,
-        token,
         myId,
         me,
         headRotations,
         taunts,
         visualEffects,
-        notepad,
-        setNotepad,
+
+        isConnected,
+        isReconnecting,
+        pingMs,
+        connectionError,
+
+        // Inputs
         wordInput,
         setWordInput,
         chatInput,
@@ -355,6 +497,9 @@ export function useGameSocket(code: string | string[] | undefined) {
         setGuessDialogOpen,
         guessInput,
         setGuessInput,
+
+        actions,
+
         handleStart,
         handleSetWord,
         handleChat,

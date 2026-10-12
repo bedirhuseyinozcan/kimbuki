@@ -2,26 +2,27 @@ import React, { useRef, useEffect } from "react";
 import { TextField, IconButton } from "@mui/material";
 import SendIcon from '@mui/icons-material/Send';
 import { NAME_COLORS } from "../types";
+import { useGameChat } from "@/context/GameContext";
 
 interface ChatPanelProps {
-    chatHistory: any[];
-    chatInput: string;
-    setChatInput: (val: string) => void;
-    handleChat: (e?: React.FormEvent) => void;
+    chatHistory?: any[];
+    chatInput?: string;
+    setChatInput?: (val: string) => void;
+    handleChat?: (e?: React.FormEvent) => void;
     isChatOpen: boolean;
     onToggle: () => void;
-    isPlayer: boolean;
+    isPlayer?: boolean;
 }
 
-export default function ChatPanel({
-    chatHistory,
-    chatInput,
-    setChatInput,
-    handleChat,
-    isChatOpen,
-    onToggle,
-    isPlayer
-}: ChatPanelProps) {
+export default function ChatPanel(props: ChatPanelProps) {
+    const ctx = useGameChat();
+    const chatHistory = props.chatHistory ?? ctx.chatHistory;
+    const chatInput = props.chatInput ?? ctx.chatInput;
+    const setChatInput = props.setChatInput ?? ctx.setChatInput;
+    const handleChat = props.handleChat ?? ctx.handleChat;
+    const isPlayer = props.isPlayer ?? ctx.isPlayer;
+    const { isChatOpen, onToggle } = props;
+
     const chatEndRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
