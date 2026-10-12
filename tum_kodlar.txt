@@ -1831,13 +1831,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Yetkilendirme gerekli: Token bulunamadı' }, { status: 401 });
   }
 
+  let authenticatedUserId: string = "";
   try {
     const secretKey = new TextEncoder().encode(jwtSecret);
     const { payload } = await jwtVerify(token, secretKey);
-
-    if (payload.id && payload.id !== username) {
-      return NextResponse.json({ error: 'Yetkisiz erişim: Kullanıcı kimliği uyuşmuyor' }, { status: 403 });
-    }
+    authenticatedUserId = (payload.id as string) || (payload.sub as string) || "";
   } catch {
     return NextResponse.json({ error: 'Geçersiz veya süresi dolmuş token' }, { status: 401 });
   }
@@ -1850,7 +1848,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Server misconfigured' }, { status: 500 });
   }
 
-  const at = new AccessToken(apiKey, apiSecret, { identity: username });
+  const identity = authenticatedUserId || username;
+  const at = new AccessToken(apiKey, apiSecret, { identity, name: username });
   at.addGrant({ room, roomJoin: true, canPublish: true, canSubscribe: true });
 
   const livekitToken = await at.toJwt();
@@ -1915,12 +1914,13 @@ function LiveKitSpeakerSync() {
 
 function LiveKitMicSync({ isVoiceEnabled }: { isVoiceEnabled: boolean }) {
     const { localParticipant } = useLocalParticipant();
+    const room = useRoomContext();
 
     useEffect(() => {
-        if (localParticipant) {
+        if (localParticipant && room && room.state === "connected") {
             localParticipant.setMicrophoneEnabled(isVoiceEnabled).catch((e) => console.error("Mic sync error", e));
         }
-    }, [isVoiceEnabled, localParticipant]);
+    }, [isVoiceEnabled, localParticipant, room]);
 
     return null;
 }
@@ -1931,7 +1931,7 @@ export default function GamePage() {
     const game = useGameSocket(code, {
         onClearNotepad: notepad.clearNotepad,
     });
-    const livekit = useLiveKit(code, game.me ? (game.me.dbId || game.me.id) : undefined);
+    const livekit = useLiveKit(code, game.me ? (game.me.dbId || game.me.name || game.me.id) : undefined);
 
     if (game.checkingAuth || !game.isJoined) {
         return (
@@ -2061,7 +2061,7 @@ export default function GamePage() {
             />
             <LiveKitRoom
                 video={false}
-                audio={me?.isVoiceEnabled || false}
+                audio={Boolean(livekit.token && me?.isVoiceEnabled)}
                 token={livekit.token}
                 serverUrl={process.env.NEXT_PUBLIC_LIVEKIT_URL}
                 connect={!!livekit.token}
@@ -2612,7 +2612,14 @@ export default function GameScene(props: GameSceneProps = {}) {
     };
 
     const handleUseJokerSubmit = () => {
-        onUseJoker({ targetId: jokerTarget, newWord: jokerWord });
+        const payload: { targetId?: string; newWord?: string } = {};
+        if (myJokerMeta?.requiresTarget && jokerTarget) {
+            payload.targetId = jokerTarget;
+        }
+        if (myJokerMeta?.requiresWord && jokerWord.trim()) {
+            payload.newWord = jokerWord.trim();
+        }
+        onUseJoker(payload);
         setJokerDialogOpen(false);
         setJokerTarget("");
         setJokerWord("");
@@ -2802,14 +2809,14 @@ export default function GameScene(props: GameSceneProps = {}) {
                 )}
             </div>
 
-            <Dialog open={jokerDialogOpen} onClose={() => setJokerDialogOpen(false)} slotProps={{ paper: { className: "!bg-white !text-slate-900 !rounded-2xl min-w-[300px]" } }}>
+            <Dialog open={jokerDialogOpen} onClose={() => { if (!isSubmitting) { setJokerDialogOpen(false); setJokerTarget(""); setJokerWord(""); } }} slotProps={{ paper: { className: "!bg-white !text-slate-900 !rounded-2xl min-w-[300px]" } }}>
                 <DialogTitle className="text-center font-bold text-fuchsia-600">🃏 {myJokerMeta?.name || 'Joker'}</DialogTitle>
                 <DialogContent>
                     <p className="text-center text-slate-600 mt-2 font-medium">{myJokerMeta?.desc}</p>
                     
                     <div className="flex flex-col gap-4 mt-6">
                         {myJokerMeta?.requiresTarget && (
-                            <TextField select label="Oyuncu Seç" value={jokerTarget} onChange={e => setJokerTarget(e.target.value)}>
+                            <TextField select label="Oyuncu Seç" value={jokerTarget} onChange={e => setJokerTarget(e.target.value)} disabled={isSubmitting}>
                                 {gameState.users.filter((u:User) => u.id !== myId && u.status === 'playing').map((u:User) => (
                                     <MenuItem key={u.id} value={u.id}>{u.name}</MenuItem>
                                 ))}
@@ -2819,6 +2826,7 @@ export default function GameScene(props: GameSceneProps = {}) {
                             <TextField 
                                 label={myJokerMeta.id === 14 ? "Harf Girin" : "Yeni Kelime"} 
                                 value={jokerWord} 
+                                disabled={isSubmitting}
                                 onChange={e => {
                                     if (myJokerMeta.id === 14) {
                                         setJokerWord(e.target.value.substring(0, 1));
@@ -2831,13 +2839,13 @@ export default function GameScene(props: GameSceneProps = {}) {
                     </div>
                 </DialogContent>
                 <DialogActions className="p-4 pt-0 justify-between">
-                    <Button onClick={() => setJokerDialogOpen(false)} disabled={isSubmitting} className="!text-slate-500">İptal</Button>
+                    <Button onClick={() => { setJokerDialogOpen(false); setJokerTarget(""); setJokerWord(""); }} disabled={isSubmitting} className="!text-slate-500">İptal</Button>
                     <Button 
                         onClick={handleUseJokerSubmit} 
                         variant="contained" 
                         color="secondary" 
                         className="px-6 font-bold flex items-center gap-2" 
-                        disabled={isSubmitting || (myJokerMeta?.requiresTarget && !jokerTarget) || (myJokerMeta?.requiresWord && !jokerWord)}
+                        disabled={isSubmitting || (Boolean(myJokerMeta?.requiresTarget) && !jokerTarget) || (Boolean(myJokerMeta?.requiresWord) && !jokerWord.trim())}
                     >
                         {isSubmitting ? (
                             <>
@@ -4827,10 +4835,21 @@ export function useGameSocket(
         s.on("game:state", (state: GameState) => {
             clearSubmitting();
             setGuessDialogOpen(false);
-            setGameState((prev) => ({
-                ...state,
-                chatHistory: prev?.chatHistory || state.chatHistory || [],
-            }));
+            setGameState((prev) => {
+                const isNewGameStarting = prev?.gameState === "ROUND_END" &&
+                    (state.gameState === "BETTING" || state.gameState === "WORD_SELECTION" || state.gameState === "LOBBY");
+
+                if (isNewGameStarting) {
+                    optionsRef.current?.onClearNotepad?.();
+                    setGuessInput("");
+                    setWordInput("");
+                }
+
+                return {
+                    ...state,
+                    chatHistory: isNewGameStarting ? [] : (prev?.chatHistory || state.chatHistory || []),
+                };
+            });
         });
 
         s.on("game:init_chat", ({ chatHistory }: { chatHistory: any[] }) => {
@@ -4875,6 +4894,12 @@ export function useGameSocket(
             toast.error("Oda host tarafından kapatıldı!");
             s.disconnect();
             router.push("/");
+        });
+
+        s.on("game:reset_notepad", () => {
+            if (optionsRef.current?.onClearNotepad) {
+                optionsRef.current.onClearNotepad();
+            }
         });
 
         s.on("game:clear_notepad", () => {
@@ -5243,7 +5268,13 @@ export function useLiveKit(
                 );
 
                 if (!resp.ok) {
-                    throw new Error(`LiveKit token alma hatası: ${resp.statusText}`);
+                    const errData = await resp.json().catch(() => null);
+                    const errMsg = errData?.error || `LiveKit token alma hatası: ${resp.statusText}`;
+                    if (!isCancelled) {
+                        console.warn("[useLiveKit]", errMsg);
+                        setError(errMsg);
+                    }
+                    return;
                 }
 
                 const data = await resp.json();
@@ -6470,6 +6501,13 @@ class Room {
         this.objection = null;
         this.roundCount = 1;
 
+        this.chatHistory = [];
+        this.roundLogs = [];
+        this.winners = [];
+        this.io.to(this.code).emit("game:init_chat", { chatHistory: [] });
+        this.io.to(this.code).emit("game:reset_notepad");
+        this.addChatLog({ system: true, message: "🎮 Yeni oyun başladı! Bol şans!", timestamp: Date.now() });
+
         if (this.isBettingEnabled) {
             const betResult = await RewardService.deductBetFees(activeUsers, this.betAmount);
             if (!betResult.ok) {
@@ -6484,9 +6522,6 @@ class Room {
             }
 
             this.gameState = "BETTING";
-            this.chatHistory = [];
-            this.roundLogs = [];
-            this.winners = [];
             this.bettingEndTime = Date.now() + 10000;
             
             for (let i = 0; i < this.users.length; i++) {
@@ -6510,9 +6545,6 @@ class Room {
     startWordSelection() {
         if (this.betTimer) clearTimeout(this.betTimer);
         this.gameState = "WORD_SELECTION";
-        this.chatHistory = [];
-        this.roundLogs = [];
-        this.winners = [];
 
         const activeUsers = this.users.filter(u => !u.disconnected);
 
@@ -6953,6 +6985,7 @@ class Room {
         this.users.forEach(user => {
             const usersPayload = this.users.map(u => ({
                 id: u.id,
+                dbId: u.dbId,
                 name: u.name,
                 isHost: u.isHost,
                 avatar: u.avatar,
@@ -8848,28 +8881,44 @@ const payloadValidator = {
             return { ok: false, error: "Geçersiz joker parametresi." };
         }
 
+        const targetRequiredJokers = [3, 4, 5, 7, 10, 13, 15, 16];
+        const wordRequiredJokers = [4, 14];
+
         const cleanPayload = {};
-        if (payload.targetId !== undefined && payload.targetId !== null) {
-            if (typeof payload.targetId !== "string" || !payload.targetId.trim()) {
-                return { ok: false, error: "Geçersiz hedef oyuncu formatı." };
+
+        const rawTargetId = typeof payload.targetId === "string" ? payload.targetId.trim() : "";
+        if (targetRequiredJokers.includes(user.joker)) {
+            if (!rawTargetId) {
+                return { ok: false, error: "Lütfen bir hedef oyuncu seçin." };
             }
-            const cleanTargetId = payload.targetId.trim();
-            const target = room.users.find(u => u.id === cleanTargetId && !u.disconnected && u.status === 'playing');
+            if (rawTargetId === user.id) {
+                return { ok: false, error: "Bu jokeri kendi üzerinizde kullanamazsınız!" };
+            }
+            const target = room.users.find(u => u.id === rawTargetId && !u.disconnected && u.status === 'playing');
             if (!target) {
                 return { ok: false, error: "Hedef oyuncu bulunamadı veya artık oyunda değil." };
             }
             cleanPayload.targetId = target.id;
+        } else if (rawTargetId) {
+            const target = room.users.find(u => u.id === rawTargetId && !u.disconnected && u.status === 'playing');
+            if (target) {
+                cleanPayload.targetId = target.id;
+            }
         }
 
-        if (payload.newWord !== undefined && payload.newWord !== null) {
-            if (typeof payload.newWord !== "string") {
-                return { ok: false, error: "Yeni kelime metin formatında olmalıdır." };
+        const rawNewWord = typeof payload.newWord === "string" ? payload.newWord.trim() : "";
+        if (wordRequiredJokers.includes(user.joker)) {
+            if (!rawNewWord) {
+                return { ok: false, error: user.joker === 14 ? "Lütfen sorgulamak istediğiniz harfi girin." : "Lütfen geçerli bir kelime girin." };
             }
-            const cleanWord = payload.newWord.trim();
-            if (cleanWord.length === 0 || cleanWord.length > 30) {
-                return { ok: false, error: "Kelime 1 ile 30 karakter arasında olmalıdır." };
+            if (rawNewWord.length > 30) {
+                return { ok: false, error: "Kelime veya harf en fazla 30 karakter olabilir." };
             }
-            cleanPayload.newWord = cleanWord;
+            cleanPayload.newWord = rawNewWord;
+        } else if (rawNewWord) {
+            if (rawNewWord.length <= 30) {
+                cleanPayload.newWord = rawNewWord;
+            }
         }
 
         return { ok: true, data: cleanPayload };
