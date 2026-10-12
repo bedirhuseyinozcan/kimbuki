@@ -92,7 +92,10 @@ export default function GamePage() {
         (async () => {
             try {
                 const livekitIdentity = me.dbId || me.id;
-                const resp = await fetch(`/api/livekit?room=${code}&username=${livekitIdentity}`);
+                const gameToken = localStorage.getItem("gameToken");
+                const resp = await fetch(`/api/livekit?room=${code}&username=${encodeURIComponent(livekitIdentity)}`, {
+                    headers: gameToken ? { "Authorization": `Bearer ${gameToken}` } : {}
+                });
                 const data = await resp.json();
                 if (data.token) {
                     setToken(data.token);

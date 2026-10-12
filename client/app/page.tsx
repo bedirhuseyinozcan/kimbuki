@@ -707,13 +707,14 @@ export default function Home() {
         }}
       >
         <DialogTitle className="text-center font-black text-xl pt-6 pb-2">Şifremi Unuttum</DialogTitle>
-        <DialogContent className="p-6 space-y-5 text-center">
-            <p className="text-slate-400 text-sm mb-4">
+        <DialogContent className="p-6 space-y-4 text-center">
+            <p className="text-slate-400 text-sm">
                 Kayıt olduğunuz e-posta adresinizi girin. Size bir şifre sıfırlama bağlantısı göndereceğiz.
             </p>
             <TextField
                 placeholder="E-posta adresiniz"
                 type="email"
+                disabled
                 slotProps={{ 
                   input: {
                     style: { color: 'white', backgroundColor: '#1e293b', borderRadius: '0.75rem', fontWeight: 'bold' },
@@ -726,13 +727,16 @@ export default function Home() {
                 }}
                 fullWidth
             />
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 text-amber-300 text-xs text-left">
+                ⚠️ <strong>Bilgilendirme:</strong> Otomatik e-posta ile şifre sıfırlama servisi (Resend / SMTP) şu anda entegrasyon aşamasındadır. Şifrenizi unuttuysanız lütfen yönetici ile iletişime geçin.
+            </div>
             <Button
                 variant="contained"
                 fullWidth
-                onClick={() => { toast.success("Şifre sıfırlama maili gönderildi (Simülasyon)."); setForgotPasswordDialogOpen(false); }}
-                className="py-3 mt-4 rounded-xl bg-violet-600 hover:bg-violet-500 font-bold shadow-lg shadow-violet-500/20"
+                disabled
+                className="py-3 mt-2 rounded-xl bg-slate-700 text-slate-400 font-bold !cursor-not-allowed"
             >
-                Bağlantı Gönder
+                Geçici Olarak Devre Dışı
             </Button>
         </DialogContent>
       </Dialog>

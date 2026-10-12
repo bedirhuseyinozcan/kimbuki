@@ -190,7 +190,7 @@ export default function GameScene({
     };
 
     return (
-        <main className="min-h-screen text-white p-4 flex flex-col overflow-hidden relative">
+        <main className="min-h-[100dvh] h-[100dvh] text-white p-4 flex flex-col overflow-hidden relative">
             
             <div className="fixed inset-0 z-0 pointer-events-auto bg-slate-900">
                 <Scene3D 
