@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Avatar, IconButton, Chip, MenuItem } from "@mui/material";
+import { Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Avatar, IconButton, Chip, MenuItem, CircularProgress } from "@mui/material";
 import SendIcon from '@mui/icons-material/Send';
 import SkipNextIcon from '@mui/icons-material/SkipNext';
 import HelpIcon from '@mui/icons-material/Help';
@@ -58,6 +58,7 @@ export default function GameScene(props: GameSceneProps = {}) {
     const isMyTurn = ctx.isMyTurn;
     const currentTurnUser = ctx.currentTurnUser;
     const actions = ctx.actions;
+    const isSubmitting = ctx.isSubmitting;
 
     const chatInput = props.chatInput ?? ctx.chatInput;
     const setChatInput = props.setChatInput ?? ctx.setChatInput;
@@ -143,6 +144,12 @@ export default function GameScene(props: GameSceneProps = {}) {
             setGuessDialogOpen(true);
         }
     }, [isRussianRoulette]);
+
+    useEffect(() => {
+        if (gameState.activeQuestion) {
+            setQuestionDialogOpen(false);
+        }
+    }, [gameState.activeQuestion]);
 
     useEffect(() => {
         if (!gameState.turnEndsAt) { setTimeLeft(0); return; }
@@ -280,12 +287,8 @@ export default function GameScene(props: GameSceneProps = {}) {
             <div className="w-full h-full flex-1 relative z-10 mt-12 md:mt-10 px-2 pb-2 md:px-6 md:pb-0 pointer-events-none flex flex-col justify-end gap-2 md:flex-row md:gap-6">
                 
                 <Notepad
-                    notepad={notepad}
-                    setNotepad={setNotepad}
                     isNotepadOpen={isNotepadOpen}
                     onToggle={() => handleToggle('notepad')}
-                    me={me}
-                    gameState={gameState}
                 />
 
                 <div className="order-3 md:order-2 w-full md:flex-1 md:w-auto flex flex-col pointer-events-none z-20 md:justify-between">
@@ -304,34 +307,18 @@ export default function GameScene(props: GameSceneProps = {}) {
                     <div className="hidden md:block flex-1" />
                  
                     <ChatPanel
-                        chatHistory={gameState.chatHistory || []}
-                        chatInput={chatInput}
-                        setChatInput={setChatInput}
-                        handleChat={handleChat}
                         isChatOpen={isChatOpen}
                         onToggle={() => handleToggle('chat')}
-                        isPlayer={me?.status === 'playing'}
                     />
                 </div>
 
                 {me?.status === 'playing' && gameState.gameState === "PLAYING" && (
                     <ActionMenu
-                        isMyTurn={isMyTurn}
-                        currentRound={currentRound}
-                        isRussianRoulette={!!isRussianRoulette}
-                        hasActiveQuestion={!!gameState.activeQuestion}
-                        questionsAskedThisTurn={me?.questionsAskedThisTurn ?? 0}
-                        extraQuestions={me?.extraQuestions ?? 0}
-                        hasJoker={me?.joker !== undefined && me?.joker !== null}
-                        hasUsedJoker={!!me?.hasUsedJoker}
-                        hasObjectionUsed={!!gameState.hasObjectionUsed}
                         isActionsOpen={isActionsOpen}
                         onToggle={() => handleToggle('actions')}
                         onOpenQuestionDialog={() => setQuestionDialogOpen(true)}
                         onOpenGuessDialog={() => setGuessDialogOpen(true)}
-                        onSkip={handleSkip}
                         onOpenJokerDialog={() => setJokerDialogOpen(true)}
-                        onStartObjection={onStartObjection}
                     />
                 )}
             </div>
@@ -365,20 +352,27 @@ export default function GameScene(props: GameSceneProps = {}) {
                     </div>
                 </DialogContent>
                 <DialogActions className="p-4 pt-0 justify-between">
-                    <Button onClick={() => setJokerDialogOpen(false)} className="!text-slate-500">İptal</Button>
+                    <Button onClick={() => setJokerDialogOpen(false)} disabled={isSubmitting} className="!text-slate-500">İptal</Button>
                     <Button 
                         onClick={handleUseJokerSubmit} 
                         variant="contained" 
                         color="secondary" 
-                        className="px-6 font-bold" 
-                        disabled={(myJokerMeta?.requiresTarget && !jokerTarget) || (myJokerMeta?.requiresWord && !jokerWord)}
+                        className="px-6 font-bold flex items-center gap-2" 
+                        disabled={isSubmitting || (myJokerMeta?.requiresTarget && !jokerTarget) || (myJokerMeta?.requiresWord && !jokerWord)}
                     >
-                        Kullan
+                        {isSubmitting ? (
+                            <>
+                                <CircularProgress size={18} color="inherit" />
+                                <span>Kullanılıyor...</span>
+                            </>
+                        ) : (
+                            "Kullan"
+                        )}
                     </Button>
                 </DialogActions>
             </Dialog>
 
-            <Dialog open={guessDialogOpen || !!isRussianRoulette} onClose={() => !isRussianRoulette && setGuessDialogOpen(false)} slotProps={{ paper: { className: "!bg-white !text-slate-900 !rounded-2xl min-w-[300px]" } }}>
+            <Dialog open={guessDialogOpen || !!isRussianRoulette} onClose={() => !isRussianRoulette && !isSubmitting && setGuessDialogOpen(false)} slotProps={{ paper: { className: "!bg-white !text-slate-900 !rounded-2xl min-w-[300px]" } }}>
                 <DialogTitle className="text-center font-bold">
                     {isRussianRoulette ? "💀 RUS RULETİ: TAHMİN ETMEK ZORUNDASIN!" : "Kimin Nesin Sen?"}
                 </DialogTitle>
@@ -388,24 +382,59 @@ export default function GameScene(props: GameSceneProps = {}) {
                     </p>
                     <TextField 
                         autoFocus fullWidth label="Tahminin" variant="outlined" value={guessInput} onChange={e => setGuessInput(e.target.value)}
-                        onKeyDown={e => { if(e.key === 'Enter') handleGuess(); }}
+                        disabled={isSubmitting}
+                        onKeyDown={e => { if(e.key === 'Enter' && !isSubmitting) handleGuess(); }}
                     />
                 </DialogContent>
                 <DialogActions className="p-4 pt-0">
-                    {!isRussianRoulette && <Button onClick={() => setGuessDialogOpen(false)} className="!text-slate-500">İptal</Button>}
-                    <Button onClick={() => handleGuess()} variant="contained" color="success" className="px-6 font-bold">Dene</Button>
+                    {!isRussianRoulette && <Button onClick={() => setGuessDialogOpen(false)} disabled={isSubmitting} className="!text-slate-500">İptal</Button>}
+                    <Button 
+                        onClick={() => handleGuess()} 
+                        variant="contained" 
+                        color="success" 
+                        className="px-6 font-bold flex items-center gap-2"
+                        disabled={isSubmitting || !guessInput.trim()}
+                    >
+                        {isSubmitting ? (
+                            <>
+                                <CircularProgress size={18} color="inherit" />
+                                <span>Deneniyor...</span>
+                            </>
+                        ) : (
+                            "Dene"
+                        )}
+                    </Button>
                 </DialogActions>
             </Dialog>
 
-            <Dialog open={questionDialogOpen} onClose={() => setQuestionDialogOpen(false)} slotProps={{ paper: { className: "!bg-white !text-slate-900 !rounded-2xl min-w-[300px]" } }}>
+            <Dialog open={questionDialogOpen} onClose={() => !isSubmitting && setQuestionDialogOpen(false)} slotProps={{ paper: { className: "!bg-white !text-slate-900 !rounded-2xl min-w-[300px]" } }}>
                 <DialogTitle className="text-center font-bold">Herkes İçin Soru Sor</DialogTitle>
                 <DialogContent>
                     <p className="text-slate-600 mb-4 text-sm text-center">Diğer oyuncular bu soruya Evet, Hayır veya Bazen oyu verecek.</p>
-                    <TextField autoFocus fullWidth label="Sorunuz" slotProps={{ htmlInput: { maxLength: 120 } }} placeholder="Örn: Gerçek bir insan mıyım?" variant="outlined" value={questionInput} onChange={e => setQuestionInput(e.target.value)} onKeyDown={e => { if(e.key === 'Enter') { e.preventDefault(); if (!questionInput.trim()) return; onAskQuestion(questionInput); setQuestionDialogOpen(false); setQuestionInput(""); } }} />
+                    <TextField autoFocus fullWidth label="Sorunuz" slotProps={{ htmlInput: { maxLength: 120 } }} placeholder="Örn: Gerçek bir insan mıyım?" variant="outlined" value={questionInput} onChange={e => setQuestionInput(e.target.value)} disabled={isSubmitting} onKeyDown={e => { if(e.key === 'Enter' && !isSubmitting) { e.preventDefault(); if (!questionInput.trim()) return; onAskQuestion(questionInput); setQuestionInput(""); } }} />
                 </DialogContent>
                 <DialogActions className="p-4 pt-0">
-                    <Button onClick={() => setQuestionDialogOpen(false)} className="!text-slate-500">İptal</Button>
-                    <Button onClick={() => { onAskQuestion(questionInput); setQuestionDialogOpen(false); setQuestionInput(""); }} variant="contained" color="primary" className="px-6 font-bold">Sor</Button>
+                    <Button onClick={() => setQuestionDialogOpen(false)} disabled={isSubmitting} className="!text-slate-500">İptal</Button>
+                    <Button 
+                        onClick={() => { 
+                            if (!questionInput.trim() || isSubmitting) return; 
+                            onAskQuestion(questionInput); 
+                            setQuestionInput(""); 
+                        }} 
+                        variant="contained" 
+                        color="primary" 
+                        className="px-6 font-bold flex items-center gap-2"
+                        disabled={isSubmitting || !questionInput.trim()}
+                    >
+                        {isSubmitting ? (
+                            <>
+                                <CircularProgress size={18} color="inherit" />
+                                <span>Soruluyor...</span>
+                            </>
+                        ) : (
+                            "Sor"
+                        )}
+                    </Button>
                 </DialogActions>
             </Dialog>
             {gameState.objection && (
@@ -420,8 +449,12 @@ export default function GameScene(props: GameSceneProps = {}) {
                             <p className="text-green-400 font-bold text-xl animate-pulse">Oy verdin, diğerleri bekleniyor...</p>
                         ) : (
                             <div className="flex gap-4 justify-center">
-                                <Button variant="contained" color="error" size="medium" onClick={() => onVoteObjection(true)} className="flex-1 py-3 font-bold text-lg">EVET, ŞİKE VAR!</Button>
-                                <Button variant="outlined" color="inherit" size="medium" onClick={() => onVoteObjection(false)} className="flex-1 py-3 font-bold text-lg border-slate-600 text-slate-300">HAYIR, TEMİZ</Button>
+                                <Button variant="contained" color="error" size="medium" onClick={() => onVoteObjection(true)} disabled={isSubmitting} className="flex-1 py-3 font-bold text-lg">
+                                    {isSubmitting ? "Gönderiliyor..." : "EVET, ŞİKE VAR!"}
+                                </Button>
+                                <Button variant="outlined" color="inherit" size="medium" onClick={() => onVoteObjection(false)} disabled={isSubmitting} className="flex-1 py-3 font-bold text-lg border-slate-600 text-slate-300">
+                                    {isSubmitting ? "Gönderiliyor..." : "HAYIR, TEMİZ"}
+                                </Button>
                             </div>
                         )}
                         

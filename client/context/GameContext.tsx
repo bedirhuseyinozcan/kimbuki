@@ -33,7 +33,7 @@ export interface GameContextValue {
     taunts: { [key: string]: { type: string; id: number } };
     visualEffects: any[];
 
-   
+    isSubmitting: boolean;
     isConnected: boolean;
     isReconnecting: boolean;
     pingMs: number | null;

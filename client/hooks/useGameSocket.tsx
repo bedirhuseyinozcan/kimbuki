@@ -61,6 +61,31 @@ export function useGameSocket(
     const [pingMs, setPingMs] = useState<number | null>(null);
     const [connectionError, setConnectionError] = useState<string | null>(null);
 
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const submittingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    const markSubmitting = useCallback(() => {
+        setIsSubmitting(true);
+        if (submittingTimeoutRef.current) clearTimeout(submittingTimeoutRef.current);
+        submittingTimeoutRef.current = setTimeout(() => {
+            setIsSubmitting(false);
+        }, 6000);
+    }, []);
+
+    const clearSubmitting = useCallback(() => {
+        setIsSubmitting(false);
+        if (submittingTimeoutRef.current) {
+            clearTimeout(submittingTimeoutRef.current);
+            submittingTimeoutRef.current = null;
+        }
+    }, []);
+
+    useEffect(() => {
+        return () => {
+            if (submittingTimeoutRef.current) clearTimeout(submittingTimeoutRef.current);
+        };
+    }, []);
+
     const [wordInput, setWordInput] = useState("");
     const [chatInput, setChatInput] = useState("");
     const [guessDialogOpen, setGuessDialogOpen] = useState(false);
@@ -165,6 +190,8 @@ export function useGameSocket(
         });
 
         s.on("game:state", (state: GameState) => {
+            clearSubmitting();
+            setGuessDialogOpen(false);
             setGameState((prev) => ({
                 ...state,
                 chatHistory: prev?.chatHistory || state.chatHistory || [],
@@ -205,6 +232,7 @@ export function useGameSocket(
         });
 
         s.on("game:error", ({ message }: { message: string }) => {
+            clearSubmitting();
             toast.error(message);
         });
 
@@ -300,14 +328,16 @@ export function useGameSocket(
 
 
     const handleStart = useCallback((settings: GameStartSettings) => {
+        markSubmitting();
         socket?.emit("game:start", settings);
-    }, [socket]);
+    }, [socket, markSubmitting]);
 
     const handleSetWord = useCallback((customWord?: string) => {
         const word = (typeof customWord === "string" ? customWord : wordInputRef.current).trim();
         if (!word) return;
+        markSubmitting();
         socket?.emit("game:set_word", { word });
-    }, [socket]);
+    }, [socket, markSubmitting]);
 
     const handleChat = useCallback((e?: React.FormEvent, customMsg?: string) => {
         e?.preventDefault();
@@ -318,28 +348,32 @@ export function useGameSocket(
     }, [socket]);
 
     const handleSkip = useCallback(() => {
+        markSubmitting();
         socket?.emit("game:skip_turn");
-    }, [socket]);
+    }, [socket, markSubmitting]);
 
     const handleAskQuestion = useCallback((question: string) => {
+        markSubmitting();
         socket?.emit("game:ask_question", { question });
-    }, [socket]);
+    }, [socket, markSubmitting]);
 
     const handleSubmitVote = useCallback((vote: string) => {
+        markSubmitting();
         socket?.emit("game:submit_vote", { vote });
-    }, [socket]);
+    }, [socket, markSubmitting]);
 
     const handleGuess = useCallback((customGuess?: string) => {
         const guess = (typeof customGuess === "string" ? customGuess : guessInputRef.current).trim();
         if (!guess) return;
+        markSubmitting();
         socket?.emit("game:guess", { guess });
         setGuessInput("");
-        setGuessDialogOpen(false);
-    }, [socket]);
+    }, [socket, markSubmitting]);
 
     const handleUseJoker = useCallback((payload: any) => {
+        markSubmitting();
         socket?.emit("game:use_joker", payload);
-    }, [socket]);
+    }, [socket, markSubmitting]);
 
     const toggleVoice = useCallback(async (enabled: boolean) => {
         socket?.emit("game:toggle_voice", { enabled });
@@ -362,8 +396,9 @@ export function useGameSocket(
     }, [socket]);
 
     const handlePlaceBet = useCallback((targetId: string) => {
+        markSubmitting();
         socket?.emit("game:place_bet", { targetId });
-    }, [socket]);
+    }, [socket, markSubmitting]);
 
     const handleEditWord = useCallback(() => {
         socket?.emit("game:edit_word");
@@ -374,16 +409,19 @@ export function useGameSocket(
     }, [socket]);
 
     const handleSelectJoker = useCallback((jokerId: number) => {
+        markSubmitting();
         socket?.emit("game:select_joker", { jokerId });
-    }, [socket]);
+    }, [socket, markSubmitting]);
 
     const handleStartObjection = useCallback(() => {
+        markSubmitting();
         socket?.emit("game:start_objection");
-    }, [socket]);
+    }, [socket, markSubmitting]);
 
     const handleVoteObjection = useCallback((vote: boolean) => {
+        markSubmitting();
         socket?.emit("game:vote_objection", { vote });
-    }, [socket]);
+    }, [socket, markSubmitting]);
 
     const handleHeadRotation = useCallback((pitch: number, yaw: number) => {
         socket?.emit("game:head_rotation", { pitch, yaw });
@@ -487,6 +525,7 @@ export function useGameSocket(
         isReconnecting,
         pingMs,
         connectionError,
+        isSubmitting,
 
         // Inputs
         wordInput,
