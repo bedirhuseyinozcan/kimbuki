@@ -59,6 +59,7 @@ export default function GameScene(props: GameSceneProps = {}) {
     const currentTurnUser = ctx.currentTurnUser;
     const actions = ctx.actions;
     const isSubmitting = ctx.isSubmitting;
+    const timeOffset = ctx.timeOffset ?? 0;
 
     const chatInput = props.chatInput ?? ctx.chatInput;
     const setChatInput = props.setChatInput ?? ctx.setChatInput;
@@ -160,30 +161,30 @@ export default function GameScene(props: GameSceneProps = {}) {
 
     useEffect(() => {
         if (!gameState.turnEndsAt) { setTimeLeft(0); return; }
-        if (gameState.activeQuestion) {
-            const remaining = Math.max(0, Math.floor((gameState.turnEndsAt - Date.now()) / 1000));
-            setTimeLeft(remaining);
-            return; 
-        }
         const updateTimer = () => {
-            const remaining = Math.max(0, Math.floor((gameState.turnEndsAt! - Date.now()) / 1000));
+            const serverTimeNow = Date.now() + timeOffset;
+            const remaining = Math.max(0, Math.floor((gameState.turnEndsAt! - serverTimeNow) / 1000));
             setTimeLeft(remaining);
         };
         updateTimer();
+        if (gameState.activeQuestion) {
+            return; 
+        }
         const interval = setInterval(updateTimer, 500);
         return () => clearInterval(interval);
-    }, [gameState.turnEndsAt, gameState.activeQuestion]);
+    }, [gameState.turnEndsAt, gameState.activeQuestion, timeOffset]);
 
     useEffect(() => {
         if (!gameState.activeQuestion?.endTime) { setQuestionTimeLeft(0); return; }
         const updateQTimer = () => {
-            const remaining = Math.max(0, Math.floor((gameState.activeQuestion!.endTime! - Date.now()) / 1000));
+            const serverTimeNow = Date.now() + timeOffset;
+            const remaining = Math.max(0, Math.floor((gameState.activeQuestion!.endTime! - serverTimeNow) / 1000));
             setQuestionTimeLeft(remaining);
         };
         updateQTimer();
         const interval = setInterval(updateQTimer, 500);
         return () => clearInterval(interval);
-    }, [gameState.activeQuestion?.endTime]);
+    }, [gameState.activeQuestion?.endTime, timeOffset]);
 
     const previousTurnRef = useRef<string | null>(null);
     const previousWinnersRef = useRef<number>(0);

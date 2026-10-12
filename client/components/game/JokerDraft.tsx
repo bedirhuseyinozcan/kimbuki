@@ -7,21 +7,24 @@ interface JokerDraftProps {
     gameState: GameState;
     me: User;
     onSelectJoker: (jokerId: number) => void;
+    timeOffset?: number;
 }
 
-export default function JokerDraft({ gameState, me, onSelectJoker }: JokerDraftProps) {
+export default function JokerDraft({ gameState, me, onSelectJoker, timeOffset = 0 }: JokerDraftProps) {
     const [timeLeft, setTimeLeft] = useState(15);
     const [selected, setSelected] = useState<number | null>(null);
 
     useEffect(() => {
         if (!gameState.jokerDraftEndTime) return;
-        const interval = setInterval(() => {
-            const left = Math.max(0, Math.floor(((gameState.jokerDraftEndTime || 0) - Date.now()) / 1000));
+        const updateTimer = () => {
+            const serverTimeNow = Date.now() + timeOffset;
+            const left = Math.max(0, Math.floor(((gameState.jokerDraftEndTime || 0) - serverTimeNow) / 1000));
             setTimeLeft(left);
-            if (left <= 0) clearInterval(interval);
-        }, 1000);
+        };
+        updateTimer();
+        const interval = setInterval(updateTimer, 500);
         return () => clearInterval(interval);
-    }, [gameState.jokerDraftEndTime]);
+    }, [gameState.jokerDraftEndTime, timeOffset]);
 
     const handleSelect = (jokerId: number) => {
         if (selected !== null || me?.hasDrafted) return;

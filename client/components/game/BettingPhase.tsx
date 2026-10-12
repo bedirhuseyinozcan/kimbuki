@@ -7,23 +7,26 @@ interface BettingPhaseProps {
     gameState: GameState;
     me: User;
     onPlaceBet: (targetId: string) => void;
+    timeOffset?: number;
 }
 
 export default function BettingPhase({
-    gameState, me, onPlaceBet
+    gameState, me, onPlaceBet, timeOffset = 0
 }: BettingPhaseProps) {
     const [timeLeft, setTimeLeft] = useState(10);
     const [selectedId, setSelectedId] = useState<string | null>(null);
 
     useEffect(() => {
         if (!gameState.bettingEndTime) return;
-        const interval = setInterval(() => {
-            const left = Math.max(0, Math.floor(((gameState.bettingEndTime || 0) - Date.now()) / 1000));
+        const updateTimer = () => {
+            const serverTimeNow = Date.now() + timeOffset;
+            const left = Math.max(0, Math.floor(((gameState.bettingEndTime || 0) - serverTimeNow) / 1000));
             setTimeLeft(left);
-            if (left <= 0) clearInterval(interval);
-        }, 1000);
+        };
+        updateTimer();
+        const interval = setInterval(updateTimer, 500);
         return () => clearInterval(interval);
-    }, [gameState.bettingEndTime]);
+    }, [gameState.bettingEndTime, timeOffset]);
 
     const handleBet = (id: string) => {
         if (selectedId) return;
