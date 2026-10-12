@@ -392,28 +392,44 @@ const payloadValidator = {
             return { ok: false, error: "Geçersiz joker parametresi." };
         }
 
+        const targetRequiredJokers = [3, 4, 5, 7, 10, 13, 15, 16];
+        const wordRequiredJokers = [4, 14];
+
         const cleanPayload = {};
-        if (payload.targetId !== undefined && payload.targetId !== null) {
-            if (typeof payload.targetId !== "string" || !payload.targetId.trim()) {
-                return { ok: false, error: "Geçersiz hedef oyuncu formatı." };
+
+        const rawTargetId = typeof payload.targetId === "string" ? payload.targetId.trim() : "";
+        if (targetRequiredJokers.includes(user.joker)) {
+            if (!rawTargetId) {
+                return { ok: false, error: "Lütfen bir hedef oyuncu seçin." };
             }
-            const cleanTargetId = payload.targetId.trim();
-            const target = room.users.find(u => u.id === cleanTargetId && !u.disconnected && u.status === 'playing');
+            if (rawTargetId === user.id) {
+                return { ok: false, error: "Bu jokeri kendi üzerinizde kullanamazsınız!" };
+            }
+            const target = room.users.find(u => u.id === rawTargetId && !u.disconnected && u.status === 'playing');
             if (!target) {
                 return { ok: false, error: "Hedef oyuncu bulunamadı veya artık oyunda değil." };
             }
             cleanPayload.targetId = target.id;
+        } else if (rawTargetId) {
+            const target = room.users.find(u => u.id === rawTargetId && !u.disconnected && u.status === 'playing');
+            if (target) {
+                cleanPayload.targetId = target.id;
+            }
         }
 
-        if (payload.newWord !== undefined && payload.newWord !== null) {
-            if (typeof payload.newWord !== "string") {
-                return { ok: false, error: "Yeni kelime metin formatında olmalıdır." };
+        const rawNewWord = typeof payload.newWord === "string" ? payload.newWord.trim() : "";
+        if (wordRequiredJokers.includes(user.joker)) {
+            if (!rawNewWord) {
+                return { ok: false, error: user.joker === 14 ? "Lütfen sorgulamak istediğiniz harfi girin." : "Lütfen geçerli bir kelime girin." };
             }
-            const cleanWord = payload.newWord.trim();
-            if (cleanWord.length === 0 || cleanWord.length > 30) {
-                return { ok: false, error: "Kelime 1 ile 30 karakter arasında olmalıdır." };
+            if (rawNewWord.length > 30) {
+                return { ok: false, error: "Kelime veya harf en fazla 30 karakter olabilir." };
             }
-            cleanPayload.newWord = cleanWord;
+            cleanPayload.newWord = rawNewWord;
+        } else if (rawNewWord) {
+            if (rawNewWord.length <= 30) {
+                cleanPayload.newWord = rawNewWord;
+            }
         }
 
         return { ok: true, data: cleanPayload };

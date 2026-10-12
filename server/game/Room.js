@@ -824,6 +824,7 @@ class Room {
         this.users.forEach(user => {
             const usersPayload = this.users.map(u => ({
                 id: u.id,
+                dbId: u.dbId,
                 name: u.name,
                 isHost: u.isHost,
                 avatar: u.avatar,

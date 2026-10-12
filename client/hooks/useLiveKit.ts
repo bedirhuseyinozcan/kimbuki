@@ -38,7 +38,13 @@ export function useLiveKit(
                 );
 
                 if (!resp.ok) {
-                    throw new Error(`LiveKit token alma hatası: ${resp.statusText}`);
+                    const errData = await resp.json().catch(() => null);
+                    const errMsg = errData?.error || `LiveKit token alma hatası: ${resp.statusText}`;
+                    if (!isCancelled) {
+                        console.warn("[useLiveKit]", errMsg);
+                        setError(errMsg);
+                    }
+                    return;
                 }
 
                 const data = await resp.json();
