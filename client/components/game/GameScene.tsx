@@ -1,16 +1,11 @@
 import React, { useEffect, useState, useRef } from "react";
-import { Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Avatar, IconButton, Chip, MenuItem, CircularProgress } from "@mui/material";
-import SendIcon from '@mui/icons-material/Send';
-import SkipNextIcon from '@mui/icons-material/SkipNext';
-import HelpIcon from '@mui/icons-material/Help';
-import PersonIcon from '@mui/icons-material/Person';
-import QuestionAnswerIcon from '@mui/icons-material/QuestionAnswer';
+import { Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, IconButton, MenuItem, CircularProgress } from "@mui/material";
 import MicIcon from '@mui/icons-material/Mic';
 import SettingsIcon from '@mui/icons-material/Settings';
 import InfoIcon from '@mui/icons-material/Info';
 import AudioSettingsDialog from './AudioSettingsDialog';
 import MicOffIcon from '@mui/icons-material/MicOff';
-import { User, GameState, AVATARS, NAME_COLORS, JOKERS } from "./types";
+import { User, GameState, JOKERS } from "./types";
 import { playTurnSound, playWinSound } from "@/utils/audio";
 import confetti from "canvas-confetti";
 import { motion, AnimatePresence } from "framer-motion";
@@ -197,7 +192,7 @@ export default function GameScene(props: GameSceneProps = {}) {
 
         if (gameState.winners.length > previousWinnersRef.current) {
             playWinSound();
-            confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 }, colors: ['#22c55e', '#3b82f6', '#a855f7'] });
+            confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 }, colors: ['#00E5A3', '#FFBE0B', '#FF5938'] });
             previousWinnersRef.current = gameState.winners.length;
         }
     }, [gameState.currentTurnUserId, gameState.winners, myId]);
@@ -225,17 +220,11 @@ export default function GameScene(props: GameSceneProps = {}) {
         }
     }, [gameState?.chatHistory]);
 
-    const handleAsk = () => {
-        if (!questionInput.trim()) return;
-        onAskQuestion(questionInput);
-        setQuestionInput("");
-        setQuestionDialogOpen(false);
-    };
-
     return (
-        <main className="min-h-[100dvh] h-[100dvh] text-white p-4 flex flex-col overflow-hidden relative">
+        <main className="min-h-[100dvh] h-[100dvh] text-[#F6F5F2] p-3 md:p-4 flex flex-col overflow-hidden relative">
             
-            <div className="fixed inset-0 z-0 pointer-events-auto bg-slate-900">
+            {/* 3D Canvas Stage */}
+            <div className="fixed inset-0 z-0 pointer-events-auto bg-[#111318]">
                 <Scene3D 
                     gameState={gameState} myId={myId} activeBubbles={activeBubbles} 
                     headRotations={headRotations} onHeadRotation={onHeadRotation} taunts={taunts}
@@ -243,56 +232,119 @@ export default function GameScene(props: GameSceneProps = {}) {
                 />
             </div>
             
-            <div className="absolute left-2 md:left-[calc(25%+2.5rem)] xl:left-[450px] top-[35%] md:top-1/2 -translate-y-1/2 z-20 flex flex-col gap-2 md:gap-4 pointer-events-auto transition-all duration-300">
-                <IconButton onClick={() => handleTauntClick('fire')} disabled={tauntCooldown} className={`bg-slate-800/90 backdrop-blur-md border-2 border-red-500/60 hover:bg-red-500/30 shadow-[0_0_15px_rgba(239,68,68,0.3)] p-2 md:p-3 transition-all hover:scale-110 ${tauntCooldown ? 'opacity-50' : ''}`} title="Sinirli (Alev)"><span className="text-3xl md:text-4xl drop-shadow-lg">🔥</span></IconButton>
-                <IconButton onClick={() => handleTauntClick('party')} disabled={tauntCooldown} className={`bg-slate-800/90 backdrop-blur-md border-2 border-blue-500/60 hover:bg-blue-500/30 shadow-[0_0_15px_rgba(59,130,246,0.3)] p-2 md:p-3 transition-all hover:scale-110 ${tauntCooldown ? 'opacity-50' : ''}`} title="Sevinç (Havai Fişek)"><span className="text-3xl md:text-4xl drop-shadow-lg">🎉</span></IconButton>
-                <IconButton onClick={() => handleTauntClick('laugh')} disabled={tauntCooldown} className={`bg-slate-800/90 backdrop-blur-md border-2 border-yellow-500/60 hover:bg-yellow-500/30 shadow-[0_0_15px_rgba(234,179,8,0.3)] p-2 md:p-3 transition-all hover:scale-110 ${tauntCooldown ? 'opacity-50' : ''}`} title="Gülme"><span className="text-3xl md:text-4xl drop-shadow-lg">😂</span></IconButton>
-                <IconButton onClick={() => handleTauntClick('cry')} disabled={tauntCooldown} className={`bg-slate-800/90 backdrop-blur-md border-2 border-cyan-500/60 hover:bg-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.3)] p-2 md:p-3 transition-all hover:scale-110 ${tauntCooldown ? 'opacity-50' : ''}`} title="Ağlama"><span className="text-3xl md:text-4xl drop-shadow-lg">😭</span></IconButton>
+            {/* Tactile Taunt Keypad (Teenage Engineering OP-1 style buttons) */}
+            <div className="absolute left-2 md:left-[calc(25%+2rem)] xl:left-[415px] top-[35%] md:top-1/2 -translate-y-1/2 z-20 flex flex-col gap-2 pointer-events-auto">
+                {[
+                    { type: 'fire', emoji: '🔥', title: 'Sinirli (Alev)', border: 'hover:border-[#FF5938]' },
+                    { type: 'party', emoji: '🎉', title: 'Kutlama', border: 'hover:border-[#00E5A3]' },
+                    { type: 'laugh', emoji: '😂', title: 'Kahkaha', border: 'hover:border-[#FFBE0B]' },
+                    { type: 'cry', emoji: '😭', title: 'Gözyaşı', border: 'hover:border-[#38BDF8]' }
+                ].map(t => (
+                    <IconButton 
+                        key={t.type}
+                        onClick={() => handleTauntClick(t.type)} 
+                        disabled={tauntCooldown} 
+                        title={t.title}
+                        className={`!bg-[#1A1D24] !border-2 !border-[#3E4659] ${t.border} !rounded-[4px] !shadow-[3px_3px_0px_#090A0D] !p-2 md:!p-2.5 transition-transform active:translate-y-0.5 ${tauntCooldown ? 'opacity-40' : 'hover:-translate-y-0.5'}`}
+                    >
+                        <span className="text-2xl md:text-3xl leading-none">{t.emoji}</span>
+                    </IconButton>
+                ))}
             </div>
             
-            <div className="absolute bottom-6 right-6 z-20 pointer-events-none flex flex-col items-end">
-                <div className="flex gap-1 bg-black/60 px-4 py-2 rounded-full border border-slate-700/50">
-                    {[...Array(3)].map((_, i) => (
-                        <span key={i} className='drop-shadow-md text-lg'>{i < (me?.lives ?? 3) ? '❤️' : '🖤'}</span>
-                    ))}
+            {/* Bottom-Right Lives Counter Badge */}
+            <div className="absolute bottom-4 right-4 z-20 pointer-events-none flex flex-col items-end">
+                <div className="flex items-center gap-2 bg-[#1A1D24] px-3.5 py-1.5 rounded-[4px] border-2 border-[#3E4659] shadow-[3px_3px_0px_#090A0D]">
+                    <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-[#A0A8B8]">CAN</span>
+                    <div className="flex gap-1">
+                        {[...Array(3)].map((_, i) => (
+                            <span key={i} className="text-sm">{i < (me?.lives ?? 3) ? '❤️' : '🖤'}</span>
+                        ))}
+                    </div>
                 </div>
             </div>
 
-            <div className="absolute top-4 inset-x-2 md:inset-x-4 z-20 pointer-events-none flex justify-between items-start gap-2">
+            {/* Top HUD Header Bar */}
+            <div className="absolute top-3 inset-x-2 md:inset-x-4 z-20 pointer-events-none flex justify-between items-start gap-2">
                 <div className="flex flex-col gap-2 pointer-events-auto items-start shrink min-w-0">
-                    <div className="md:hidden flex items-center gap-2 bg-slate-900/80 backdrop-blur-md border border-slate-700/50 rounded-full pr-4 p-1 shadow-2xl max-w-full">
-                        <div className={`shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-lg font-black ${isMyTurn ? 'bg-green-500 text-white animate-pulse shadow-[0_0_15px_rgba(34,197,94,0.5)]' : 'bg-slate-800 text-slate-300 border-2 border-slate-600'}`}>
-                            {timeLeft}
+                    {/* Mobile Turn HUD */}
+                    <div className="md:hidden flex items-center gap-2.5 bg-[#1A1D24] border-2 border-[#3E4659] rounded-[4px] pr-3.5 p-1 shadow-[3px_3px_0px_#090A0D] max-w-full">
+                        <div className={`shrink-0 w-9 h-9 rounded-[2px] flex items-center justify-center font-mono text-sm font-bold border border-[#090A0D] tnum ${
+                            isMyTurn ? 'bg-[#00E5A3] text-[#111318]' : 'bg-[#111318] text-[#FFBE0B]'
+                        }`}>
+                            {timeLeft}s
                         </div>
                         <div className="flex flex-col min-w-0">
-                            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-none">Sıra Kimde</span>
-                            <span className={`text-sm font-black leading-tight truncate ${isMyTurn ? 'text-green-400' : 'text-slate-200'}`}>
+                            <span className="font-mono text-[9px] text-[#A0A8B8] font-bold uppercase tracking-widest leading-none">
+                                SIRA KİMDE
+                            </span>
+                            <span className={`font-display text-xs font-bold uppercase leading-tight truncate mt-0.5 ${
+                                isMyTurn ? 'text-[#00E5A3]' : 'text-[#F6F5F2]'
+                            }`}>
                                 {isMyTurn ? "SENİN SIRAN!" : `${currentTurnUser?.name}`}
                             </span>
                         </div>
                     </div>
 
-                    <div className="flex flex-wrap gap-2">
-                        <Chip label={`Tur: ${currentRound}`} color="primary" className="font-bold border border-slate-700 bg-slate-800/80 backdrop-blur-md" />
-                        {gameState.category && <Chip label={`Kategori: ${gameState.category}`} color="secondary" className="font-bold border border-slate-700 bg-slate-800/80 backdrop-blur-md max-w-full" />}
-                        {gameState.isBettingEnabled && <Chip label={`💰 BAHİSLİ`} className="font-bold border border-yellow-500/50 bg-yellow-900/80 text-yellow-400 backdrop-blur-md" />}
+                    {/* Match Telemetry Badges */}
+                    <div className="flex flex-wrap gap-1.5">
+                        <span className="swiss-badge !bg-[#1A1D24] !border-[#3E4659] !text-[#F6F5F2] shadow-[2px_2px_0px_#090A0D] tnum">
+                            TUR #{currentRound}
+                        </span>
+                        {gameState.category && (
+                            <span className="swiss-badge !bg-[#1A1D24] !border-[#FFBE0B] !text-[#FFBE0B] shadow-[2px_2px_0px_#090A0D]">
+                                {gameState.category}
+                            </span>
+                        )}
+                        {gameState.isBettingEnabled && (
+                            <span className="swiss-badge !bg-[#FFBE0B] !border-[#090A0D] !text-[#111318] shadow-[2px_2px_0px_#090A0D]">
+                                💰 BAHİSLİ
+                            </span>
+                        )}
                     </div>
                 </div>
 
-                <div className="flex gap-1 md:gap-3 items-center pointer-events-auto shrink-0">
-                    <button onClick={() => setJokerGuideOpen(true)} className="flex items-center justify-center p-1.5 rounded-full border border-fuchsia-500/50 bg-fuchsia-500/20 text-fuchsia-300 hover:bg-fuchsia-500/40 backdrop-blur-md transition-colors shadow-[0_0_10px_rgba(217,70,239,0.3)]"><InfoIcon fontSize="small" /></button>
-                    <button onClick={() => onToggleVoice(!me?.isVoiceEnabled)} className={`flex items-center justify-center p-1.5 rounded-full border backdrop-blur-md transition-colors ${me?.isVoiceEnabled ? 'border-green-500/80 bg-green-500/40 text-white hover:bg-green-500/60' : 'border-red-500/80 bg-red-500/40 text-white hover:bg-red-500/60'}`}>
+                {/* Top-Right Hardware Controls */}
+                <div className="flex gap-1.5 md:gap-2 items-center pointer-events-auto shrink-0">
+                    <button 
+                        onClick={() => setJokerGuideOpen(true)} 
+                        title="Joker Rehberi"
+                        className="flex items-center justify-center w-9 h-9 rounded-[4px] border-2 border-[#090A0D] bg-[#FF5938] text-white hover:bg-[#FF7457] shadow-[2px_2px_0px_#090A0D] transition-colors cursor-pointer"
+                    >
+                        <InfoIcon fontSize="small" />
+                    </button>
+                    <button 
+                        onClick={() => onToggleVoice(!me?.isVoiceEnabled)} 
+                        title={me?.isVoiceEnabled ? "Mikrofonu Kapat" : "Mikrofonu Aç"}
+                        className={`flex items-center justify-center w-9 h-9 rounded-[4px] border-2 border-[#090A0D] shadow-[2px_2px_0px_#090A0D] transition-colors cursor-pointer ${
+                            me?.isVoiceEnabled 
+                                ? 'bg-[#00E5A3] text-[#111318]' 
+                                : 'bg-[#222630] border-[#3E4659] text-[#FF334B]'
+                        }`}
+                    >
                         {me?.isVoiceEnabled ? <MicIcon fontSize="small" /> : <MicOffIcon fontSize="small" />}
                     </button>
-                    <button onClick={() => setAudioSettingsOpen(true)} className="flex items-center justify-center p-1.5 rounded-full border border-slate-600/80 bg-slate-700/40 text-slate-300 hover:bg-slate-600/60 backdrop-blur-md transition-colors"><SettingsIcon fontSize="small" /></button>
-                    <Button variant="outlined" color="inherit" size="small" onClick={onLeaveRoom} className="border-slate-700 text-slate-400 bg-slate-800/80 backdrop-blur-md text-[10px] md:text-xs py-1 px-2 md:px-3 hover:bg-red-500/20 hover:text-red-400 min-w-0">
-                        <span className="hidden md:inline">Odadan Ayrıl</span>
-                        <span className="md:hidden">Ayrıl</span>
+                    <button 
+                        onClick={() => setAudioSettingsOpen(true)} 
+                        title="Ses Ayarları"
+                        className="flex items-center justify-center w-9 h-9 rounded-[4px] border-2 border-[#3E4659] bg-[#1A1D24] text-[#F6F5F2] hover:border-[#FFBE0B] shadow-[2px_2px_0px_#090A0D] transition-colors cursor-pointer"
+                    >
+                        <SettingsIcon fontSize="small" />
+                    </button>
+                    <Button 
+                        variant="outlined" 
+                        size="small" 
+                        onClick={onLeaveRoom} 
+                        className="swiss-btn-secondary !py-1.5 !px-3 !text-xs !min-w-0 !h-9"
+                    >
+                        <span className="hidden md:inline">ODADAN AYRIL</span>
+                        <span className="md:hidden">AYRIL</span>
                     </Button>
                 </div>
             </div>
 
-            <div className="w-full h-full flex-1 relative z-10 mt-12 md:mt-10 px-2 pb-2 md:px-6 md:pb-0 pointer-events-none flex flex-col justify-end gap-2 md:flex-row md:gap-6">
+            {/* 3-Column Swiss HUD Workspace */}
+            <div className="w-full h-full flex-1 relative z-10 mt-14 md:mt-12 px-1 pb-2 md:px-4 md:pb-0 pointer-events-none flex flex-col justify-end gap-2.5 md:flex-row md:gap-5">
                 
                 <Notepad
                     isNotepadOpen={isNotepadOpen}
@@ -300,15 +352,23 @@ export default function GameScene(props: GameSceneProps = {}) {
                 />
 
                 <div className="order-3 md:order-2 w-full md:flex-1 md:w-auto flex flex-col pointer-events-none z-20 md:justify-between">
-                    <div className="hidden md:flex justify-between items-center bg-slate-900/80 backdrop-blur-md border border-slate-700/50 p-4 rounded-2xl relative z-10 pointer-events-auto shadow-2xl">
-                        <div>
-                            <p className="text-xs text-slate-400 uppercase tracking-widest">Sıra Kimde</p>
-                            <p className={`text-xl font-bold ${isMyTurn ? 'text-green-400 animate-pulse' : 'text-white'}`}>
-                                {isMyTurn ? "SENİN SIRAN!" : `${currentTurnUser?.name} soruyor...`}
-                            </p>
+                    {/* Desktop Center Scoreboard Header */}
+                    <div className="hidden md:flex justify-between items-center swiss-panel px-5 py-3.5 relative z-10 pointer-events-auto">
+                        <div className="flex items-center gap-3">
+                            <span className={`w-3 h-3 rounded-none ${isMyTurn ? 'bg-[#00E5A3] animate-pulse' : 'bg-[#FFBE0B]'}`} />
+                            <div>
+                                <p className="swiss-label">AKTİF SORGULAMA SIRASI</p>
+                                <p className={`font-display text-xl font-bold uppercase tracking-wide ${isMyTurn ? 'text-[#00E5A3]' : 'text-[#F6F5F2]'}`}>
+                                    {isMyTurn ? "SENİN SIRAN — HAMLE YAP!" : `${currentTurnUser?.name} SORUYOR...`}
+                                </p>
+                            </div>
                         </div>
-                        <div className={`text-3xl font-black rounded-xl px-4 py-2 border-2 ${isMyTurn ? 'border-green-500 text-green-400 bg-green-500/10' : 'border-slate-600 text-slate-300'}`}>
-                            {timeLeft}s
+                        <div className={`font-mono text-2xl font-bold rounded-[4px] px-4 py-1.5 border-2 tnum ${
+                            isMyTurn 
+                                ? 'border-[#090A0D] bg-[#00E5A3] text-[#111318] shadow-[2px_2px_0px_#090A0D]' 
+                                : 'border-[#3E4659] bg-[#111318] text-[#FFBE0B]'
+                        }`}>
+                            {String(timeLeft).padStart(2, '0')}s
                         </div>
                     </div>
                    
@@ -331,99 +391,216 @@ export default function GameScene(props: GameSceneProps = {}) {
                 )}
             </div>
 
-            <Dialog open={jokerDialogOpen} onClose={() => { if (!isSubmitting) { setJokerDialogOpen(false); setJokerTarget(""); setJokerWord(""); } }} slotProps={{ paper: { className: "!bg-white !text-slate-900 !rounded-2xl min-w-[300px]" } }}>
-                <DialogTitle className="text-center font-bold text-fuchsia-600">🃏 {myJokerMeta?.name || 'Joker'}</DialogTitle>
-                <DialogContent>
-                    <p className="text-center text-slate-600 mt-2 font-medium">{myJokerMeta?.desc}</p>
+            {/* Joker Usage Modal */}
+            <Dialog 
+                open={jokerDialogOpen} 
+                onClose={() => { if (!isSubmitting) { setJokerDialogOpen(false); setJokerTarget(""); setJokerWord(""); } }} 
+                slotProps={{ 
+                    paper: { 
+                        className: "!bg-[#1A1D24] !text-[#F6F5F2] !rounded-[6px] !border-2 !border-[#FF5938] !shadow-[8px_8px_0px_#090A0D] min-w-[320px] sm:min-w-[400px]" 
+                    } 
+                }}
+            >
+                <DialogTitle className="font-display font-bold uppercase tracking-wider text-xl text-[#FF5938] border-b-2 border-[#2D3342] py-4 px-6">
+                    🃏 {myJokerMeta?.name || 'JOKER KULLAN'}
+                </DialogTitle>
+                <DialogContent className="p-6">
+                    <p className="text-[#A0A8B8] text-sm mt-2 leading-relaxed">{myJokerMeta?.desc}</p>
                     
                     <div className="flex flex-col gap-4 mt-6">
                         {myJokerMeta?.requiresTarget && (
-                            <TextField select label="Oyuncu Seç" value={jokerTarget} onChange={e => setJokerTarget(e.target.value)} disabled={isSubmitting}>
-                                {gameState.users.filter((u:User) => u.id !== myId && u.status === 'playing').map((u:User) => (
-                                    <MenuItem key={u.id} value={u.id}>{u.name}</MenuItem>
-                                ))}
-                            </TextField>
+                            <div>
+                                <label className="swiss-label block mb-2">HEDEF OYUNCU SEÇ</label>
+                                <TextField 
+                                    select 
+                                    fullWidth
+                                    size="small"
+                                    value={jokerTarget} 
+                                    onChange={e => setJokerTarget(e.target.value)} 
+                                    disabled={isSubmitting}
+                                    sx={{
+                                        '& .MuiOutlinedInput-root': {
+                                            backgroundColor: '#111318',
+                                            color: '#F6F5F2',
+                                            borderRadius: '4px',
+                                            '& fieldset': { borderColor: '#2D3342', borderWidth: '2px' },
+                                        },
+                                        '.MuiSvgIcon-root': { fill: '#F6F5F2' }
+                                    }}
+                                >
+                                    {gameState.users.filter((u:User) => u.id !== myId && u.status === 'playing').map((u:User) => (
+                                        <MenuItem key={u.id} value={u.id}>{u.name}</MenuItem>
+                                    ))}
+                                </TextField>
+                            </div>
                         )}
                         {myJokerMeta?.requiresWord && (
-                            <TextField 
-                                label={myJokerMeta.id === 14 ? "Harf Girin" : "Yeni Kelime"} 
-                                value={jokerWord} 
-                                disabled={isSubmitting}
-                                onChange={e => {
-                                    if (myJokerMeta.id === 14) {
-                                        setJokerWord(e.target.value.substring(0, 1));
-                                    } else {
-                                        setJokerWord(e.target.value);
-                                    }
-                                }} 
-                            />
+                            <div>
+                                <label className="swiss-label block mb-2">
+                                    {myJokerMeta.id === 14 ? "SORGULANACAK HARF" : "YENİ KELİME"}
+                                </label>
+                                <TextField 
+                                    fullWidth
+                                    size="small"
+                                    placeholder={myJokerMeta.id === 14 ? "Tek bir harf girin..." : "Yeni kelimeyi yazın..."} 
+                                    value={jokerWord} 
+                                    disabled={isSubmitting}
+                                    onChange={e => {
+                                        if (myJokerMeta.id === 14) {
+                                            setJokerWord(e.target.value.substring(0, 1));
+                                        } else {
+                                            setJokerWord(e.target.value);
+                                        }
+                                    }}
+                                    sx={{
+                                        input: { color: '#F6F5F2', fontWeight: 700 },
+                                        '& .MuiOutlinedInput-root': {
+                                            backgroundColor: '#111318',
+                                            borderRadius: '4px',
+                                            '& fieldset': { borderColor: '#2D3342', borderWidth: '2px' },
+                                        }
+                                    }}
+                                />
+                            </div>
                         )}
                     </div>
                 </DialogContent>
-                <DialogActions className="p-4 pt-0 justify-between">
-                    <Button onClick={() => { setJokerDialogOpen(false); setJokerTarget(""); setJokerWord(""); }} disabled={isSubmitting} className="!text-slate-500">İptal</Button>
+                <DialogActions className="px-6 py-4 border-t-2 border-[#2D3342] bg-[#111318] justify-between">
+                    <Button 
+                        onClick={() => { setJokerDialogOpen(false); setJokerTarget(""); setJokerWord(""); }} 
+                        disabled={isSubmitting} 
+                        className="swiss-btn-secondary !px-5 !py-2"
+                    >
+                        İPTAL
+                    </Button>
                     <Button 
                         onClick={handleUseJokerSubmit} 
                         variant="contained" 
-                        color="secondary" 
-                        className="px-6 font-bold flex items-center gap-2" 
+                        className="swiss-btn-coral !px-6 !py-2" 
                         disabled={isSubmitting || (Boolean(myJokerMeta?.requiresTarget) && !jokerTarget) || (Boolean(myJokerMeta?.requiresWord) && !jokerWord.trim())}
                     >
                         {isSubmitting ? (
-                            <>
-                                <CircularProgress size={18} color="inherit" />
-                                <span>Kullanılıyor...</span>
-                            </>
+                            <span className="flex items-center gap-2">
+                                <CircularProgress size={16} color="inherit" />
+                                <span>KULLANILIYOR...</span>
+                            </span>
                         ) : (
-                            "Kullan"
+                            "JOKERİ AKTİFLEŞTİR"
                         )}
                     </Button>
                 </DialogActions>
             </Dialog>
 
-            <Dialog open={guessDialogOpen || !!isRussianRoulette} onClose={() => !isRussianRoulette && !isSubmitting && setGuessDialogOpen(false)} slotProps={{ paper: { className: "!bg-white !text-slate-900 !rounded-2xl min-w-[300px]" } }}>
-                <DialogTitle className="text-center font-bold">
-                    {isRussianRoulette ? "💀 RUS RULETİ: TAHMİN ETMEK ZORUNDASIN!" : "Kimin Nesin Sen?"}
+            {/* Identity Guess Modal */}
+            <Dialog 
+                open={guessDialogOpen || !!isRussianRoulette} 
+                onClose={() => !isRussianRoulette && !isSubmitting && setGuessDialogOpen(false)} 
+                slotProps={{ 
+                    paper: { 
+                        className: "!bg-[#1A1D24] !text-[#F6F5F2] !rounded-[6px] !border-2 !border-[#00E5A3] !shadow-[8px_8px_0px_#090A0D] min-w-[320px] sm:min-w-[420px]" 
+                    } 
+                }}
+            >
+                <DialogTitle className="font-display font-bold uppercase tracking-wider text-xl border-b-2 border-[#2D3342] py-4 px-6">
+                    {isRussianRoulette ? "💀 RUS RULETİ: ZORUNLU TAHMİN!" : "🎯 BEN KİMİM? — TAHMİN ET"}
                 </DialogTitle>
-                <DialogContent>
-                    <p className="text-slate-600 mb-4 text-sm text-center">
-                        {isRussianRoulette ? "Eğer yanlış bilirsen masadan elenirsin ve 3 canın birden gider!" : "Yanlış bilirsen 1 canın (❤️) gider. 3 yanlışta elenirsin!"}
-                    </p>
+                <DialogContent className="p-6">
+                    <div className={`p-3 rounded-[4px] border-l-4 font-mono text-xs mb-5 mt-2 ${
+                        isRussianRoulette 
+                            ? 'bg-[#FF334B]/15 border-[#FF334B] text-[#FF334B]' 
+                            : 'bg-[#FFBE0B]/15 border-[#FFBE0B] text-[#FFBE0B]'
+                    }`}>
+                        {isRussianRoulette 
+                            ? "DİKKAT: Yanlış tahmin edersen masadan anında elenirsin!" 
+                            : "BİLGİ: Yanlış tahminde 1 can (❤️) kaybedersin. 3 hatada elenirsin."}
+                    </div>
+                    <label className="swiss-label block mb-2">ALNINDAKİ KİMLİK / KELİME</label>
                     <TextField 
-                        autoFocus fullWidth label="Tahminin" variant="outlined" value={guessInput} onChange={e => setGuessInput(e.target.value)}
+                        autoFocus 
+                        fullWidth 
+                        placeholder="Tahminini buraya yaz..." 
+                        variant="outlined" 
+                        value={guessInput} 
+                        onChange={e => setGuessInput(e.target.value)}
                         disabled={isSubmitting}
                         onKeyDown={e => { if(e.key === 'Enter' && !isSubmitting) handleGuess(); }}
+                        sx={{
+                            input: { color: '#111318', fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1.125rem' },
+                            '& .MuiOutlinedInput-root': {
+                                backgroundColor: '#F4F1EA',
+                                borderRadius: '4px',
+                                '& fieldset': { borderColor: '#090A0D', borderWidth: '2px' },
+                            }
+                        }}
                     />
                 </DialogContent>
-                <DialogActions className="p-4 pt-0">
-                    {!isRussianRoulette && <Button onClick={() => setGuessDialogOpen(false)} disabled={isSubmitting} className="!text-slate-500">İptal</Button>}
+                <DialogActions className="px-6 py-4 border-t-2 border-[#2D3342] bg-[#111318] justify-between">
+                    {!isRussianRoulette && (
+                        <Button onClick={() => setGuessDialogOpen(false)} disabled={isSubmitting} className="swiss-btn-secondary !px-5 !py-2">
+                            İPTAL
+                        </Button>
+                    )}
                     <Button 
                         onClick={() => handleGuess()} 
                         variant="contained" 
-                        color="success" 
-                        className="px-6 font-bold flex items-center gap-2"
+                        className="swiss-btn-mint !px-6 !py-2 ml-auto"
                         disabled={isSubmitting || !guessInput.trim()}
                     >
-                        {isSubmitting ? (
-                            <>
-                                <CircularProgress size={18} color="inherit" />
-                                <span>Deneniyor...</span>
-                            </>
-                        ) : (
-                            "Dene"
-                        )}
+                        {isSubmitting ? "DENENİYOR..." : "TAHMİNİ GÖNDER"}
                     </Button>
                 </DialogActions>
             </Dialog>
 
-            <Dialog open={questionDialogOpen} onClose={() => !isSubmitting && setQuestionDialogOpen(false)} slotProps={{ paper: { className: "!bg-white !text-slate-900 !rounded-2xl min-w-[300px]" } }}>
-                <DialogTitle className="text-center font-bold">Herkes İçin Soru Sor</DialogTitle>
-                <DialogContent>
-                    <p className="text-slate-600 mb-4 text-sm text-center">Diğer oyuncular bu soruya Evet, Hayır veya Bazen oyu verecek.</p>
-                    <TextField autoFocus fullWidth label="Sorunuz" slotProps={{ htmlInput: { maxLength: 120 } }} placeholder="Örn: Gerçek bir insan mıyım?" variant="outlined" value={questionInput} onChange={e => setQuestionInput(e.target.value)} disabled={isSubmitting} onKeyDown={e => { if(e.key === 'Enter' && !isSubmitting) { e.preventDefault(); if (!questionInput.trim()) return; onAskQuestion(questionInput); setQuestionInput(""); } }} />
+            {/* Ask Question to Table Modal */}
+            <Dialog 
+                open={questionDialogOpen} 
+                onClose={() => !isSubmitting && setQuestionDialogOpen(false)} 
+                slotProps={{ 
+                    paper: { 
+                        className: "!bg-[#1A1D24] !text-[#F6F5F2] !rounded-[6px] !border-2 !border-[#FFBE0B] !shadow-[8px_8px_0px_#090A0D] min-w-[320px] sm:min-w-[440px]" 
+                    } 
+                }}
+            >
+                <DialogTitle className="font-display font-bold uppercase tracking-wider text-xl border-b-2 border-[#2D3342] py-4 px-6">
+                    💬 MASAYA SORU SOR
+                </DialogTitle>
+                <DialogContent className="p-6">
+                    <p className="text-[#A0A8B8] mb-5 mt-2 text-sm">
+                        Diğer oyuncular bu soruya <strong className="text-[#00E5A3]">EVET</strong>, <strong className="text-[#FF334B]">HAYIR</strong> veya <strong className="text-[#FFBE0B]">BAZEN</strong> oyu verecek.
+                    </p>
+                    <label className="swiss-label block mb-2">SORUNUZ (MAKS 120 KARAKTER)</label>
+                    <TextField 
+                        autoFocus 
+                        fullWidth 
+                        slotProps={{ htmlInput: { maxLength: 120 } }} 
+                        placeholder="Örn: Gerçek bir insan mıyım? Türkiye'de mi yaşıyorum?" 
+                        variant="outlined" 
+                        value={questionInput} 
+                        onChange={e => setQuestionInput(e.target.value)} 
+                        disabled={isSubmitting} 
+                        onKeyDown={e => { 
+                            if(e.key === 'Enter' && !isSubmitting) { 
+                                e.preventDefault(); 
+                                if (!questionInput.trim()) return; 
+                                onAskQuestion(questionInput); 
+                                setQuestionInput(""); 
+                            } 
+                        }}
+                        sx={{
+                            input: { color: '#F6F5F2', fontWeight: 600 },
+                            '& .MuiOutlinedInput-root': {
+                                backgroundColor: '#111318',
+                                borderRadius: '4px',
+                                '& fieldset': { borderColor: '#2D3342', borderWidth: '2px' },
+                                '&.Mui-focused fieldset': { borderColor: '#FFBE0B' }
+                            }
+                        }}
+                    />
                 </DialogContent>
-                <DialogActions className="p-4 pt-0">
-                    <Button onClick={() => setQuestionDialogOpen(false)} disabled={isSubmitting} className="!text-slate-500">İptal</Button>
+                <DialogActions className="px-6 py-4 border-t-2 border-[#2D3342] bg-[#111318] justify-between">
+                    <Button onClick={() => setQuestionDialogOpen(false)} disabled={isSubmitting} className="swiss-btn-secondary !px-5 !py-2">
+                        İPTAL
+                    </Button>
                     <Button 
                         onClick={() => { 
                             if (!questionInput.trim() || isSubmitting) return; 
@@ -431,72 +608,137 @@ export default function GameScene(props: GameSceneProps = {}) {
                             setQuestionInput(""); 
                         }} 
                         variant="contained" 
-                        color="primary" 
-                        className="px-6 font-bold flex items-center gap-2"
+                        className="swiss-btn-primary !px-6 !py-2"
                         disabled={isSubmitting || !questionInput.trim()}
                     >
-                        {isSubmitting ? (
-                            <>
-                                <CircularProgress size={18} color="inherit" />
-                                <span>Soruluyor...</span>
-                            </>
-                        ) : (
-                            "Sor"
-                        )}
+                        {isSubmitting ? "SORULUYOR..." : "MASAYA SOR"}
                     </Button>
                 </DialogActions>
             </Dialog>
+
+            {/* Foul / Objection Tribunal Overlay */}
             {gameState.objection && (
-                <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm pointer-events-auto">
-                    <div className="bg-slate-900 border-2 border-red-500 rounded-3xl p-8 max-w-md w-full text-center shadow-[0_0_50px_rgba(239,68,68,0.3)]">
-                        <h2 className="text-3xl font-black text-red-500 mb-2">🚨 ŞİKE İTİRAZI!</h2>
-                        <p className="text-xl text-white mb-6">
-                            <strong className="text-yellow-400">{gameState.objection.initiator}</strong> oyunda şike yapıldığını düşünüyor! Sence şike var mı?
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#090A0D]/85 p-4 pointer-events-auto">
+                    <div className="bg-[#1A1D24] border-2 border-[#FF334B] rounded-[6px] p-6 md:p-8 max-w-md w-full text-center shadow-[8px_8px_0px_#090A0D]">
+                        <span className="inline-block font-mono text-xs font-bold uppercase px-3 py-1 bg-[#FF334B] text-white rounded-[2px] mb-3">
+                            🚨 HAKEM KURULU OYLAMASI
+                        </span>
+                        <h2 className="font-display text-3xl font-bold uppercase text-[#F6F5F2] mb-2">
+                            ŞİKE İTİRAZI!
+                        </h2>
+                        <p className="text-base text-[#A0A8B8] mb-6">
+                            <strong className="text-[#FFBE0B]">{gameState.objection.initiator}</strong> masada kural dışı ipucu veya şike olduğunu iddia ediyor!
                         </p>
                         
                         {gameState.objection.votes[myId] !== undefined ? (
-                            <p className="text-green-400 font-bold text-xl animate-pulse">Oy verdin, diğerleri bekleniyor...</p>
+                            <div className="p-3 bg-[#00E5A3]/15 border-2 border-[#00E5A3] rounded-[4px] font-mono text-xs font-bold text-[#00E5A3] uppercase">
+                                ✓ OYUNUZ KAYDEDİLDİ — DİĞER OYUNCULAR BEKLENİYOR...
+                            </div>
                         ) : (
-                            <div className="flex gap-4 justify-center">
-                                <Button variant="contained" color="error" size="medium" onClick={() => onVoteObjection(true)} disabled={isSubmitting} className="flex-1 py-3 font-bold text-lg">
-                                    {isSubmitting ? "Gönderiliyor..." : "EVET, ŞİKE VAR!"}
+                            <div className="flex gap-3 justify-center">
+                                <Button 
+                                    variant="contained" 
+                                    onClick={() => onVoteObjection(true)} 
+                                    disabled={isSubmitting} 
+                                    className="swiss-btn-coral flex-1 !py-3"
+                                >
+                                    EVET, ŞİKE VAR
                                 </Button>
-                                <Button variant="outlined" color="inherit" size="medium" onClick={() => onVoteObjection(false)} disabled={isSubmitting} className="flex-1 py-3 font-bold text-lg border-slate-600 text-slate-300">
-                                    {isSubmitting ? "Gönderiliyor..." : "HAYIR, TEMİZ"}
+                                <Button 
+                                    variant="outlined" 
+                                    onClick={() => onVoteObjection(false)} 
+                                    disabled={isSubmitting} 
+                                    className="swiss-btn-secondary flex-1 !py-3"
+                                >
+                                    HAYIR, TEMİZ
                                 </Button>
                             </div>
                         )}
                         
-                        <div className="mt-6 text-slate-400">İtiraz oylaması devam ediyor... ({Object.keys(gameState.objection.votes).length} oy verildi)</div>
+                        <div className="mt-5 font-mono text-xs text-[#687082] uppercase tnum">
+                            TOPLAM OY: {Object.keys(gameState.objection.votes).length} / {gameState.users.length}
+                        </div>
                     </div>
                 </div>
             )}
-        <AudioSettingsDialog open={audioSettingsOpen} onClose={() => setAudioSettingsOpen(false)} />
+
+            <AudioSettingsDialog open={audioSettingsOpen} onClose={() => setAudioSettingsOpen(false)} />
         
+            {/* Live Question Voting Overlay Card */}
             <AnimatePresence>
                 {gameState.activeQuestion && (
-                    <motion.div initial={{ opacity: 0, scale: 0.8, y: "-50%", x: "-50%" }} animate={{ opacity: 1, scale: 1, y: "-50%", x: "-50%" }} exit={{ opacity: 0, scale: 0.8, y: "-50%", x: "-50%" }} className="absolute top-1/2 left-1/2 z-[100] glass p-6 rounded-3xl border border-slate-600 shadow-[0_0_50px_rgba(0,0,0,0.8)] text-center w-[95%] max-w-lg backdrop-blur-2xl bg-slate-900/90 pointer-events-auto">
-                        <div className="absolute -top-4 -right-4 bg-red-500 text-white font-black rounded-full w-12 h-12 flex items-center justify-center border-4 border-slate-900 shadow-xl animate-pulse">
-                            {questionTimeLeft}s
+                    <motion.div 
+                        initial={{ opacity: 0, scale: 0.9, y: "-50%", x: "-50%" }} 
+                        animate={{ opacity: 1, scale: 1, y: "-50%", x: "-50%" }} 
+                        exit={{ opacity: 0, scale: 0.9, y: "-50%", x: "-50%" }} 
+                        transition={{ duration: 0.15 }}
+                        className="fixed top-1/2 left-1/2 z-[100] bg-[#1A1D24] p-6 md:p-8 rounded-[6px] border-2 border-[#FFBE0B] shadow-[10px_10px_0px_#090A0D] text-center w-[94%] max-w-lg pointer-events-auto"
+                    >
+                        <div className="flex justify-between items-center border-b-2 border-[#2D3342] pb-3 mb-5">
+                            <span className="font-mono text-xs font-bold uppercase tracking-wider text-[#FFBE0B]">
+                                💬 {gameState.users.find((u:User) => u.id === gameState.activeQuestion!.askerId)?.name} SORUYOR
+                            </span>
+                            <span className="font-mono text-sm font-bold px-2.5 py-1 bg-[#FF334B] text-white rounded-[2px] border border-[#090A0D] tnum">
+                                {questionTimeLeft}s
+                            </span>
                         </div>
-                        <h4 className="text-lg font-bold mb-2 text-cyan-400">{gameState.users.find((u:User) => u.id === gameState.activeQuestion!.askerId)?.name} soruyor:</h4>
-                        <p className="text-3xl font-black mb-8 leading-tight break-words break-all">"{gameState.activeQuestion.question}"</p>
+
+                        <p className="font-display text-2xl md:text-3xl font-bold mb-6 leading-snug break-words text-[#F6F5F2]">
+                            "{gameState.activeQuestion.question}"
+                        </p>
                         
                         {gameState.activeQuestion.askerId !== myId && me?.status === 'playing' ? (
-                            <div className="flex justify-center gap-4">
-                                <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}><Button variant={gameState.activeQuestion.votes[myId] === 'yes' ? 'contained' : (gameState.activeQuestion.votes[myId] ? 'outlined' : 'contained')} color="success" size="medium" onClick={() => onSubmitVote("yes")} className="text-xl py-3 px-6 rounded-xl font-black">Evet 👍</Button></motion.div>
-                                <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}><Button variant={gameState.activeQuestion.votes[myId] === 'no' ? 'contained' : (gameState.activeQuestion.votes[myId] ? 'outlined' : 'contained')} color="error" size="medium" onClick={() => onSubmitVote("no")} className="text-xl py-3 px-6 rounded-xl font-black">Hayır 👎</Button></motion.div>
-                                <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}><Button variant={gameState.activeQuestion.votes[myId] === 'sometimes' ? 'contained' : (gameState.activeQuestion.votes[myId] ? 'outlined' : 'contained')} color="warning" size="medium" onClick={() => onSubmitVote("sometimes")} className="text-xl py-3 px-6 rounded-xl font-black">Bazen 🤔</Button></motion.div>
+                            <div className="grid grid-cols-3 gap-3">
+                                <Button 
+                                    onClick={() => onSubmitVote("yes")} 
+                                    className={`!py-3 !text-sm !font-display !font-bold !rounded-[4px] !border-2 !border-[#090A0D] ${
+                                        gameState.activeQuestion.votes[myId] === 'yes' 
+                                            ? '!bg-[#00E5A3] !text-[#111318] !shadow-[3px_3px_0px_#090A0D]' 
+                                            : '!bg-[#222630] !text-[#00E5A3] !border-[#00E5A3]'
+                                    }`}
+                                >
+                                    👍 EVET
+                                </Button>
+                                <Button 
+                                    onClick={() => onSubmitVote("no")} 
+                                    className={`!py-3 !text-sm !font-display !font-bold !rounded-[4px] !border-2 !border-[#090A0D] ${
+                                        gameState.activeQuestion.votes[myId] === 'no' 
+                                            ? '!bg-[#FF334B] !text-white !shadow-[3px_3px_0px_#090A0D]' 
+                                            : '!bg-[#222630] !text-[#FF334B] !border-[#FF334B]'
+                                    }`}
+                                >
+                                    👎 HAYIR
+                                </Button>
+                                <Button 
+                                    onClick={() => onSubmitVote("sometimes")} 
+                                    className={`!py-3 !text-sm !font-display !font-bold !rounded-[4px] !border-2 !border-[#090A0D] ${
+                                        gameState.activeQuestion.votes[myId] === 'sometimes' 
+                                            ? '!bg-[#FFBE0B] !text-[#111318] !shadow-[3px_3px_0px_#090A0D]' 
+                                            : '!bg-[#222630] !text-[#FFBE0B] !border-[#FFBE0B]'
+                                    }`}
+                                >
+                                    🤔 BAZEN
+                                </Button>
                             </div>
                         ) : (
-                            <p className="text-slate-400 animate-pulse text-lg mb-4">Diğer oyuncuların oylaması bekleniyor...</p>
+                            <div className="p-3 bg-[#111318] border border-[#2D3342] rounded-[4px] font-mono text-xs uppercase text-[#A0A8B8]">
+                                DİĞER OYUNCULARIN OYLAMASI BEKLENİYOR...
+                            </div>
                         )}
                         
-                        <div className="mt-6 pt-4 border-t border-slate-700 flex flex-wrap justify-center gap-3">
+                        <div className="mt-5 pt-4 border-t-2 border-[#2D3342] flex flex-wrap justify-center gap-2">
                             <AnimatePresence>
                                 {Object.entries(gameState.activeQuestion.votes).map(([voterId, vote]) => (
-                                    <motion.div key={voterId} initial={{ opacity: 0, y: 20, scale: 0 }} animate={{ opacity: 1, y: 0, scale: 1 }}>
-                                        <Chip label={`${gameState.users.find((u:User) => u.id === voterId)?.name}: ${vote === 'yes' ? '👍' : vote === 'no' ? '👎' : '🤔'}`} color={vote === 'yes' ? "success" : vote === 'no' ? "error" : "warning"} variant="outlined" className="font-bold bg-slate-900" />
+                                    <motion.div key={voterId} initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }}>
+                                        <span className={`font-mono text-xs font-bold px-2.5 py-1 rounded-[2px] border inline-flex items-center gap-1 ${
+                                            vote === 'yes' 
+                                                ? 'bg-[#00E5A3]/15 border-[#00E5A3] text-[#00E5A3]' 
+                                                : vote === 'no' 
+                                                    ? 'bg-[#FF334B]/15 border-[#FF334B] text-[#FF334B]' 
+                                                    : 'bg-[#FFBE0B]/15 border-[#FFBE0B] text-[#FFBE0B]'
+                                        }`}>
+                                            {gameState.users.find((u:User) => u.id === voterId)?.name}: {vote === 'yes' ? 'EVET' : vote === 'no' ? 'HAYIR' : 'BAZEN'}
+                                        </span>
                                     </motion.div>
                                 ))}
                             </AnimatePresence>

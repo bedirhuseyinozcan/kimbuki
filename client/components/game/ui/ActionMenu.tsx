@@ -2,7 +2,6 @@ import React from "react";
 import { Button, CircularProgress } from "@mui/material";
 import QuestionAnswerIcon from '@mui/icons-material/QuestionAnswer';
 import SkipNextIcon from '@mui/icons-material/SkipNext';
-import { motion } from "framer-motion";
 import { useGameContext } from "@/context/GameContext";
 
 interface ActionMenuProps {
@@ -48,93 +47,98 @@ export default function ActionMenu(props: ActionMenuProps) {
         onOpenJokerDialog
     } = props;
 
+    const canAsk = isMyTurn && !(questionsAskedThisTurn >= 1 && extraQuestions <= 0) && !hasActiveQuestion && !isRussianRoulette && !isSubmitting;
+    const canGuess = isMyTurn && !isSubmitting;
+    const canSkip = isMyTurn && !isRussianRoulette && !isSubmitting;
+    const canUseJoker = currentRound >= 3 && !isRussianRoulette && isMyTurn && !isSubmitting;
+    const canObject = !hasObjectionUsed && !isRussianRoulette && !isSubmitting;
+
     return (
-        <div className="order-1 md:order-3 w-full md:w-1/4 md:max-w-[400px] flex flex-col gap-3 pointer-events-auto z-40">
-            <div className="glass rounded-2xl flex flex-col border border-slate-700/50 shadow-xl bg-slate-900/60 backdrop-blur-lg overflow-hidden transition-all duration-300">
-                <div onClick={onToggle} className="p-3 md:hidden flex justify-between items-center cursor-pointer border-b border-slate-700/50 bg-slate-800/80">
-                    <span className="font-bold text-sm text-green-400 flex items-center gap-2">⚡ Aksiyonlar</span>
-                    <span className="text-xs bg-slate-700 px-2 py-1 rounded-lg text-slate-300">{isActionsOpen ? '▼ Gizle' : '▲ Aç'}</span>
+        <div className="order-1 md:order-3 w-full md:w-1/4 md:max-w-[360px] flex flex-col gap-3 pointer-events-auto z-40">
+            <div className="swiss-panel flex flex-col overflow-hidden transition-all duration-150">
+                <div 
+                    onClick={onToggle} 
+                    className="px-3.5 py-2.5 flex justify-between items-center cursor-pointer md:cursor-default border-b-2 border-[#2D3342] bg-[#1A1D24]"
+                >
+                    <div className="flex items-center gap-2">
+                        <span className={`w-2.5 h-2.5 inline-block ${isMyTurn ? 'bg-[#00E5A3] animate-pulse' : 'bg-[#FF5938]'}`} />
+                        <span className="font-display font-bold text-sm uppercase tracking-wider text-[#F6F5F2]">
+                            HAMLE KONSOLU
+                        </span>
+                    </div>
+                    <span className="md:hidden font-mono text-[10px] font-bold uppercase tracking-wider bg-[#222630] border border-[#3E4659] px-2 py-0.5 rounded-[4px] text-[#A0A8B8]">
+                        {isActionsOpen ? 'GİZLE' : 'AÇ'}
+                    </span>
                 </div>
 
-                <div className={`p-4 flex-col justify-center items-center gap-3 ${isActionsOpen ? 'flex' : 'hidden md:flex'}`}>
-                    <motion.div whileHover={{ scale: isMyTurn && !isSubmitting ? 1.05 : 1 }} whileTap={{ scale: isMyTurn && !isSubmitting ? 0.95 : 1 }} className="w-full">
-                        <Button 
-                            variant="contained" 
-                            color="info" 
-                            size="medium" 
-                            fullWidth 
-                            startIcon={isSubmitting ? <CircularProgress size={18} color="inherit" /> : <QuestionAnswerIcon />} 
-                            onClick={onOpenQuestionDialog} 
-                            disabled={!isMyTurn || (questionsAskedThisTurn >= 1 && extraQuestions <= 0) || hasActiveQuestion || isRussianRoulette || isSubmitting} 
-                            className={`py-3 rounded-xl border-2 font-bold ${isMyTurn && !hasActiveQuestion && !isRussianRoulette && !isSubmitting ? 'bg-cyan-600 shadow-lg shadow-cyan-500/30' : 'opacity-50'}`}
-                        >
-                            Soru Sor & Oylat
-                        </Button>
-                    </motion.div>
+                <div className={`p-4 flex-col justify-center items-stretch gap-3 ${isActionsOpen ? 'flex' : 'hidden md:flex'}`}>
+                    {/* Ask Question Button */}
+                    <Button 
+                        variant="contained" 
+                        fullWidth 
+                        startIcon={isSubmitting ? <CircularProgress size={16} color="inherit" /> : <QuestionAnswerIcon />} 
+                        onClick={onOpenQuestionDialog} 
+                        disabled={!canAsk} 
+                        className={`!py-3 ${canAsk ? 'swiss-btn-primary' : '!bg-[#222630] !text-[#687082] !border-2 !border-[#2D3342] !rounded-[4px] !font-display !font-bold'}`}
+                    >
+                        SORU SOR & OYLAT
+                    </Button>
 
-                    <div className="w-full h-px bg-slate-700 my-2"></div>
+                    {/* Guess Identity Button (Hero Action) */}
+                    <Button 
+                        variant="contained" 
+                        fullWidth 
+                        startIcon={isSubmitting ? <CircularProgress size={16} color="inherit" /> : undefined}
+                        onClick={onOpenGuessDialog} 
+                        disabled={!canGuess} 
+                        className={`!py-3.5 !text-base ${canGuess ? 'swiss-btn-mint' : '!bg-[#222630] !text-[#687082] !border-2 !border-[#2D3342] !rounded-[4px] !font-display !font-bold'}`}
+                    >
+                        🎯 KİMLİĞİ TAHMİN ET
+                    </Button>
 
-                    <motion.div whileHover={{ scale: isMyTurn && !isSubmitting ? 1.05 : 1 }} whileTap={{ scale: isMyTurn && !isSubmitting ? 0.95 : 1 }} className="w-full">
-                        <Button 
-                            variant="contained" 
-                            color="success" 
-                            size="medium" 
-                            fullWidth 
-                            startIcon={isSubmitting ? <CircularProgress size={18} color="inherit" /> : undefined}
-                            onClick={onOpenGuessDialog} 
-                            disabled={!isMyTurn || isSubmitting} 
-                            className={`py-3 rounded-xl text-lg font-bold shadow-lg shadow-green-500/20 ${!isMyTurn || isSubmitting ? 'opacity-50' : ''}`}
-                        >
-                            TAHMİN ET
-                        </Button>
-                    </motion.div>
+                    {/* Skip Turn Button */}
+                    <Button 
+                        variant="outlined" 
+                        fullWidth 
+                        startIcon={isSubmitting ? <CircularProgress size={16} color="inherit" /> : <SkipNextIcon />} 
+                        onClick={onSkip} 
+                        disabled={!canSkip} 
+                        className={`!py-2.5 ${canSkip ? 'swiss-btn-secondary' : '!bg-[#15181F] !text-[#687082] !border-2 !border-[#2D3342] !rounded-[4px] !font-display !font-bold'}`}
+                    >
+                        TURU PAS GEÇ
+                    </Button>
 
-                    <motion.div whileHover={{ scale: isMyTurn && !isSubmitting ? 1.05 : 1 }} whileTap={{ scale: isMyTurn && !isSubmitting ? 0.95 : 1 }} className="w-full">
-                        <Button 
-                            variant="outlined" 
-                            color="warning" 
-                            size="medium" 
-                            fullWidth 
-                            startIcon={isSubmitting ? <CircularProgress size={18} color="inherit" /> : <SkipNextIcon />} 
-                            onClick={onSkip} 
-                            disabled={!isMyTurn || isRussianRoulette || isSubmitting} 
-                            className={`py-3 rounded-xl border-2 ${isMyTurn && !isRussianRoulette && !isSubmitting ? 'hover:bg-warning-main/10' : 'opacity-50'}`}
-                        >
-                            Turu Geç
-                        </Button>
-                    </motion.div>
-
+                    {/* Joker Trigger */}
                     {hasJoker && !hasUsedJoker && (
-                        <motion.div whileHover={{ scale: isMyTurn && !isSubmitting ? 1.05 : 1 }} whileTap={{ scale: isMyTurn && !isSubmitting ? 0.95 : 1 }} className="w-full mt-2">
-                            <Button 
-                                variant="contained" 
-                                color="secondary" 
-                                size="medium" 
-                                fullWidth 
-                                startIcon={isSubmitting ? <CircularProgress size={18} color="inherit" /> : undefined}
-                                onClick={onOpenJokerDialog} 
-                                disabled={currentRound < 3 || isRussianRoulette || !isMyTurn || isSubmitting} 
-                                className={`py-3 rounded-xl border-2 font-bold ${currentRound >= 3 && !isRussianRoulette && isMyTurn && !isSubmitting ? 'bg-fuchsia-600 shadow-[0_0_15px_rgba(192,38,211,0.5)]' : 'opacity-50'}`}
-                            >
-                                {currentRound < 3 ? '🃏 Joker (3. Turda Açılır)' : '🃏 Joker Kullan'}
-                            </Button>
-                        </motion.div>
+                        <Button 
+                            variant="contained" 
+                            fullWidth 
+                            startIcon={isSubmitting ? <CircularProgress size={16} color="inherit" /> : undefined}
+                            onClick={onOpenJokerDialog} 
+                            disabled={!canUseJoker} 
+                            className={`!py-3 !mt-1 ${canUseJoker ? 'swiss-btn-coral' : '!bg-[#222630] !text-[#687082] !border-2 !border-[#2D3342] !rounded-[4px] !font-display !font-bold'}`}
+                        >
+                            {currentRound < 3 ? '🃏 JOKER (3. TURDA AÇILIR)' : '🃏 ÖZEL JOKERİ KULLAN'}
+                        </Button>
                     )}
 
-                    <motion.div whileHover={{ scale: !hasObjectionUsed && !isSubmitting ? 1.05 : 1 }} whileTap={{ scale: !hasObjectionUsed && !isSubmitting ? 0.95 : 1 }} className="w-full mt-4">
-                        <Button 
-                            variant="outlined" 
-                            color="error" 
-                            size="medium" 
-                            fullWidth 
-                            startIcon={isSubmitting ? <CircularProgress size={18} color="inherit" /> : undefined}
-                            onClick={onStartObjection} 
-                            disabled={hasObjectionUsed || isRussianRoulette || isSubmitting} 
-                            className={`py-2 rounded-xl border-2 font-bold ${!hasObjectionUsed && !isRussianRoulette && !isSubmitting ? 'border-red-500/80 text-red-400 shadow-[0_0_15px_rgba(239,68,68,0.2)] hover:bg-red-500/20' : 'opacity-50'}`}
-                        >
-                            🚨 ŞİKEYE İTİRAZ ET {hasObjectionUsed && '(Kullanıldı)'}
-                        </Button>
-                    </motion.div>
+                    <div className="w-full h-[2px] bg-[#2D3342] my-1" />
+
+                    {/* Objection Trigger */}
+                    <Button 
+                        variant="outlined" 
+                        fullWidth 
+                        startIcon={isSubmitting ? <CircularProgress size={16} color="inherit" /> : undefined}
+                        onClick={onStartObjection} 
+                        disabled={!canObject} 
+                        className={`!py-2 !text-xs !font-mono !font-bold !uppercase !tracking-wider !rounded-[4px] !border-2 ${
+                            canObject 
+                                ? '!border-[#FF334B] !text-[#FF334B] !bg-[#FF334B]/10 hover:!bg-[#FF334B] hover:!text-white' 
+                                : '!border-[#2D3342] !text-[#687082] !bg-transparent'
+                        }`}
+                    >
+                        🚨 ŞİKEYE İTİRAZ ET {hasObjectionUsed && '(KULLANILDI)'}
+                    </Button>
                 </div>
             </div>
         </div>

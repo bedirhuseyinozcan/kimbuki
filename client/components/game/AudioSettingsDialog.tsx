@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Select, MenuItem, FormControl, InputLabel } from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Select, MenuItem, FormControl } from '@mui/material';
 import { toast } from 'react-toastify';
 
 interface AudioSettingsDialogProps {
@@ -135,21 +135,35 @@ export default function AudioSettingsDialog({ open, onClose }: AudioSettingsDial
     };
 
     return (
-        <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm" slotProps={{ paper: { className: "!bg-slate-900 !text-white !rounded-2xl" } }}>
-            <DialogTitle className="text-center font-bold text-cyan-400 border-b border-slate-700/50 pb-4">Ses Ayarları</DialogTitle>
-            <DialogContent className="flex flex-col gap-8 pt-6">
+        <Dialog 
+            open={open} 
+            onClose={onClose} 
+            fullWidth 
+            maxWidth="sm" 
+            slotProps={{ 
+                paper: { 
+                    className: "!bg-[#1A1D24] !text-[#F6F5F2] !rounded-[6px] !border-2 !border-[#3E4659] !shadow-[8px_8px_0px_#090A0D]" 
+                } 
+            }}
+        >
+            <DialogTitle className="font-display font-bold uppercase tracking-wider text-lg text-[#F6F5F2] border-b-2 border-[#2D3342] py-4 px-6 flex items-center gap-2">
+                <span className="w-2.5 h-2.5 bg-[#FFBE0B] inline-block" />
+                SES & DONANIM AYARLARI
+            </DialogTitle>
+            <DialogContent className="flex flex-col gap-6 pt-6 px-6">
                 
-                <div className="flex flex-col gap-4">
-                    <h3 className="text-sm uppercase tracking-widest text-slate-400 font-bold">Giriş Cihazı (Mikrofon)</h3>
-                    <FormControl fullWidth variant="outlined">
+                <div className="flex flex-col gap-3 mt-2">
+                    <span className="swiss-label">GİRİŞ CİHAZI (MİKROFON)</span>
+                    <FormControl fullWidth variant="outlined" size="small">
                         <Select
                             value={selectedInput}
                             onChange={(e) => setSelectedInput(e.target.value)}
-                            className="!text-white !border-slate-600 bg-slate-800/50"
+                            className="!text-[#F6F5F2] !bg-[#111318] !rounded-[4px]"
                             sx={{
-                                '.MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.2)' },
-                                '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.5)' },
-                                '.MuiSvgIcon-root ': { fill: "white !important" },
+                                '.MuiOutlinedInput-notchedOutline': { borderColor: '#2D3342', borderWidth: '2px' },
+                                '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#3E4659' },
+                                '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#FFBE0B' },
+                                '.MuiSvgIcon-root ': { fill: "#F6F5F2 !important" },
                             }}
                         >
                             {inputDevices.map((d, i) => (
@@ -157,30 +171,34 @@ export default function AudioSettingsDialog({ open, onClose }: AudioSettingsDial
                             ))}
                         </Select>
                     </FormControl>
-                    <div className="flex flex-col gap-2 bg-slate-800/30 p-3 rounded-lg border border-slate-700/50">
-                        <p className="text-xs text-slate-400">Giriş Seviyesi Testi (Konuşarak deneyin)</p>
-                        <div className="w-full h-3 bg-slate-800 rounded-full overflow-hidden border border-slate-700">
+                    <div className="flex flex-col gap-2 bg-[#111318] p-3.5 rounded-[4px] border-2 border-[#2D3342]">
+                        <div className="flex justify-between items-center">
+                            <span className="font-mono text-[11px] uppercase tracking-wider text-[#A0A8B8]">SİNYAL SEVİYESİ TESTİ</span>
+                            <span className="font-mono text-[11px] font-bold text-[#00E5A3] tnum">{Math.round(Math.min(100, (volume / 128) * 100))}%</span>
+                        </div>
+                        <div className="w-full h-3 bg-[#1A1D24] rounded-[2px] overflow-hidden border border-[#2D3342]">
                             <div 
-                                className="h-full bg-green-500 transition-all duration-75"
+                                className="h-full bg-[#00E5A3] transition-all duration-75"
                                 style={{ width: `${Math.min(100, (volume / 128) * 100)}%` }}
                             />
                         </div>
                     </div>
                 </div>
 
-                <div className="w-full h-px bg-slate-700/50" />
+                <div className="w-full h-[2px] bg-[#2D3342]" />
 
-                <div className="flex flex-col gap-4">
-                    <h3 className="text-sm uppercase tracking-widest text-slate-400 font-bold">Çıkış Cihazı (Hoparlör)</h3>
-                    <FormControl fullWidth variant="outlined">
+                <div className="flex flex-col gap-3">
+                    <span className="swiss-label">ÇIKIŞ CİHAZI (HOPARLÖR)</span>
+                    <FormControl fullWidth variant="outlined" size="small">
                         <Select
                             value={selectedOutput}
                             onChange={(e) => setSelectedOutput(e.target.value)}
-                            className="!text-white !border-slate-600 bg-slate-800/50"
+                            className="!text-[#F6F5F2] !bg-[#111318] !rounded-[4px]"
                             sx={{
-                                '.MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.2)' },
-                                '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.5)' },
-                                '.MuiSvgIcon-root ': { fill: "white !important" },
+                                '.MuiOutlinedInput-notchedOutline': { borderColor: '#2D3342', borderWidth: '2px' },
+                                '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#3E4659' },
+                                '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#FFBE0B' },
+                                '.MuiSvgIcon-root ': { fill: "#F6F5F2 !important" },
                             }}
                         >
                             {outputDevices.map((d, i) => (
@@ -192,19 +210,19 @@ export default function AudioSettingsDialog({ open, onClose }: AudioSettingsDial
                     <Button 
                         variant="outlined" 
                         onClick={playTestSound}
-                        className="!border-slate-600 !text-slate-300 hover:!bg-slate-800 self-start"
+                        className="swiss-btn-secondary self-start !px-4 !py-1.5 !text-xs"
                     >
-                        Hoparlörü Test Et
+                        🔊 HOPARLÖRÜ TEST ET
                     </Button>
                 </div>
 
-                <p className="text-xs text-center text-amber-500/80 bg-amber-500/10 p-3 rounded-lg border border-amber-500/20">
-                    Kaydettikten sonra değişikliklerin uygulanması için sayfa yenilenecektir.
-                </p>
+                <div className="text-xs font-mono text-[#FFBE0B] bg-[#FFBE0B]/10 p-3 rounded-[4px] border-l-4 border-[#FFBE0B]">
+                    NOT: Kaydettikten sonra ses kanallarının güncellenmesi için sayfa yenilenecektir.
+                </div>
             </DialogContent>
-            <DialogActions className="justify-center pb-6 pt-2 border-t border-slate-700/50 mt-2">
-                <Button onClick={onClose} color="inherit" className="!text-slate-400 px-6">İptal</Button>
-                <Button onClick={handleSave} variant="contained" className="!bg-cyan-500 !text-white !font-bold px-8">Kaydet & Yenile</Button>
+            <DialogActions className="justify-between px-6 py-4 border-t-2 border-[#2D3342] bg-[#111318]">
+                <Button onClick={onClose} className="swiss-btn-secondary !px-5 !py-2">İPTAL</Button>
+                <Button onClick={handleSave} className="swiss-btn-primary !px-6 !py-2">KAYDET & YENİLE</Button>
             </DialogActions>
         </Dialog>
     );

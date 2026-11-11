@@ -61,10 +61,15 @@ export default function GamePage() {
 
     if (game.checkingAuth || !game.isJoined) {
         return (
-            <main className="flex min-h-screen flex-col items-center justify-center p-6 text-center bg-slate-900 text-white">
-                <div className="glass w-full max-w-sm p-8 rounded-3xl shadow-2xl animate-pulse border border-slate-700">
-                    <h2 className="text-2xl font-bold text-cyan-400">Odaya Bağlanılıyor...</h2>
-                    <p className="text-slate-400 mt-2">Lütfen bekleyin.</p>
+            <main className="flex min-h-screen flex-col items-center justify-center p-6 text-center bg-[#111318] text-[#F6F5F2]">
+                <div className="swiss-panel w-full max-w-sm p-8">
+                    <span className="inline-block w-3 h-3 bg-[#FFBE0B] animate-pulse mb-3" />
+                    <h2 className="font-display text-2xl font-bold uppercase tracking-wider text-[#F6F5F2]">
+                        ODAYA BAĞLANILIYOR
+                    </h2>
+                    <p className="font-mono text-xs uppercase tracking-wider text-[#A0A8B8] mt-2">
+                        OTURUM DOĞRULANIYOR, LÜTFEN BEKLEYİN...
+                    </p>
                 </div>
             </main>
         );
@@ -72,8 +77,8 @@ export default function GamePage() {
 
     if (!game.gameState || !game.me) {
         return (
-            <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white text-2xl animate-pulse">
-                Odaya bağlanıyor...
+            <div className="min-h-screen bg-[#111318] flex items-center justify-center text-[#F6F5F2] font-display text-xl uppercase tracking-wider">
+                SAHNE YÜKLENİYOR...
             </div>
         );
     }

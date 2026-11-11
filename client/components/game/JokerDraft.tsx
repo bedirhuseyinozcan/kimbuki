@@ -34,56 +34,126 @@ export default function JokerDraft({ gameState, me, onSelectJoker, timeOffset = 
 
     if (me?.hasDrafted || selected !== null) {
         return (
-            <main className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center p-4">
-                <div className="glass p-8 rounded-3xl text-center shadow-2xl animate-pulse">
-                    <h2 className="text-3xl font-bold text-cyan-400 mb-4">Seçim Yapıldı!</h2>
-                    <p className="text-slate-300">Diğer oyuncuların seçimi tamamlaması bekleniyor... ({timeLeft}s)</p>
+            <main className="min-h-screen text-[#F6F5F2] flex flex-col items-center justify-center p-4">
+                <div className="swiss-panel p-8 max-w-md w-full text-center">
+                    <span className="inline-block w-3 h-3 bg-[#00E5A3] mb-3" />
+                    <h2 className="font-display text-3xl font-bold uppercase tracking-tight text-[#F6F5F2] mb-2">
+                        YETENEK SEÇİLDİ
+                    </h2>
+                    <p className="text-[#A0A8B8] text-sm mb-4">
+                        Diğer oyuncuların taktiksel kart seçimi tamamlaması bekleniyor...
+                    </p>
+                    <div className="inline-block bg-[#111318] border-2 border-[#2D3342] px-5 py-2 rounded-[4px] font-mono text-2xl font-bold text-[#FFBE0B] tnum">
+                        {String(timeLeft).padStart(2, '0')}s
+                    </div>
                 </div>
             </main>
         );
     }
 
     return (
-        <main className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center p-4 relative overflow-hidden">
-            <div className="text-center mb-8 z-10">
-                <h1 className="text-5xl font-black text-cyan-400 mb-2 drop-shadow-lg">KADERİNİ SEÇ</h1>
-                <p className="text-xl text-slate-300">Oyun boyunca kullanacağın özel yeteneğini belirle.</p>
-                <div className="text-4xl font-black text-amber-400 mt-4 animate-pulse">{timeLeft} sn</div>
+        <main className="min-h-screen text-[#F6F5F2] flex flex-col items-center justify-center p-4 md:p-8 relative overflow-hidden">
+            {/* Header Bar */}
+            <div className="w-full max-w-5xl flex flex-col sm:flex-row items-center justify-between gap-4 mb-10 pb-5 border-b-2 border-[#2D3342] z-10">
+                <div className="text-center sm:text-left">
+                    <span className="swiss-label block mb-1">TAKTİKSEL DESTE SEÇİMİ</span>
+                    <h1 className="font-display text-4xl md:text-5xl font-bold uppercase tracking-tight text-[#F6F5F2]">
+                        JOKER KARTINI SEÇ
+                    </h1>
+                    <p className="text-sm md:text-base text-[#A0A8B8] mt-1">
+                        Oyun boyunca 3. turdan itibaren kullanabileceğin gizli kozunu belirle.
+                    </p>
+                </div>
+                <div className="bg-[#1A1D24] border-2 border-[#3E4659] rounded-[4px] px-6 py-3 text-center shadow-[4px_4px_0px_#090A0D] shrink-0">
+                    <span className="swiss-label block">SEÇİM SÜRESİ</span>
+                    <span className={`font-mono text-4xl font-bold tnum ${timeLeft <= 5 ? 'text-[#FF334B]' : 'text-[#FFBE0B]'}`}>
+                        {String(timeLeft).padStart(2, '0')}s
+                    </span>
+                </div>
             </div>
 
-            <div className="flex flex-col md:flex-row gap-8 z-10">
+            {/* Swiss Collector Cards Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl w-full z-10">
                 {me?.jokerChoices?.map((jokerId, index) => {
                     const jMeta = JOKERS.find(j => j.id === jokerId);
                     if (!jMeta) return null;
 
-                    let borderGlow = "border-slate-400 shadow-[0_0_15px_rgba(148,163,184,0.5)]";
-                    let titleColor = "text-slate-200";
+                    let headerBg = "bg-[#A0A8B8] text-[#111318]";
+                    let borderAccent = "border-[#A0A8B8]";
+                    let btnClass = "swiss-btn-secondary";
+                    let rarityLabel = "GÜMÜŞ SINIF";
+
                     if (jMeta.rarity === 'gold') {
-                        borderGlow = "border-amber-400 shadow-[0_0_30px_rgba(251,191,36,0.6)]";
-                        titleColor = "text-amber-400";
+                        headerBg = "bg-[#FFBE0B] text-[#111318]";
+                        borderAccent = "border-[#FFBE0B]";
+                        btnClass = "swiss-btn-primary";
+                        rarityLabel = "ALTIN SINIF";
                     } else if (jMeta.rarity === 'prismatic') {
-                        borderGlow = "border-fuchsia-500 shadow-[0_0_40px_rgba(217,70,239,0.8)] animate-pulse";
-                        titleColor = "text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-400 to-cyan-400";
+                        headerBg = "bg-[#FF5938] text-white";
+                        borderAccent = "border-[#FF5938]";
+                        btnClass = "swiss-btn-coral";
+                        rarityLabel = "PRİZMATİK SINIF";
                     }
 
                     return (
                         <motion.div 
                             key={index}
-                            initial={{ rotateY: 180, opacity: 0, scale: 0.5 }}
-                            animate={{ rotateY: 0, opacity: 1, scale: 1 }}
-                            transition={{ duration: 0.8, delay: index * 0.2, type: "spring" }}
-                            whileHover={{ scale: 1.05, translateY: -10 }}
+                            initial={{ y: 24, opacity: 0 }}
+                            animate={{ y: 0, opacity: 1 }}
+                            transition={{ duration: 0.25, delay: index * 0.08 }}
+                            whileHover={{ y: -6 }}
                             onClick={() => handleSelect(jokerId)}
-                            className={`w-72 h-96 bg-slate-800/90 backdrop-blur-xl rounded-2xl border-4 ${borderGlow} flex flex-col items-center justify-between p-6 cursor-pointer relative overflow-hidden group`}
+                            className={`bg-[#1A1D24] rounded-[6px] border-2 ${borderAccent} shadow-[6px_6px_0px_#090A0D] flex flex-col justify-between cursor-pointer overflow-hidden transition-shadow hover:shadow-[10px_10px_0px_#090A0D]`}
                         >
-                            <div className="absolute top-2 right-2 text-xs font-black uppercase tracking-widest text-slate-500 opacity-50">{jMeta.rarity}</div>
-                            <div className="flex-1 flex flex-col items-center justify-center text-center">
-                                <h3 className={`text-3xl font-black mb-4 ${titleColor}`}>{jMeta.name}</h3>
-                                <p className="text-slate-300 text-lg leading-relaxed">{jMeta.desc}</p>
+                            {/* Top Collector Strip */}
+                            <div className={`${headerBg} px-4 py-2 border-b-2 border-[#090A0D] flex justify-between items-center`}>
+                                <span className="font-mono text-xs font-bold uppercase tracking-widest">
+                                    {rarityLabel}
+                                </span>
+                                <span className="font-mono text-xs font-bold tnum">
+                                    #{String(jMeta.id + 1).padStart(2, '0')}
+                                </span>
                             </div>
-                            <Button variant="contained" className={`w-full font-bold py-3 ${jMeta.rarity === 'prismatic' ? 'bg-fuchsia-600 hover:bg-fuchsia-500' : jMeta.rarity === 'gold' ? 'bg-amber-600 hover:bg-amber-500' : 'bg-slate-600 hover:bg-slate-500'}`}>
-                                BU YETENEĞİ SEÇ
-                            </Button>
+
+                            {/* Card Body */}
+                            <div className="p-6 flex-1 flex flex-col justify-between">
+                                <div>
+                                    <div className="w-12 h-12 rounded-[4px] bg-[#111318] border-2 border-[#2D3342] flex items-center justify-center text-2xl mb-4">
+                                        🃏
+                                    </div>
+                                    <h3 className="font-display text-2xl font-bold uppercase tracking-tight text-[#F6F5F2] mb-3">
+                                        {jMeta.name}
+                                    </h3>
+                                    <p className="text-sm text-[#A0A8B8] leading-relaxed">
+                                        {jMeta.desc}
+                                    </p>
+                                </div>
+
+                                <div className="mt-6 pt-4 border-t border-[#2D3342] flex flex-wrap gap-2">
+                                    {jMeta.requiresTarget && (
+                                        <span className="font-mono text-[10px] font-bold uppercase px-2 py-0.5 bg-[#111318] border border-[#2D3342] text-[#FFBE0B] rounded-[2px]">
+                                            🎯 HEDEF SEÇİLİR
+                                        </span>
+                                    )}
+                                    {jMeta.requiresWord && (
+                                        <span className="font-mono text-[10px] font-bold uppercase px-2 py-0.5 bg-[#111318] border border-[#2D3342] text-[#00E5A3] rounded-[2px]">
+                                            📝 GİRDİ GEREKTİRİR
+                                        </span>
+                                    )}
+                                    {!jMeta.requiresTarget && !jMeta.requiresWord && (
+                                        <span className="font-mono text-[10px] font-bold uppercase px-2 py-0.5 bg-[#111318] border border-[#2D3342] text-[#A0A8B8] rounded-[2px]">
+                                            ⚡ ANINDA ETKİ
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Action Footer */}
+                            <div className="p-4 pt-0">
+                                <Button variant="contained" fullWidth className={`${btnClass} !py-3`}>
+                                    BU KARTI SEÇ
+                                </Button>
+                            </div>
                         </motion.div>
                     );
                 })}

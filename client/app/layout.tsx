@@ -1,22 +1,30 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Space_Grotesk, Inter, IBM_Plex_Mono } from "next/font/google";
 import "@/app/globals.css";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
+const spaceGrotesk = Space_Grotesk({
+  variable: "--font-display",
+  subsets: ["latin", "latin-ext"],
+  weight: ["500", "700"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+const inter = Inter({
+  variable: "--font-sans",
+  subsets: ["latin", "latin-ext"],
+  weight: ["400", "500", "600", "700", "800"],
+});
+
+const ibmPlexMono = IBM_Plex_Mono({
+  variable: "--font-mono",
+  subsets: ["latin", "latin-ext"],
+  weight: ["500", "600", "700"],
 });
 
 export const metadata: Metadata = {
-  title: "Kimbuki",
-  description: "Arkadaşlarınla oynayabileceğin eğlenceli bir tahmin oyunu.",
+  title: "KİMBUKİ — Sosyal Dedüksiyon & Tahmin Oyunu",
+  description: "Arkadaşlarınla oynayabileceğin 3D sosyal dedüksiyon ve tahmin oyunu.",
 };
 
 export default function RootLayout({
@@ -25,9 +33,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="tr">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${spaceGrotesk.variable} ${inter.variable} ${ibmPlexMono.variable} antialiased`}
       >
         {children}
         <ToastContainer 
@@ -41,6 +49,7 @@ export default function RootLayout({
           draggable
           pauseOnHover
           theme="dark"
+          toastClassName="swiss-toast"
         />
       </body>
     </html>

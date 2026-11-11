@@ -1,6 +1,5 @@
 import { Avatar } from "@mui/material";
-import { User, GameState } from "./types";
-import { AVATARS } from "./types";
+import { User, GameState, AVATARS } from "./types";
 import { useState, useEffect } from "react";
 
 interface BettingPhaseProps {
@@ -35,44 +34,72 @@ export default function BettingPhase({
     };
 
     return (
-        <main className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center p-4 relative">
-            <div className="absolute top-4 left-4 z-20 flex gap-2 pointer-events-auto">
-                <div className="bg-yellow-500/20 border border-yellow-500/50 text-yellow-400 font-bold px-4 py-2 rounded-full backdrop-blur-md">
-                    💰 -{gameState.betAmount || 50} ALTIN GİRİŞ ÜCRETİ KESİLDİ
+        <main className="min-h-screen text-[#F6F5F2] flex flex-col items-center justify-center p-4 md:p-8 relative">
+            <div className="swiss-panel max-w-4xl w-full p-6 md:p-10 relative overflow-hidden">
+                {/* Top Scoreboard Header */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b-2 border-[#2D3342] mb-8">
+                    <div className="text-left">
+                        <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#FFBE0B] text-[#111318] border-2 border-[#090A0D] rounded-[4px] font-mono text-xs font-bold uppercase tracking-wider mb-3 shadow-[2px_2px_0px_#090A0D]">
+                            💰 -{gameState.betAmount || 50} ALTIN MASA GİRİŞİ KESİLDİ
+                        </div>
+                        <h2 className="font-display text-3xl md:text-5xl font-bold uppercase tracking-tight text-[#F6F5F2]">
+                            BAHİS FAZI
+                        </h2>
+                        <p className="text-sm md:text-base text-[#A0A8B8] mt-1">
+                            Bu eli ilk kim çözecek? Favori oyuncunu seç (kendi üzerine de oynayabilirsin).
+                        </p>
+                    </div>
+
+                    {/* Oversized Tabular Flip-Clock Timer */}
+                    <div className="bg-[#111318] border-2 border-[#3E4659] rounded-[4px] px-6 py-3 text-center shrink-0 shadow-[4px_4px_0px_#090A0D]">
+                        <span className="swiss-label block">KALAN SÜRE</span>
+                        <span className={`font-mono text-4xl md:text-5xl font-bold tnum ${timeLeft <= 3 ? 'text-[#FF334B]' : 'text-[#FFBE0B]'}`}>
+                            {String(timeLeft).padStart(2, '0')}s
+                        </span>
+                    </div>
                 </div>
-            </div>
 
-            <div className="glass max-w-3xl w-full p-8 rounded-3xl text-center shadow-2xl relative overflow-hidden">
-                <h2 className="text-4xl font-bold mb-4 text-cyan-400">BAHİS ZAMANI!</h2>
-                <p className="text-xl text-slate-300 mb-8">Sence bu eli KİM KAZANACAK? (Kendi üzerine de oynayabilirsin)</p>
-
-                <div className="flex flex-wrap justify-center gap-6 mb-8">
+                {/* Contender Tiles Grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-6">
                     {gameState.users.map((u: User) => {
                         const userAvatar = AVATARS.find(a => a.id === u.avatar) || AVATARS[0];
+                        const isSelected = selectedId === u.id;
                         return (
-                        <div 
-                            key={u.id} 
-                            onClick={() => handleBet(u.id)}
-                            className={`flex flex-col items-center gap-2 p-4 rounded-xl cursor-pointer transition-all ${
-                                selectedId === u.id ? 'bg-yellow-500/30 border-2 border-yellow-500 scale-110 shadow-[0_0_20px_rgba(234,179,8,0.5)]' : 
-                                selectedId ? 'bg-slate-800/50 opacity-50 border-2 border-transparent' : 
-                                'bg-slate-800 hover:bg-slate-700 border-2 border-slate-600 hover:border-slate-500 hover:scale-105'
-                            }`}
-                        >
-                            <Avatar className={`w-24 h-24 shadow-lg border-2 border-slate-700 text-4xl ${userAvatar.color}`}>
-                                {userAvatar.icon ? <div className="text-[3rem]">{userAvatar.icon}</div> : u.name.charAt(0).toUpperCase()}
-                            </Avatar>
-                            <span className="font-bold text-lg text-white">{u.name} {u.id === me?.id && '(Sen)'}</span>
-                            {selectedId === u.id && <span className="text-yellow-400 font-black">💰 {(gameState.betAmount || 50) * 2} Altın</span>}
-                        </div>
-                    )})}
+                            <div 
+                                key={u.id} 
+                                onClick={() => handleBet(u.id)}
+                                className={`flex flex-col items-center justify-between p-5 rounded-[4px] border-2 cursor-pointer transition-all ${
+                                    isSelected 
+                                        ? 'bg-[#FFBE0B] text-[#111318] border-[#090A0D] shadow-[6px_6px_0px_#090A0D] -translate-y-1' 
+                                        : selectedId 
+                                            ? 'bg-[#111318] border-[#2D3342] opacity-40 cursor-not-allowed' 
+                                            : 'bg-[#222630] border-[#3E4659] hover:border-[#FFBE0B] hover:-translate-y-1 shadow-[4px_4px_0px_#090A0D]'
+                                }`}
+                            >
+                                <Avatar className={`!w-20 !h-20 !rounded-[4px] !border-2 !border-[#090A0D] !shadow-[3px_3px_0px_#090A0D] mb-3 ${userAvatar.color}`}>
+                                    {userAvatar.icon ? <div className="text-[2.5rem]">{userAvatar.icon}</div> : u.name.charAt(0).toUpperCase()}
+                                </Avatar>
+                                <span className={`font-display font-bold text-base uppercase tracking-wide text-center truncate w-full ${isSelected ? 'text-[#111318]' : 'text-[#F6F5F2]'}`}>
+                                    {u.name} {u.id === me?.id && '(SEN)'}
+                                </span>
+                                <div className={`mt-2 font-mono text-xs font-bold uppercase px-2.5 py-1 rounded-[2px] border tnum ${
+                                    isSelected 
+                                        ? 'bg-[#111318] text-[#FFBE0B] border-[#090A0D]' 
+                                        : 'bg-[#111318] text-[#A0A8B8] border-[#2D3342]'
+                                }`}>
+                                    {isSelected ? `SEÇİLDİ • ${(gameState.betAmount || 50) * 2}G` : `KAZANÇ: ${(gameState.betAmount || 50) * 2}G`}
+                                </div>
+                            </div>
+                        );
+                    })}
                 </div>
 
-                <div className="text-4xl font-black text-white/50 mb-4 animate-pulse">
-                    {timeLeft} sn
-                </div>
                 {selectedId && (
-                    <p className="text-green-400 font-bold text-xl animate-fade-in-up">Bahsiniz onaylandı! Diğer oyuncular bekleniyor...</p>
+                    <div className="p-4 bg-[#00E5A3]/15 border-2 border-[#00E5A3] rounded-[4px] text-center">
+                        <span className="font-mono text-sm font-bold uppercase tracking-wider text-[#00E5A3]">
+                            ✓ BAHSİNİZ KAYDEDİLDİ — DİĞER OYUNCULAR BEKLENİYOR...
+                        </span>
+                    </div>
                 )}
             </div>
         </main>

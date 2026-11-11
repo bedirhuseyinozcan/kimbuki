@@ -355,8 +355,8 @@ function PlayerNode({ u, index, totalUsers, isCurrentTurn, isMe, isWinner, activ
             {bomb && (
                 <Html position={[0, 2.90, 0]} center zIndexRange={[95, 0]} style={{ pointerEvents: 'none' }}>
                     <div className="flex flex-col items-center animate-bounce">
-                        <span className="text-4xl drop-shadow-[0_0_15px_rgba(239,68,68,0.8)]">💣</span>
-                        <span className="text-[10px] font-black text-red-400 bg-black/80 px-2 py-0.5 rounded-full mt-1 border border-red-500/50">
+                        <span className="text-4xl drop-shadow-[0_4px_4px_rgba(0,0,0,0.8)]">💣</span>
+                        <span className="text-[10px] font-mono font-bold text-white bg-[#FF334B] px-2 py-0.5 rounded-[2px] mt-1 border-2 border-[#090A0D] shadow-[2px_2px_0px_#090A0D] tnum">
                             {bomb.roundsLeft} TUR
                         </span>
                     </div>
@@ -386,32 +386,32 @@ function PlayerNode({ u, index, totalUsers, isCurrentTurn, isMe, isWinner, activ
                 <Html position={[0, 2.5, 0]} center zIndexRange={[100, 0]} style={{ pointerEvents: 'none' }}>
                     <div className='flex flex-col items-center select-none'>
                         {activeBubble && (
-                            <div className='absolute -top-14 bg-white text-black px-3 py-1.5 rounded-2xl rounded-bl-none text-xs font-bold shadow-xl z-50 text-center whitespace-normal break-words' style={{ minWidth: 'max-content', maxWidth: '140px' }}>
+                            <div className='absolute -top-14 bg-[#F4F1EA] text-[#111318] px-3 py-1.5 rounded-[4px] border-2 border-[#090A0D] shadow-[3px_3px_0px_#090A0D] text-xs font-bold z-50 text-center whitespace-normal break-words' style={{ minWidth: 'max-content', maxWidth: '150px' }}>
                                 {activeBubble}
                             </div>
                         )}
                         {!isWinner && (
-                            <div className={`mb-1 px-3 py-1 rounded-lg border shadow-lg font-bold text-center text-xs max-w-[100px] break-words z-20 bg-yellow-100 border-yellow-400 text-black transform -rotate-2`}>
+                            <div className={`mb-1.5 px-3 py-1 rounded-[3px] border-2 border-[#090A0D] shadow-[3px_3px_0px_#090A0D] font-display font-bold uppercase tracking-wide text-center text-xs max-w-[120px] break-words z-20 bg-[#FFBE0B] text-[#111318] transform -rotate-2`}>
                                 {u.assignedWord}
                             </div>
                         )}
-                        <span className={`mt-1 font-bold text-[11px] bg-black/80 px-2.5 py-1 rounded-full whitespace-nowrap shadow-lg flex items-center gap-1.5 ${u.status === 'spectator' ? 'line-through text-slate-500' : (u.nameColor ? (NAME_COLORS.find(c => c.id === u.nameColor)?.className || 'text-white') : 'text-white')} ${u.disconnected ? 'text-red-400' : ''}`}>
+                        <span className={`mt-0.5 font-display font-bold text-[11px] bg-[#111318] border-2 border-[#090A0D] shadow-[2px_2px_0px_#090A0D] px-2.5 py-0.5 rounded-[3px] whitespace-nowrap flex items-center gap-1.5 ${u.status === 'spectator' ? 'line-through text-[#687082]' : (u.nameColor ? (NAME_COLORS.find(c => c.id === u.nameColor)?.className || 'text-[#F6F5F2]') : 'text-[#F6F5F2]')} ${u.disconnected ? 'text-[#FF334B]' : ''}`}>
                             <span className={`flex items-center gap-1 ${getRankInfo(u.reputation || 0).color}`}>
                                 <span className="text-[13px]">{getRankInfo(u.reputation || 0).icon}</span>
-                                <span className="text-[9px] uppercase tracking-wider font-black">{getRankInfo(u.reputation || 0).title}</span>
+                                <span className="text-[9px] font-mono uppercase tracking-wider font-bold">{getRankInfo(u.reputation || 0).title}</span>
                             </span>
                             {u.title && (
-                                <span className="text-[8px] font-black px-1.5 py-0.5 rounded-full bg-slate-700/50 text-white border border-slate-600">
+                                <span className="text-[8px] font-mono font-bold px-1.5 py-0.5 rounded-[2px] bg-[#222630] text-[#F6F5F2] border border-[#3E4659]">
                                     {TITLES.find(t => t.id === u.title)?.label || u.title}
                                 </span>
                             )}
-                            <span className="text-slate-500 mx-0.5">|</span>
-                            {u.name} {u.disconnected && '(Koptu)'}
+                            <span className="text-[#3E4659] mx-0.5">|</span>
+                            {u.name} {u.disconnected && '(KOPTU)'}
                         </span>
                         {u.status !== 'spectator' && !isWinner && (
-                            <div className='flex gap-1 mt-1 bg-black/40 px-1.5 py-0.5 rounded-full'>
+                            <div className='flex gap-1 mt-1 bg-[#111318] border border-[#2D3342] px-2 py-0.5 rounded-[3px] shadow-[2px_2px_0px_#090A0D]'>
                                 {[...Array(3)].map((_, i) => (
-                                    <span key={i} className='drop-shadow-md text-[8px]'>{i < (u.lives ?? 3) ? '❤️' : '🖤'}</span>
+                                    <span key={i} className='text-[9px]'>{i < (u.lives ?? 3) ? '❤️' : '🖤'}</span>
                                 ))}
                             </div>
                         )}

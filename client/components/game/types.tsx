@@ -91,22 +91,22 @@ export const JOKERS = [
 ];
 
 export const AVATARS = [
-    { id: 'Warrior', color: "bg-red-600", icon: <GiBroadsword />, label: "Savaşçı", model: "Warrior.gltf" },
-    { id: 'Wizard', color: "bg-blue-600", icon: <GiWizardStaff />, label: "Büyücü", model: "Wizard.gltf" },
-    { id: 'Rogue', color: "bg-purple-600", icon: <GiDaggers />, label: "Suikastçi", model: "Rogue.gltf" },
-    { id: 'Ranger', color: "bg-green-600", icon: <GiBowArrow />, label: "Okçu", model: "Ranger.gltf" },
-    { id: 'Monk', color: "bg-orange-600", icon: <GiHighKick />, label: "Keşiş", model: "Monk.gltf" },
-    { id: 'Cleric', color: "bg-yellow-500", icon: <GiHolySymbol />, label: "Şifacı", model: "Cleric.gltf" }
+    { id: 'Warrior', color: "!bg-[#FF334B] !text-white", icon: <GiBroadsword />, label: "Savaşçı", model: "Warrior.gltf" },
+    { id: 'Wizard', color: "!bg-[#3B82F6] !text-white", icon: <GiWizardStaff />, label: "Büyücü", model: "Wizard.gltf" },
+    { id: 'Rogue', color: "!bg-[#A855F7] !text-white", icon: <GiDaggers />, label: "Suikastçi", model: "Rogue.gltf" },
+    { id: 'Ranger', color: "!bg-[#00E5A3] !text-[#111318]", icon: <GiBowArrow />, label: "Okçu", model: "Ranger.gltf" },
+    { id: 'Monk', color: "!bg-[#FF5938] !text-white", icon: <GiHighKick />, label: "Keşiş", model: "Monk.gltf" },
+    { id: 'Cleric', color: "!bg-[#FFBE0B] !text-[#111318]", icon: <GiHolySymbol />, label: "Şifacı", model: "Cleric.gltf" }
 ];
 
 export const getRankInfo = (reputation: number) => {
     let title = "Çaylak";
-    let color = "text-amber-600";
+    let color = "text-[#FF5938]";
     let icon = <GiFootprint />;
-    if (reputation >= 5000) { title = "Kimbuki Üstadı"; color = "text-yellow-400 font-black drop-shadow-[0_0_8px_rgba(251,191,36,0.8)]"; icon = <GiCrown />; }
-    else if (reputation >= 2500) { title = "Zihin Okuyucu"; color = "text-cyan-300"; icon = <GiCrystalBall />; }
-    else if (reputation >= 1000) { title = "Dedektif"; color = "text-yellow-500"; icon = <GiMagnifyingGlass />; }
-    else if (reputation >= 400) { title = "Gözlemci"; color = "text-slate-300"; icon = <GiEyeTarget />; }
+    if (reputation >= 5000) { title = "Kimbuki Üstadı"; color = "text-[#FFBE0B] font-black"; icon = <GiCrown />; }
+    else if (reputation >= 2500) { title = "Zihin Okuyucu"; color = "text-[#00E5A3]"; icon = <GiCrystalBall />; }
+    else if (reputation >= 1000) { title = "Dedektif"; color = "text-[#FFBE0B]"; icon = <GiMagnifyingGlass />; }
+    else if (reputation >= 400) { title = "Gözlemci"; color = "text-[#A0A8B8]"; icon = <GiEyeTarget />; }
     return { title, color, icon };
 };
 
@@ -119,10 +119,10 @@ export const PEDESTALS = [
 ];
 
 export const NAME_COLORS = [
-    { id: 'text-white', label: 'Standart Beyaz', className: 'text-white' },
-    { id: 'color_neon_pink', label: 'Neon Pembe', className: 'text-pink-400 drop-shadow-[0_0_8px_rgba(244,114,182,0.8)]' },
-    { id: 'color_electric_blue', label: 'Elektrik Mavisi', className: 'text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]' },
-    { id: 'color_gold', label: 'Saf Altın', className: 'text-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.8)]' }
+    { id: 'text-white', label: 'Standart Beyaz', className: 'text-[#F6F5F2]' },
+    { id: 'color_neon_pink', label: 'Sinyal Mercan', className: 'text-[#FF5938]' },
+    { id: 'color_electric_blue', label: 'Nane Telemetri', className: 'text-[#00E5A3]' },
+    { id: 'color_gold', label: 'Saf Altın', className: 'text-[#FFBE0B]' }
 ];
 
 export const TITLES = [

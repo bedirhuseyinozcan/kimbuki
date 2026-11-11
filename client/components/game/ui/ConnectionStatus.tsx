@@ -2,7 +2,6 @@
 
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import WifiIcon from "@mui/icons-material/Wifi";
 import WifiOffIcon from "@mui/icons-material/WifiOff";
 
 interface ConnectionStatusProps {
@@ -18,15 +17,15 @@ export default function ConnectionStatus({
     pingMs,
     connectionError,
 }: ConnectionStatusProps) {
-    let pingColor = "text-emerald-400 border-emerald-500/30 bg-emerald-950/40";
-    let pingDot = "bg-emerald-400";
+    let pingColor = "text-[#00E5A3] border-[#00E5A3]/60 bg-[#1A1D24]";
+    let pingDot = "bg-[#00E5A3]";
     if (pingMs !== null) {
         if (pingMs > 180) {
-            pingColor = "text-rose-400 border-rose-500/30 bg-rose-950/40";
-            pingDot = "bg-rose-400";
+            pingColor = "text-[#FF334B] border-[#FF334B] bg-[#1A1D24]";
+            pingDot = "bg-[#FF334B]";
         } else if (pingMs > 90) {
-            pingColor = "text-amber-400 border-amber-500/30 bg-amber-950/40";
-            pingDot = "bg-amber-400";
+            pingColor = "text-[#FFBE0B] border-[#FFBE0B] bg-[#1A1D24]";
+            pingDot = "bg-[#FFBE0B]";
         }
     }
 
@@ -38,22 +37,22 @@ export default function ConnectionStatus({
                         initial={{ opacity: 0, y: -40 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -40 }}
-                        transition={{ duration: 0.3 }}
+                        transition={{ duration: 0.15 }}
                         className="fixed top-4 left-1/2 -translate-x-1/2 z-50 pointer-events-auto"
                     >
-                        <div className="flex items-center gap-3 px-5 py-2.5 rounded-full bg-rose-600/95 text-white shadow-2xl backdrop-blur-md border border-rose-400/50 animate-pulse text-sm font-semibold">
-                            <WifiOffIcon className="w-5 h-5 animate-spin" />
-                            <span>Bağlantı kesildi, sunucuya yeniden bağlanılıyor...</span>
+                        <div className="flex items-center gap-3 px-5 py-2.5 rounded-[4px] bg-[#FF334B] text-white border-2 border-[#090A0D] shadow-[4px_4px_0px_#090A0D] text-xs font-mono font-bold uppercase tracking-wider">
+                            <WifiOffIcon className="w-4 h-4 animate-spin" />
+                            <span>BAĞLANTI KESİLDİ — SUNUCUYA BAĞLANILIYOR...</span>
                         </div>
                     </motion.div>
                 )}
             </AnimatePresence>
 
-            <div className="fixed top-3 right-3 z-40 flex items-center gap-2 pointer-events-auto select-none">
+            <div className="fixed bottom-3 left-3 z-40 flex items-center gap-2 pointer-events-auto select-none">
                 <div
-                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono font-medium border backdrop-blur-md transition-all shadow-md ${
+                    className={`flex items-center gap-2 px-2.5 py-1 rounded-[4px] text-[11px] font-mono font-bold uppercase tracking-wider border-2 shadow-[2px_2px_0px_#090A0D] ${
                         isReconnecting
-                            ? "text-rose-300 border-rose-500/50 bg-rose-950/60 animate-pulse"
+                            ? "text-[#FF334B] border-[#FF334B] bg-[#1A1D24]"
                             : pingColor
                     }`}
                     title={
@@ -63,14 +62,14 @@ export default function ConnectionStatus({
                     }
                 >
                     <span
-                        className={`w-2 h-2 rounded-full ${
-                            isReconnecting ? "bg-rose-500 animate-ping" : pingDot
+                        className={`w-2 h-2 rounded-none ${
+                            isReconnecting ? "bg-[#FF334B] animate-ping" : pingDot
                         }`}
                     />
                     {isReconnecting ? (
-                        <span>Yeniden Bağlanıyor</span>
+                        <span>RECONNECTING</span>
                     ) : (
-                        <span>{pingMs !== null ? `${pingMs}ms` : "Bağlı"}</span>
+                        <span className="tnum">{pingMs !== null ? `${pingMs} MS` : "ONLINE"}</span>
                     )}
                 </div>
             </div>

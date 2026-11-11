@@ -1,62 +1,251 @@
 @import "tailwindcss";
 
 :root {
-  --background: #0f172a;
-  
-  --foreground: #f8fafc;
-  
-  --primary: #8b5cf6;
-  
-  --secondary: #06b6d4;
-  
-  --accent: #f43f5e;
-  
-  --card: rgba(30, 41, 59, 0.7);
-  
-  --border: rgba(148, 163, 184, 0.2);
+  /* Tier 1: Atmospheric Canvas & Color Temperature (Velvet Club & Crisp Cardstock) */
+  --canvas-bg: #111318;
+  --canvas-surface: #1A1D24;
+  --canvas-elevated: #222630;
+  --canvas-paper: #F4F1EA;
+  --canvas-paper-alt: #EAE5DC;
+
+  /* Structural Borders & Dividers */
+  --border-subtle: #2D3342;
+  --border-strong: #3E4659;
+  --border-ink: #0B0D11;
+
+  /* Typography Hierarchy */
+  --text-primary: #F6F5F2;
+  --text-secondary: #A0A8B8;
+  --text-muted: #687082;
+  --text-ink: #111318;
+
+  /* Tier 2: Trio-Tone Systematic Character Palette */
+  --accent-primary: #FFBE0B;      /* Signal Post-it Gold */
+  --accent-primary-hover: #FFD043;
+  --accent-secondary: #FF5938;    /* International Vermilion */
+  --accent-secondary-hover: #FF7457;
+  --accent-tertiary: #00E5A3;     /* Mint Telemetry */
+  --accent-info: #3B82F6;         /* Electric Cobalt */
+
+  /* Tier 3: Contextual Semantic Status Colors */
+  --status-success: #00E5A3;
+  --status-warning: #FFBE0B;
+  --status-error: #FF334B;
+  --status-info: #38BDF8;
+
+  /* Geometry & Tactile Depth Tokens (Radius Class D: Dynamic Poster / Kinetic Hard-Edge) */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+
+  --shadow-hard-sm: 3px 3px 0px #090A0D;
+  --shadow-hard-md: 5px 5px 0px #090A0D;
+  --shadow-hard-lg: 8px 8px 0px #090A0D;
+  --shadow-hard-gold: 4px 4px 0px #FFBE0B;
+  --shadow-hard-coral: 4px 4px 0px #FF5938;
+  --shadow-hard-mint: 4px 4px 0px #00E5A3;
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
-  background-image:
-    radial-gradient(at 0% 0%, hsla(253, 16%, 7%, 1) 0, transparent 50%),
-    radial-gradient(at 50% 0%, hsla(225, 39%, 30%, 1) 0, transparent 50%),
-    radial-gradient(at 100% 0%, hsla(339, 49%, 30%, 1) 0, transparent 50%);
-  background-attachment: fixed;
-  font-family: 'Inter', system-ui, sans-serif;
+  color: var(--text-primary);
+  background-color: var(--canvas-bg);
+  /* Subtle Swiss architectural grid lines (zero gradient noise) */
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+  background-size: 32px 32px;
+  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
   min-height: 100vh;
+  overflow-x: hidden;
 }
 
-
-.glass {
-  background: var(--card);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--border);
+h1, h2, h3, h4, .font-display {
+  font-family: var(--font-display), var(--font-sans), sans-serif;
 }
 
-
-.btn {
-  @apply px-6 py-3 rounded-xl font-bold transition-all duration-200 active:scale-95 shadow-lg;
+.font-mono, .tnum {
+  font-family: var(--font-mono), monospace;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
 }
 
-.btn-primary {
-  background: linear-gradient(135deg, var(--primary), var(--secondary));
-  color: white;
-  box-shadow: 0 4px 14px 0 rgba(139, 92, 246, 0.4);
+/* Swiss Kinetic Card Surfaces (Replacing generic glassmorphism) */
+.glass, .swiss-panel {
+  background-color: var(--canvas-surface);
+  border: 2px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-hard-md);
 }
 
-.btn-primary:hover {
-  box-shadow: 0 6px 20px rgba(139, 92, 246, 0.23);
-  transform: translateY(-2px);
+.swiss-card {
+  background-color: var(--canvas-surface);
+  border: 2px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-hard-sm);
+  transition: transform 150ms cubic-bezier(0.2, 0, 0, 1), box-shadow 150ms cubic-bezier(0.2, 0, 0, 1), border-color 150ms ease;
 }
 
-.btn-secondary {
-  @apply bg-slate-700 text-white hover:bg-slate-600;
+.swiss-card-interactive:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: var(--shadow-hard-md);
+  border-color: var(--accent-primary);
 }
 
+.swiss-card-interactive:active {
+  transform: translate(1px, 1px);
+  box-shadow: 2px 2px 0px #090A0D;
+}
 
-.input-field {
-  @apply w-full px-4 py-3 rounded-xl bg-slate-800/50 border border-slate-700 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/50 outline-none transition-all;
+/* Tactile Paper Surface (Post-it / Boardgame Cardstock) */
+.swiss-paper {
+  background-color: var(--canvas-paper);
+  color: var(--text-ink);
+  border: 2px solid var(--border-ink);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-hard-sm);
+}
+
+.swiss-postit {
+  background-color: var(--accent-primary);
+  color: var(--text-ink);
+  border: 2px solid var(--border-ink);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-hard-sm);
+}
+
+/* Swiss Tactile Buttons */
+.swiss-btn-primary {
+  background-color: var(--accent-primary) !important;
+  color: var(--text-ink) !important;
+  border: 2px solid var(--border-ink) !important;
+  border-radius: var(--radius-sm) !important;
+  box-shadow: var(--shadow-hard-sm) !important;
+  font-family: var(--font-display), sans-serif !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+  transition: transform 120ms ease, box-shadow 120ms ease, background-color 120ms ease !important;
+}
+
+.swiss-btn-primary:hover:not(:disabled) {
+  background-color: var(--accent-primary-hover) !important;
+  transform: translate(-2px, -2px);
+  box-shadow: var(--shadow-hard-md) !important;
+}
+
+.swiss-btn-primary:active:not(:disabled) {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0px #090A0D !important;
+}
+
+.swiss-btn-secondary {
+  background-color: var(--canvas-elevated) !important;
+  color: var(--text-primary) !important;
+  border: 2px solid var(--border-strong) !important;
+  border-radius: var(--radius-sm) !important;
+  box-shadow: var(--shadow-hard-sm) !important;
+  font-family: var(--font-display), sans-serif !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+  transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease !important;
+}
+
+.swiss-btn-secondary:hover:not(:disabled) {
+  border-color: var(--text-primary) !important;
+  transform: translate(-2px, -2px);
+  box-shadow: var(--shadow-hard-md) !important;
+}
+
+.swiss-btn-coral {
+  background-color: var(--accent-secondary) !important;
+  color: #FFFFFF !important;
+  border: 2px solid var(--border-ink) !important;
+  border-radius: var(--radius-sm) !important;
+  box-shadow: var(--shadow-hard-sm) !important;
+  font-family: var(--font-display), sans-serif !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+  transition: transform 120ms ease, box-shadow 120ms ease !important;
+}
+
+.swiss-btn-coral:hover:not(:disabled) {
+  background-color: var(--accent-secondary-hover) !important;
+  transform: translate(-2px, -2px);
+  box-shadow: var(--shadow-hard-md) !important;
+}
+
+.swiss-btn-mint {
+  background-color: var(--accent-tertiary) !important;
+  color: var(--text-ink) !important;
+  border: 2px solid var(--border-ink) !important;
+  border-radius: var(--radius-sm) !important;
+  box-shadow: var(--shadow-hard-sm) !important;
+  font-family: var(--font-display), sans-serif !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+  transition: transform 120ms ease, box-shadow 120ms ease !important;
+}
+
+.swiss-btn-mint:hover:not(:disabled) {
+  transform: translate(-2px, -2px);
+  box-shadow: var(--shadow-hard-md) !important;
+}
+
+/* Swiss Micro-label */
+.swiss-label {
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+}
+
+/* Swiss Badge */
+.swiss-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  font-family: var(--font-mono), monospace;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-radius: var(--radius-sm);
+  border: 2px solid var(--border-subtle);
+  background-color: var(--canvas-elevated);
+}
+
+/* Custom Scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: var(--canvas-bg);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 0px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-primary);
+}
+
+/* Toast Overrides */
+.Toastify__toast {
+  background-color: var(--canvas-surface) !important;
+  color: var(--text-primary) !important;
+  border: 2px solid var(--border-strong) !important;
+  border-radius: var(--radius-sm) !important;
+  box-shadow: var(--shadow-hard-md) !important;
+  font-family: var(--font-sans), sans-serif !important;
+  font-weight: 600 !important;
 }
