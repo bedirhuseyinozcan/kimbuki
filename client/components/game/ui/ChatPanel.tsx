@@ -1,11 +1,11 @@
 import React, { useRef, useEffect } from "react";
 import { TextField, IconButton } from "@mui/material";
 import SendIcon from '@mui/icons-material/Send';
-import { NAME_COLORS } from "../types";
+import { ChatMessage, NAME_COLORS } from "../types";
 import { useGameChat } from "@/context/GameContext";
 
 interface ChatPanelProps {
-    chatHistory?: any[];
+    chatHistory?: ChatMessage[];
     chatInput?: string;
     setChatInput?: (val: string) => void;
     handleChat?: (e?: React.FormEvent) => void;
@@ -53,7 +53,7 @@ export default function ChatPanel(props: ChatPanelProps) {
                             HENÜZ MESAJ YOK. SOHBETİ BAŞLAT!
                         </div>
                     )}
-                    {chatHistory.map((msg: any, i: number) => {
+                    {chatHistory.map((msg: ChatMessage, i: number) => {
                         let colorClass = "text-[#FFBE0B]";
                         if (!msg.system && msg.nameColor) {
                             const found = NAME_COLORS.find(c => c.id === msg.nameColor);

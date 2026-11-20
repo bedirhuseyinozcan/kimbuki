@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, ReactNode } from "react";
-import { GameState, User } from "@/components/game/types";
+import { GameState, User, VisualEffect } from "@/components/game/types";
 import { GameActions } from "@/hooks/useGameSocket";
 
 export interface GameContextValue {
@@ -22,7 +22,7 @@ export interface GameContextValue {
     headRotations: { [key: string]: { pitch: number; yaw: number } };
     headRotationsRef: React.MutableRefObject<{ [key: string]: { pitch: number; yaw: number } }>;
     taunts: { [key: string]: { type: string; id: number } };
-    visualEffects: any[];
+    visualEffects: VisualEffect[];
     isSubmitting: boolean;
     isConnected: boolean;
     isReconnecting: boolean;

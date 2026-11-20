@@ -115,12 +115,12 @@ export default function AudioSettingsDialog({ open, onClose }: AudioSettingsDial
 
     useEffect(() => {
         if (!open) {
-            stopTest();
+            queueMicrotask(() => stopTest());
             return;
         }
 
         let cancelled = false;
-        setPermissionError(null);
+        queueMicrotask(() => setPermissionError(null));
 
         navigator.mediaDevices.getUserMedia({ audio: true })
             .then(stream => {
@@ -165,7 +165,9 @@ export default function AudioSettingsDialog({ open, onClose }: AudioSettingsDial
 
     useEffect(() => {
         if (open && selectedInput) {
-            startTest(selectedInput);
+            queueMicrotask(() => {
+                startTest(selectedInput);
+            });
         }
         return () => stopTest();
     }, [selectedInput, open, startTest, stopTest]);

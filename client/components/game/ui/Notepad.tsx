@@ -1,6 +1,5 @@
 import React from "react";
-import { Chip } from "@mui/material";
-import { User, GameState, JOKERS } from "../types";
+import { User, GameState, JOKERS, ResolvedQuestion } from "../types";
 import { useGameNotepad } from "@/context/GameContext";
 
 interface NotepadProps {
@@ -115,17 +114,17 @@ export default function Notepad(props: NotepadProps) {
             {me?.lastQuestions && me.lastQuestions.length > 0 && (
                 <div className="mt-3.5 flex flex-col gap-2.5 overflow-y-auto custom-scrollbar max-h-[260px] pr-1">
                     <div className="swiss-label">SORU KAYITLARI</div>
-                    {me.lastQuestions.map((q: any, i: number) => (
+                    {me.lastQuestions.map((q: ResolvedQuestion, i: number) => (
                         <div key={i} className="p-3 rounded-[4px] border-2 border-[#2D3342] bg-[#222630]">
                             <div className="flex justify-between items-center mb-1">
                                 <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-[#FFBE0B]">
                                     SORU #{i + 1}
                                 </span>
                             </div>
-                            <p className="text-xs font-bold text-[#F6F5F2] mb-2.5 break-words">"{q.question}"</p>
+                            <p className="text-xs font-bold text-[#F6F5F2] mb-2.5 break-words">&ldquo;{q.question}&rdquo;</p>
                             <div className="flex gap-1.5 text-[11px] flex-wrap">
                                 {Object.entries(q.votes).map(([voterId, vote]) => {
-                                    const voter = gameState.users.find((u: any) => u.id === voterId);
+                                    const voter = gameState.users.find((u: User) => u.id === voterId);
                                     if (!voter) return null;
                                     const voteBadge = vote === 'yes' 
                                         ? 'bg-[#00E5A3]/15 border-[#00E5A3] text-[#00E5A3]' 

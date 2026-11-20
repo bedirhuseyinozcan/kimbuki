@@ -1,6 +1,33 @@
 import React from 'react';
 import { GiBroadsword, GiWizardStaff, GiDaggers, GiBowArrow, GiHighKick, GiHolySymbol, GiFootprint, GiEyeTarget, GiMagnifyingGlass, GiCrystalBall, GiCrown } from 'react-icons/gi';
 
+export type ChatMessage = {
+    system?: boolean;
+    userId?: string;
+    name?: string;
+    nameColor?: string;
+    message: string;
+    timestamp: number;
+};
+
+export type ResolvedQuestion = {
+    askerId?: string;
+    question: string;
+    votes: { [userId: string]: string };
+};
+
+export type VisualEffect = {
+    id: number;
+    type: string;
+    targetId?: string;
+    userId?: string;
+};
+
+export type JokerPayload = {
+    targetId?: string;
+    newWord?: string;
+};
+
 export type User = {
     id: string;
     dbId: string;
@@ -28,8 +55,8 @@ export type User = {
     extraQuestionChain?: boolean;
     silencedTurns?: number;
     extraQuestions?: number;
-    lastQuestion?: any;
-    lastQuestions?: any[];
+    lastQuestion?: ResolvedQuestion | null;
+    lastQuestions?: ResolvedQuestion[];
     questionsAskedThisTurn?: number;
     assignedWord: string | null;
     lives: number;
@@ -65,7 +92,7 @@ export type GameState = {
     users: User[];
     currentTurnUserId: string | null;
     turnEndsAt: number | null;
-    chatHistory?: any[];
+    chatHistory?: ChatMessage[];
     winners: string[];
     hasObjectionUsed?: boolean;
 };

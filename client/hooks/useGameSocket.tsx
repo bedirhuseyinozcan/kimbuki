@@ -5,7 +5,15 @@ import { useRouter } from "next/navigation";
 import { io, Socket } from "socket.io-client";
 import { toast } from "react-toastify";
 import { Button } from "@mui/material";
-import { User, GameState } from "@/components/game/types";
+import { User, GameState, ChatMessage, VisualEffect, JokerPayload } from "@/components/game/types";
+
+interface AuthProfilePayload {
+    username: string;
+    avatar?: string;
+    pedestal?: string;
+    nameColor?: string;
+    title?: string;
+}
 
 export interface UseGameSocketOptions {
     onClearNotepad?: () => void;
@@ -28,7 +36,7 @@ export interface GameActions {
     askQuestion: (question: string) => void;
     submitVote: (vote: string) => void;
     guess: (customGuess?: string) => void;
-    useJoker: (payload: any) => void;
+    useJoker: (payload: JokerPayload) => void;
     toggleVoice: (enabled: boolean) => Promise<void>;
     copyLink: () => void;
     leaveRoom: () => void;
@@ -94,13 +102,13 @@ export function useGameSocket(
 
     const headRotationsRef = useRef<{ [key: string]: { pitch: number; yaw: number } }>({});
     const [taunts, setTaunts] = useState<{ [key: string]: { type: string; id: number } }>({});
-    const [visualEffects, setVisualEffects] = useState<any[]>([]);
+    const [visualEffects, setVisualEffects] = useState<VisualEffect[]>([]);
 
     const optionsRef = useRef(options);
     optionsRef.current = options;
 
-    const userRef = useRef<any>(null);
-    const pendingInitChatRef = useRef<any[] | null>(null);
+    const userRef = useRef<AuthProfilePayload | null>(null);
+    const pendingInitChatRef = useRef<ChatMessage[] | null>(null);
     const prevGamePhaseRef = useRef<string | null>(null);
 
     const wordInputRef = useRef(wordInput);
@@ -123,7 +131,7 @@ export function useGameSocket(
         }
     }, [code]);
 
-    const connectToRoom = useCallback((user: any) => {
+    const connectToRoom = useCallback((user: AuthProfilePayload) => {
         userRef.current = user;
         const token = localStorage.getItem("gameToken");
         const s = io(process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:4000", {
@@ -150,7 +158,7 @@ export function useGameSocket(
                     nameColor: userRef.current.nameColor,
                     title: userRef.current.title,
                 },
-                (res: any) => {
+                (res: { ok: boolean; error?: string }) => {
                     if (!res.ok) {
                         toast.error("Hata: " + res.error);
                         router.push("/");
@@ -229,11 +237,10 @@ export function useGameSocket(
             }));
         });
 
-        s.on("game:init_chat", ({ chatHistory }: { chatHistory: any[] }) => {
+        s.on("game:init_chat", ({ chatHistory }: { chatHistory: ChatMessage[] }) => {
             const incoming = chatHistory || [];
             setGameState((prev) => {
                 if (!prev) {
-                    // Buffer chat until first game:state arrives
                     pendingInitChatRef.current = incoming;
                     return prev;
                 }
@@ -245,7 +252,7 @@ export function useGameSocket(
             });
         });
 
-        s.on("game:new_chat", (chatMsg: any) => {
+        s.on("game:new_chat", (chatMsg: ChatMessage) => {
             setGameState((prev) => {
                 if (!prev) return prev;
                 const history = prev.chatHistory || [];
@@ -264,7 +271,7 @@ export function useGameSocket(
             toast.info(`💡 İPUCU: ${hint}`);
         });
 
-        s.on("game:head_update", ({ userId, pitch, yaw }: any) => {
+        s.on("game:head_update", ({ userId, pitch, yaw }: { userId: string; pitch: number; yaw: number }) => {
             headRotationsRef.current[userId] = { pitch, yaw };
         });
 
@@ -292,7 +299,7 @@ export function useGameSocket(
             toast.error("🧠 AMNEZİ! Biri hafızanı sildi, tüm notların kayboldu!", { autoClose: 5000, theme: "colored" });
         });
 
-        s.on("game:play_taunt", ({ userId, type }: any) => {
+        s.on("game:play_taunt", ({ userId, type }: { userId: string; type: string }) => {
             const tauntId = Date.now();
             setTaunts((prev) => ({ ...prev, [userId]: { type, id: tauntId } }));
             setTimeout(() => {
@@ -307,7 +314,7 @@ export function useGameSocket(
             }, 2500);
         });
 
-        s.on("game:visual_effect", async (payload: any) => {
+        s.on("game:visual_effect", async (payload: Omit<VisualEffect, "id">) => {
             const audio = await import("@/utils/audio");
             if (payload.type === "bomb_explode") audio.playExplosionSound();
             else if (payload.type === "roulette_die") audio.playGunshotSound();
@@ -437,7 +444,7 @@ export function useGameSocket(
         setGuessInput("");
     }, [socket, markSubmitting]);
 
-    const handleUseJoker = useCallback((payload: any) => {
+    const handleUseJoker = useCallback((payload: JokerPayload) => {
         markSubmitting();
         socket?.emit("game:use_joker", payload);
     }, [socket, markSubmitting]);

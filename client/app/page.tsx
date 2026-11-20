@@ -33,7 +33,11 @@ export default function Home() {
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
   const [forgotPasswordDialogOpen, setForgotPasswordDialogOpen] = useState(false);
   
-  const [user, setUser] = useState<{ id: string, username: string, avatar: string, pedestal?: string, nameColor?: string, title?: string, gold: number, unlockedAvatars: string[], unlockedPedestals?: string[], unlockedNameColors?: string[], unlockedTitles?: string[], rankInfo?: { title: string, reputation: number, nextThreshold: number | null }, quests?: any[], canClaimDaily?: boolean, loginStreak?: number } | null>(null);
+  type QuestItem = { id: string; type: string; target: number; progress: number; rewardGold: number; rewardRep: number; title: string; isClaimed: boolean };
+  type ShopItem = { id: string; price: number; label: string; icon: string; type: string };
+  type LeaderboardEntry = { _id?: string; username: string; gold: number; reputation?: number; avatar?: string; nameColor?: string; title?: string };
+
+  const [user, setUser] = useState<{ id: string, username: string, avatar: string, pedestal?: string, nameColor?: string, title?: string, gold: number, unlockedAvatars: string[], unlockedPedestals?: string[], unlockedNameColors?: string[], unlockedTitles?: string[], rankInfo?: { title: string, reputation: number, nextThreshold: number | null }, quests?: QuestItem[], canClaimDaily?: boolean, loginStreak?: number } | null>(null);
   
   const [questsDialogOpen, setQuestsDialogOpen] = useState(false);
 
@@ -53,7 +57,7 @@ export default function Home() {
           } else {
               toast.error(data.error);
           }
-      } catch (e) {
+      } catch {
           toast.error("Bağlantı hatası!");
       }
   };
@@ -61,10 +65,10 @@ export default function Home() {
   const [shopDialogOpen, setShopDialogOpen] = useState(false);
   const [shopTab, setShopTab] = useState(0);
   const [dailyRewardDialogOpen, setDailyRewardDialogOpen] = useState(false);
-  const [shopItems, setShopItems] = useState<any[]>([]);
+  const [shopItems, setShopItems] = useState<ShopItem[]>([]);
 
   const [leaderboardDialogOpen, setLeaderboardDialogOpen] = useState(false);
-  const [leaderboard, setLeaderboard] = useState<any[]>([]);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [liveStats, setLiveStats] = useState({ activeRooms: 0, activePlayers: 0 });
 
   const [authTab, setAuthTab] = useState(0);
@@ -84,8 +88,10 @@ export default function Home() {
     const params = new URLSearchParams(window.location.search);
     const inviteCode = params.get("invite");
     if (inviteCode) {
-        setRoomCode(inviteCode);
-        setPlayDialogOpen(true);
+        queueMicrotask(() => {
+            setRoomCode(inviteCode);
+            setPlayDialogOpen(true);
+        });
     }
 
     fetch(`${process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:4000"}/api/stats/live`)
@@ -543,7 +549,7 @@ export default function Home() {
               </h1>
 
               <p className="text-lg sm:text-xl text-[#A0A8B8] max-w-xl leading-relaxed">
-                Klasik <strong className="text-[#F6F5F2]">"Ben Kimim?"</strong> masa oyununun 3 boyutlu, sesli sohbetli ve taktiksel jokerli yeni nesil versiyonu. Odanı kur, arkadaşlarının alnına kelimeleri yapıştır ve sorgulamaya başla!
+                Klasik <strong className="text-[#F6F5F2]">&ldquo;Ben Kimim?&rdquo;</strong> masa oyununun 3 boyutlu, sesli sohbetli ve taktiksel jokerli yeni nesil versiyonu. Odanı kur, arkadaşlarının alnına kelimeleri yapıştır ve sorgulamaya başla!
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4 pt-2">
@@ -1344,7 +1350,7 @@ export default function Home() {
         </DialogTitle>
         <DialogContent className="p-6 custom-scrollbar">
             <div className="space-y-3.5 mt-1">
-                {user?.quests?.map((quest: any) => {
+                {user?.quests?.map((quest: QuestItem) => {
                     const isCompleted = quest.progress >= quest.target;
                     return (
                         <div 

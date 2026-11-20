@@ -5,7 +5,7 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import InfoIcon from '@mui/icons-material/Info';
 import AudioSettingsDialog from './AudioSettingsDialog';
 import MicOffIcon from '@mui/icons-material/MicOff';
-import { User, GameState, JOKERS } from "./types";
+import { User, GameState, JOKERS, JokerPayload, VisualEffect } from "./types";
 import { playTurnSound, playWinSound } from "@/utils/audio";
 import confetti from "canvas-confetti";
 import { motion, AnimatePresence } from "framer-motion";
@@ -43,7 +43,7 @@ export interface GameSceneProps {
     onLeaveRoom?: () => void;
     onAskQuestion?: (q: string) => void;
     onSubmitVote?: (v: string) => void;
-    onUseJoker?: (payload: any) => void;
+    onUseJoker?: (payload: JokerPayload) => void;
     onToggleVoice?: (enabled: boolean) => void;
     onStartObjection?: () => void;
     onVoteObjection?: (vote: boolean) => void;
@@ -51,7 +51,7 @@ export interface GameSceneProps {
     onHeadRotation?: (pitch: number, yaw: number) => void;
     taunts?: { [key: string]: { type: string, id: number } };
     onTaunt?: (type: string) => void;
-    visualEffects?: any[];
+    visualEffects?: VisualEffect[];
 }
 
 export default function GameScene(props: GameSceneProps = {}) {
@@ -88,7 +88,6 @@ export default function GameScene(props: GameSceneProps = {}) {
     const taunts = props.taunts ?? ctx.taunts;
     const onTaunt = props.onTaunt ?? actions.taunt;
     const visualEffects = props.visualEffects ?? ctx.visualEffects;
-    const chatEndRef = useRef<HTMLDivElement>(null);
 
     const [timeLeft, setTimeLeft] = useState(0);
     const [questionTimeLeft, setQuestionTimeLeft] = useState(0);
@@ -120,7 +119,11 @@ export default function GameScene(props: GameSceneProps = {}) {
 
     useEffect(() => {
         if (typeof window !== "undefined" && window.innerWidth > 768) {
-            setIsNotepadOpen(true); setIsChatOpen(true); setIsActionsOpen(true);
+            queueMicrotask(() => {
+                setIsNotepadOpen(true);
+                setIsChatOpen(true);
+                setIsActionsOpen(true);
+            });
         }
     }, []);
 
@@ -160,48 +163,56 @@ export default function GameScene(props: GameSceneProps = {}) {
 
     useEffect(() => {
         if (gameState.activeQuestion) {
-            setQuestionDialogOpen(false);
+            queueMicrotask(() => setQuestionDialogOpen(false));
         }
     }, [gameState.activeQuestion]);
 
     useEffect(() => {
-        if (!gameState.turnEndsAt) { setTimeLeft(0); return; }
         const updateTimer = () => {
+            if (!gameState.turnEndsAt) {
+                setTimeLeft(0);
+                return;
+            }
             const serverTimeNow = Date.now() + timeOffset;
-            const remaining = Math.max(0, Math.floor((gameState.turnEndsAt! - serverTimeNow) / 1000));
+            const remaining = Math.max(0, Math.floor((gameState.turnEndsAt - serverTimeNow) / 1000));
             setTimeLeft(remaining);
         };
-        updateTimer();
-        if (gameState.activeQuestion) {
-            return; 
+        queueMicrotask(updateTimer);
+        if (!gameState.turnEndsAt || gameState.activeQuestion) {
+            return;
         }
         const interval = setInterval(updateTimer, 500);
         return () => clearInterval(interval);
     }, [gameState.turnEndsAt, gameState.activeQuestion, timeOffset]);
 
     useEffect(() => {
-        if (!gameState.activeQuestion?.endTime) { setQuestionTimeLeft(0); return; }
         const updateQTimer = () => {
+            if (!gameState.activeQuestion?.endTime) {
+                setQuestionTimeLeft(0);
+                return;
+            }
             const serverTimeNow = Date.now() + timeOffset;
-            const remaining = Math.max(0, Math.floor((gameState.activeQuestion!.endTime! - serverTimeNow) / 1000));
+            const remaining = Math.max(0, Math.floor((gameState.activeQuestion.endTime - serverTimeNow) / 1000));
             setQuestionTimeLeft(remaining);
         };
-        updateQTimer();
+        queueMicrotask(updateQTimer);
+        if (!gameState.activeQuestion?.endTime) return;
         const interval = setInterval(updateQTimer, 500);
         return () => clearInterval(interval);
     }, [gameState.activeQuestion?.endTime, timeOffset]);
 
     useEffect(() => {
         const endTime = gameState.objection?.endTime;
-        if (!endTime) {
-            setObjectionTimeLeft(0);
-            return;
-        }
         const updateObjectionTimer = () => {
+            if (!endTime) {
+                setObjectionTimeLeft(0);
+                return;
+            }
             const left = Math.max(0, Math.ceil((endTime - (Date.now() + timeOffset)) / 1000));
             setObjectionTimeLeft(left);
         };
-        updateObjectionTimer();
+        queueMicrotask(updateObjectionTimer);
+        if (!endTime) return;
         const interval = setInterval(updateObjectionTimer, 500);
         return () => clearInterval(interval);
     }, [gameState.objection?.endTime, timeOffset]);
@@ -224,17 +235,20 @@ export default function GameScene(props: GameSceneProps = {}) {
 
     useEffect(() => {
         if (gameState?.chatHistory) {
-            chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
             if (gameState.chatHistory.length > 0) {
                 const lastMsg = gameState.chatHistory[gameState.chatHistory.length - 1];
                 if (!lastMsg.system && lastMsg.userId) {
                     const bubbleId = Date.now().toString() + Math.random().toString();
-                    setActiveBubbles(prev => ({ ...prev, [lastMsg.userId]: { text: lastMsg.message, id: bubbleId } }));
+                    const msgUserId = lastMsg.userId;
+                    const msgText = lastMsg.message;
+                    queueMicrotask(() => {
+                        setActiveBubbles(prev => ({ ...prev, [msgUserId]: { text: msgText, id: bubbleId } }));
+                    });
                     setTimeout(() => {
                         setActiveBubbles(prev => {
-                            if (prev[lastMsg.userId]?.id === bubbleId) {
+                            if (prev[msgUserId]?.id === bubbleId) {
                                 const next = { ...prev };
-                                delete next[lastMsg.userId];
+                                delete next[msgUserId];
                                 return next;
                             }
                             return prev;
@@ -742,7 +756,7 @@ export default function GameScene(props: GameSceneProps = {}) {
                         </div>
 
                         <p className="font-display text-2xl md:text-3xl font-bold mb-6 leading-snug break-words text-[#F6F5F2]">
-                            "{gameState.activeQuestion.question}"
+                            &ldquo;{gameState.activeQuestion.question}&rdquo;
                         </p>
                         
                         {gameState.activeQuestion.askerId !== myId && me?.status === 'playing' ? (
