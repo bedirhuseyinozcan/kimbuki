@@ -99,9 +99,20 @@ test('guessHandler rejects multi-word packing exploit', async () => {
     const { room } = setupPlayingRoom(2);
     room.users[0].assignedWord = 'Ronaldo';
 
-    // Packing multiple names into one guess must fail
     await guessHandler.guessWord(room, 's1', 'messi ronaldo neymar mbappe');
     assert.equal(room.winners.length, 0, 'Multi-word packing must not count as a correct guess');
     assert.equal(room.users[0].lives, 2, 'Wrong guess must deduct 1 life');
+    room.destroy();
+});
+
+test('2-player correct guess only marks the guesser as winner, not the remaining loser', async () => {
+    const { room } = setupPlayingRoom(2);
+    room.users[0].assignedWord = 'Ronaldo';
+    room.users[1].assignedWord = 'Messi';
+
+    await guessHandler.guessWord(room, 's1', 'Ronaldo');
+    assert.equal(room.gameState, 'ROUND_END');
+    assert.deepEqual(room.winners, ['s1']);
+    assert.equal(room.winners.includes('s2'), false);
     room.destroy();
 });

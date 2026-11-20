@@ -910,7 +910,6 @@ class Room {
         this.activeQuestion = null;
         this.clearAllTimers();
 
-        // If aborted before PLAYING started, refund paid bet fees instead of losing them
         if (prevState === "BETTING" || prevState === "WORD_SELECTION" || prevState === "JOKER_DRAFT") {
             if (this.isBettingEnabled && this.paidDbIds && this.paidDbIds.size > 0) {
                 const refundIds = Array.from(this.paidDbIds);
@@ -926,9 +925,8 @@ class Room {
             return;
         }
 
-        // If PLAYING ended by elimination/disconnect with 1 survivor who hasn't won yet, award them the pot share
         const survivors = this.users.filter(u => u.status === 'playing' && !u.disconnected);
-        if (prevState === "PLAYING" && survivors.length === 1) {
+        if (prevState === "PLAYING" && this.winners.length === 0 && survivors.length === 1) {
             const survivor = survivors[0];
             if (!this.winners.includes(survivor.id)) {
                 this.winners.push(survivor.id);
