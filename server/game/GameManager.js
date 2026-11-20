@@ -170,12 +170,14 @@ class GameManager {
     handleLeave(socket) {
         const room = this.getRoomBySocket(socket);
         if (room) {
+            socket.leave(room.code);
             const user = room.users.find(u => u.id === socket.id);
             if (user) {
                 user.disconnected = true;
                 room.permanentlyRemoveUser(socket.id);
             }
-            if (room.users.length === 0) {
+            if (room.users.length === 0 && this.rooms.get(room.code) === room) {
+                room.destroy();
                 this.rooms.delete(room.code);
             }
         }
@@ -186,8 +188,18 @@ class GameManager {
         if (room) {
             const user = room.users.find(u => u.id === socket.id);
             if (user && user.isHost) {
+                // Refund active bets if host closes room mid-game before payout
+                if (room.isBettingEnabled && room.gameState !== "LOBBY" && room.gameState !== "ROUND_END" && room.paidDbIds?.size > 0) {
+                    const refundIds = Array.from(room.paidDbIds);
+                    room.paidDbIds.clear();
+                    RewardService.refundBetFees(refundIds, room.betAmount).catch(e => console.error("Close room refund error:", e));
+                }
                 this.io.to(room.code).emit("game:closed");
-                this.rooms.delete(room.code);
+                this.io.in(room.code).socketsLeave(room.code);
+                room.destroy();
+                if (this.rooms.get(room.code) === room) {
+                    this.rooms.delete(room.code);
+                }
                 console.log(`Room ${room.code} closed by host.`);
             }
         }
@@ -322,7 +334,10 @@ class GameManager {
             socket.emit("game:error", { message: val.error });
             return;
         }
-        room.startGame(val.data);
+        room.startGame(val.data).catch((err) => {
+            console.error(`[GameManager] startGame error in room ${room.code}:`, err);
+            this.io.to(room.code).emit("game:error", { message: "Oyun başlatılırken bir sunucu hatası oluştu." });
+        });
     }
 
     handlePlaceBet(socket, rawTargetId) {
@@ -478,7 +493,8 @@ class GameManager {
             const isEmpty = room.removeUser(socket.id);
             if (isEmpty) {
                 setTimeout(() => {
-                    if (room.users.every(u => u.disconnected)) {
+                    if (room.users.every(u => u.disconnected) && this.rooms.get(room.code) === room) {
+                        room.destroy();
                         this.rooms.delete(room.code);
                         console.log(`Room ${room.code} deleted (empty).`);
                     }

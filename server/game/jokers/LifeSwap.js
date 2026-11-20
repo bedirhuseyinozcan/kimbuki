@@ -33,11 +33,22 @@ class LifeSwap extends BaseJoker {
 
             if (user.lives <= 0) {
                 user.status = 'spectator';
+                user.bloodTieTarget = null;
+                user.timeBomb = null;
                 room.addChatLog({ system: true, message: `💀 ${user.name}, canı olmayan biriyle takas yapıp kendi kendini eledi!`, timestamp: Date.now() });
             }
             if (target.lives <= 0) {
                 target.status = 'spectator';
+                target.bloodTieTarget = null;
+                target.timeBomb = null;
                 room.addChatLog({ system: true, message: `💀 ${target.name} canı kalmadığı için elendi! Kelimesi: ${target.assignedWord}`, timestamp: Date.now() });
+            }
+
+            const activePlayers = room.users.filter(u => u.status === 'playing' && !u.disconnected);
+            if (activePlayers.length <= 1) {
+                room.endGame();
+            } else if (user.status === 'spectator' && room.users[room.currentTurnIndex]?.id === user.id) {
+                room.nextTurn();
             }
         }
         return true;

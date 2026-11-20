@@ -81,14 +81,6 @@ class JokerManager {
             return false;
         }
 
-        if (jokerType === 7 && targetId && typeof targetId === 'string') {
-            const targetForBomb = room.users.find(u => u.id === targetId);
-            if (targetForBomb && targetForBomb.timeBomb) {
-                room.io.to(userId).emit("game:error", { message: "Bu oyuncunun üzerinde zaten aktif bir bomba var!" });
-                return false;
-            }
-        }
-
         const reflectableJokers = [3, 4, 5, 7, 13, 15];
         if (targetId && reflectableJokers.includes(jokerType)) {
             const targetUser = room.users.find(u => u.id === targetId);
@@ -99,6 +91,25 @@ class JokerManager {
                     timestamp: Date.now()
                 });
                 targetId = user.id;
+            }
+        }
+
+        // Check existing bomb AFTER reflection so reflected bombs don't silently overwrite attacker's existing bomb
+        if (jokerType === 7 && targetId && typeof targetId === 'string') {
+            const targetForBomb = room.users.find(u => u.id === targetId);
+            if (targetForBomb && targetForBomb.timeBomb) {
+                if (targetId === user.id && initialTargetId !== user.id) {
+                    room.addChatLog({
+                        system: true,
+                        message: `🛡️ Yansıyan bomba ${user.name}'in üzerindeki mevcut bombayla çarpışıp etkisiz kaldı!`,
+                        timestamp: Date.now()
+                    });
+                    user.hasUsedJoker = true;
+                    room.broadcastState();
+                    return true;
+                }
+                room.io.to(userId).emit("game:error", { message: "Bu oyuncunun üzerinde zaten aktif bir bomba var!" });
+                return false;
             }
         }
 

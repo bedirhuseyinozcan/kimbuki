@@ -264,6 +264,9 @@ const payloadValidator = {
         if (room.activeQuestion) {
             return { ok: false, error: "Şu anda devam eden aktif bir soru var!" };
         }
+        if (room.objection) {
+            return { ok: false, error: "İtiraz oylaması devam ederken soru soramazsınız!" };
+        }
         if (user.russianRouletteActive) {
             return { ok: false, error: "Rus Ruletindesiniz, soru soramazsınız! Yalnızca tahmin yapabilirsiniz." };
         }
@@ -318,6 +321,10 @@ const payloadValidator = {
         const rateCheck = this.checkActionRateLimit(user?.id, 'guess', 500);
         if (!rateCheck.ok) return rateCheck;
 
+        if (room.activeQuestion || room.objection) {
+            return { ok: false, error: "Aktif soru veya itiraz oylaması varken tahmin yapamazsınız!" };
+        }
+
         if (typeof guess !== "string") {
             return { ok: false, error: "Tahmin metin formatında olmalıdır." };
         }
@@ -342,8 +349,8 @@ const payloadValidator = {
         if (user.russianRouletteActive) {
             return { ok: false, error: "Rus Ruletindeyken turu geçemezsiniz, tahmin etmek zorundasınız!" };
         }
-        if (room.activeQuestion) {
-            return { ok: false, error: "Aktif soru oylanırken turu geçemezsiniz!" };
+        if (room.activeQuestion || room.objection) {
+            return { ok: false, error: "Aktif soru veya itiraz oylanırken turu geçemezsiniz!" };
         }
 
         return { ok: true };
@@ -379,6 +386,9 @@ const payloadValidator = {
 
         if (user.russianRouletteActive) {
             return { ok: false, error: "Rus Ruletindeyken joker kullanamazsınız!" };
+        }
+        if (room.activeQuestion || room.objection) {
+            return { ok: false, error: "Aktif soru veya itiraz oylanırken joker kullanamazsınız!" };
         }
         if (room.roundCount < 3) {
             return { ok: false, error: "Jokerler 3. turdan itibaren kullanılabilir!" };
@@ -425,6 +435,12 @@ const payloadValidator = {
             }
             if (rawNewWord.length > 30) {
                 return { ok: false, error: "Kelime veya harf en fazla 30 karakter olabilir." };
+            }
+            if (user.joker === 4) {
+                const alnumLen = rawNewWord.replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ0-9]/g, "").length;
+                if (alnumLen < 3) {
+                    return { ok: false, error: "Yeni kelime en az 3 harf/rakam içermelidir." };
+                }
             }
             cleanPayload.newWord = rawNewWord;
         } else if (rawNewWord) {

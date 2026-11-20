@@ -12,8 +12,8 @@ class TimeBomb extends BaseJoker {
         if (targetId && typeof targetId === 'string') {
             const target = room.users.find(u => u.id === targetId);
             if (target) {
-                const actualCaster = (targetId === user.id) ? initialTargetId : user.id;
-                target.timeBomb = { casterId: actualCaster, roundsLeft: 3 };
+                // Keep casterId = user.id on reflection so defusing doesn't bounce back onto MirrorShield owner
+                target.timeBomb = { casterId: user.id, roundsLeft: 3 };
                 room.addChatLog({ system: true, message: `💣 SAATLİ BOMBA! ${target.name}'in üzerine bomba yerleştirildi. 3 tur içinde bilemezse patlayacak!`, timestamp: Date.now() });
                 room.io.to(room.code).emit("game:visual_effect", { type: 'bomb_plant', targetId: target.id });
                 return true;

@@ -1,13 +1,17 @@
 const RewardService = require('../services/RewardService');
+
 function startObjection(room, userId) {
-    if (room.objection || room.gameState !== "PLAYING" || room.hasObjectionUsed) return;
+    if (room.objection || room.activeQuestion || room.gameState !== "PLAYING" || room.hasObjectionUsed) return;
 
     const initiator = room.users.find(u => u.id === userId);
-    if (!initiator) return;
+    if (!initiator || initiator.status !== 'playing' || initiator.disconnected) return;
 
     room.hasObjectionUsed = true;
-    room.pausedRemainingMs = room.turnStartTime + (room.turnTime * 1000) - Date.now();
-    if (room.timer) clearTimeout(room.timer);
+    room.pausedRemainingMs = Math.max(0, room.turnStartTime + (room.turnTime * 1000) - Date.now());
+    if (room.timer) {
+        clearTimeout(room.timer);
+        room.timer = null;
+    }
 
     room.objection = {
         initiator: initiator.name,
@@ -18,6 +22,7 @@ function startObjection(room, userId) {
     room.objection.votes[userId] = true;
     room.broadcastState();
 
+    if (room.objectionTimer) clearTimeout(room.objectionTimer);
     room.objectionTimer = setTimeout(() => {
         resolveObjection(room);
     }, 15000);
@@ -35,7 +40,10 @@ function voteObjection(room, userId, vote) {
     const voteCount = Object.keys(room.objection.votes).filter(vId => playingUsers.some(p => p.id === vId)).length;
 
     if (voteCount >= playingUsers.length) {
-        if (room.objectionTimer) clearTimeout(room.objectionTimer);
+        if (room.objectionTimer) {
+            clearTimeout(room.objectionTimer);
+            room.objectionTimer = null;
+        }
         resolveObjection(room);
     } else {
         room.broadcastState();
@@ -44,38 +52,51 @@ function voteObjection(room, userId, vote) {
 
 async function resolveObjection(room) {
     try {
-        if (!room.objection) return;
+        if (!room.objection || room.gameState !== "PLAYING" || room.destroyed) return;
 
-        const playingUsers = room.users.filter(u => u.status === 'playing' && !u.disconnected);
-        let yesVotes = 0;
-        for (let v of Object.values(room.objection.votes)) {
-            if (v === true) yesVotes++;
+        if (room.objectionTimer) {
+            clearTimeout(room.objectionTimer);
+            room.objectionTimer = null;
         }
 
-        const majority = Math.ceil(playingUsers.length / 2);
+        const playingUsers = room.users.filter(u => u.status === 'playing' && !u.disconnected);
+        const playingIds = new Set(playingUsers.map(u => u.id));
+        let yesVotes = 0;
+        for (const [vId, v] of Object.entries(room.objection.votes)) {
+            if (v === true && playingIds.has(vId)) yesVotes++;
+        }
 
-        if (yesVotes >= majority) {
-            if (room.isBettingEnabled) {
-                const dbIds = room.users.map(u => u.dbId).filter(Boolean);
-                await RewardService.refundBetFees(dbIds, room.betAmount);
-                room.io.to(room.code).emit("game:error", { message: `🚨 Şike itirazı kabul edildi! Oyun iptal edildi, herkese ${room.betAmount} Altın iade edildi.` });
+        // 2-player games require unanimity (both players); 3+ require strict majority (>50%)
+        const requiredYes = playingUsers.length <= 2
+            ? Math.max(2, playingUsers.length)
+            : Math.floor(playingUsers.length / 2) + 1;
+
+        if (yesVotes >= requiredYes) {
+            room.objection = null;
+            room.clearAllTimers();
+            room.gameState = "LOBBY";
+            room.chatHistory = [];
+
+            if (room.isBettingEnabled && room.paidDbIds && room.paidDbIds.size > 0) {
+                const refundIds = Array.from(room.paidDbIds);
+                room.paidDbIds.clear();
+                await RewardService.refundBetFees(refundIds, room.betAmount);
+                room.io.to(room.code).emit("game:error", { message: `🚨 Şike itirazı kabul edildi! Oyun iptal edildi, henüz ödül almamış oyunculara ${room.betAmount} Altın iade edildi.` });
             } else {
                 room.io.to(room.code).emit("game:error", { message: `🚨 Çoğunluk kararı sağlandı! Eğlenceyi sabote edenler olduğu için oyun iptal edildi.` });
             }
 
-            room.objection = null;
-            if (room.timer) clearTimeout(room.timer);
-            room.gameState = "LOBBY";
-            room.chatHistory = [];
             room.broadcastState();
         } else {
             room.io.to(room.code).emit("game:error", { message: `❌ Şike itirazı reddedildi! Yeterli çoğunluk sağlanamadı.` });
             room.objection = null;
 
-            room.turnStartTime = Date.now() - ((room.turnTime * 1000) - room.pausedRemainingMs);
+            if (room.timer) clearTimeout(room.timer);
+            const remaining = Math.max(5000, room.pausedRemainingMs || 5000);
+            room.turnStartTime = Date.now() - ((room.turnTime * 1000) - remaining);
             room.timer = setTimeout(() => {
-                if (room.gameState === "PLAYING") room.nextTurn();
-            }, Math.max(5000, room.pausedRemainingMs));
+                if (room.gameState === "PLAYING" && !room.destroyed) room.nextTurn();
+            }, remaining);
 
             room.broadcastState();
         }

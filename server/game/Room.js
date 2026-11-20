@@ -20,10 +20,50 @@ class Room {
         this.roundCount = 1;
 
         this.chatHistory = [];
-        this.winners = []; 
+        this.roundLogs = [];
+        this.winners = [];
+        this.bets = {};
+        this.paidDbIds = new Set();
+        this.objection = null;
+        this.hasObjectionUsed = false;
+        this.isBettingEnabled = false;
+        this.betAmount = 50;
+        this.isJokersEnabled = true;
+        this.resolvedQuestionsThisTurn = [];
+        this.turnStartTime = 0;
+        this.pausedRemainingMs = 0;
+        this.betTimer = null;
+        this.jokerDraftTimer = null;
+        this.questionTimer = null;
+        this.objectionTimer = null;
+        this.bettingEndTime = null;
+        this.jokerDraftEndTime = null;
         this.pendingMirrorWordOwner = null;
         this.pendingMirrorWordTarget = null;
         this.mirrorWordTimer = null;
+        this.isStartingGame = false;
+        this.isProcessingGuess = false;
+        this.destroyed = false;
+    }
+
+    clearAllTimers() {
+        if (this.timer) { clearTimeout(this.timer); this.timer = null; }
+        if (this.questionTimer) { clearTimeout(this.questionTimer); this.questionTimer = null; }
+        if (this.objectionTimer) { clearTimeout(this.objectionTimer); this.objectionTimer = null; }
+        if (this.mirrorWordTimer) { clearTimeout(this.mirrorWordTimer); this.mirrorWordTimer = null; }
+        if (this.betTimer) { clearTimeout(this.betTimer); this.betTimer = null; }
+        if (this.jokerDraftTimer) { clearTimeout(this.jokerDraftTimer); this.jokerDraftTimer = null; }
+    }
+
+    destroy() {
+        this.destroyed = true;
+        this.clearAllTimers();
+        for (const u of this.users) {
+            if (u.disconnectTimer) {
+                clearTimeout(u.disconnectTimer);
+                u.disconnectTimer = null;
+            }
+        }
     }
 
     addChatLog(logObj) {
@@ -105,6 +145,9 @@ class Room {
                     delete this.activeQuestion.votes[oldId];
                 }
             }
+            this.chatHistory.forEach(c => {
+                if (c.privateTo === oldId) c.privateTo = socketId;
+            });
 
             this.addChatLog({
                 system: true,
@@ -260,11 +303,22 @@ class Room {
         const userIndex = this.users.findIndex(u => u.id === socketId);
         if (userIndex === -1) return;
         const user = this.users[userIndex];
-        if (!user.disconnected) return; 
+        if (!user.disconnected) return;
+        if (user.disconnectTimer) {
+            clearTimeout(user.disconnectTimer);
+            user.disconnectTimer = null;
+        }
         const wasHost = user.isHost;
         const wasCurrentTurn = this.gameState === "PLAYING" && this.currentTurnIndex === userIndex;
 
         this.users.splice(userIndex, 1);
+
+        // Keep currentTurnIndex pointing to the same active player after splice
+        if (userIndex < this.currentTurnIndex) {
+            this.currentTurnIndex = Math.max(0, this.currentTurnIndex - 1);
+        } else if (this.currentTurnIndex >= this.users.length) {
+            this.currentTurnIndex = 0;
+        }
 
         if (this.users.length > 0 && wasHost) {
             const nextHost = this.users.find(u => !u.disconnected) || this.users[0];
@@ -273,7 +327,8 @@ class Room {
 
         if (this.gameState === "WORD_SELECTION") {
             const active = this.users.filter(u => !u.disconnected);
-            if (active.length >= 2) {
+            const needsRedistribution = active.some(u => u.targetId === socketId || !u.targetId);
+            if (active.length >= 2 && needsRedistribution) {
                 for (let i = 0; i < active.length; i++) {
                     const next = (i + 1) % active.length;
                     active[i].targetId = active[next].id;
@@ -295,7 +350,7 @@ class Room {
             const playingUsers = this.users.filter(u => u.status === 'playing' && !u.disconnected);
             const voteCount = Object.keys(this.objection.votes).filter(vId => playingUsers.some(p => p.id === vId)).length;
             if (voteCount >= playingUsers.length && playingUsers.length > 0) {
-                clearTimeout(this.objectionTimer);
+                if (this.objectionTimer) clearTimeout(this.objectionTimer);
                 this.resolveObjection();
             }
         }
@@ -332,58 +387,87 @@ class Room {
     }
 
     async startGame(settings = {}) {
+        if (this.isStartingGame || this.destroyed) return;
+        if (this.gameState !== "LOBBY" && this.gameState !== "ROUND_END") return;
+
         const activeUsers = this.users.filter(u => !u.disconnected);
-        if (activeUsers.length < 2) return; 
+        if (activeUsers.length < 2) return;
 
-        this.category = settings.category || "Karışık"; this.theme = settings.theme || "day"; this.map = settings.map || "floating_island__low_poly_vr.glb";
-        this.initialPlayerCount = activeUsers.length;
-        this.isBettingEnabled = settings.bettingEnabled || false;
-        this.betAmount = settings.betAmount || 50;
-        this.isJokersEnabled = settings.jokersEnabled !== undefined ? settings.jokersEnabled : true;
-        this.bets = {};
-        this.hasObjectionUsed = false;
-        this.objection = null;
-        this.roundCount = 1;
+        this.isStartingGame = true;
+        try {
+            const isBettingEnabled = Boolean(settings.bettingEnabled);
+            const betAmount = settings.betAmount || 50;
 
-        this.chatHistory = [];
-        this.roundLogs = [];
-        this.winners = [];
-        this.io.to(this.code).emit("game:init_chat", { chatHistory: [] });
-        this.io.to(this.code).emit("game:reset_notepad");
-        this.addChatLog({ system: true, message: "🎮 Yeni oyun başladı! Bol şans!", timestamp: Date.now() });
-
-        if (this.isBettingEnabled) {
-            const betResult = await RewardService.deductBetFees(activeUsers, this.betAmount);
-            if (!betResult.ok) {
-                this.io.to(this.code).emit("game:error", {
-                    message: `${betResult.failedUser?.name || 'Bir oyuncunun'} yeterli altını (${this.betAmount}) yok veya giriş yapmamış!`
-                });
-                if (this.gameState === "ROUND_END") {
-                    this.gameState = "LOBBY";
-                    this.broadcastState();
+            if (isBettingEnabled) {
+                const betResult = await RewardService.deductBetFees(activeUsers, betAmount);
+                if (this.destroyed) {
+                    if (betResult.ok) {
+                        await RewardService.refundBetFees(activeUsers.map(u => u.dbId).filter(Boolean), betAmount);
+                    }
+                    return;
                 }
+                if (!betResult.ok) {
+                    this.io.to(this.code).emit("game:error", {
+                        message: `${betResult.failedUser?.name || 'Bir oyuncunun'} yeterli altını (${betAmount}) yok veya giriş yapmamış!`
+                    });
+                    if (this.gameState === "ROUND_END") {
+                        this.gameState = "LOBBY";
+                        this.broadcastState();
+                    }
+                    return;
+                }
+                this.paidDbIds = new Set(activeUsers.map(u => u.dbId).filter(Boolean));
+            } else {
+                this.paidDbIds = new Set();
+            }
+
+            this.clearAllTimers();
+            this.category = settings.category || "Karışık";
+            this.theme = settings.theme || "day";
+            this.map = settings.map || "floating_island__low_poly_vr.glb";
+            this.initialPlayerCount = activeUsers.length;
+            this.isBettingEnabled = isBettingEnabled;
+            this.betAmount = betAmount;
+            this.isJokersEnabled = settings.jokersEnabled !== undefined ? settings.jokersEnabled : true;
+            this.bets = {};
+            this.hasObjectionUsed = false;
+            this.objection = null;
+            this.roundCount = 1;
+            this.isProcessingGuess = false;
+
+            this.chatHistory = [];
+            this.roundLogs = [];
+            this.winners = [];
+            this.io.to(this.code).emit("game:init_chat", { chatHistory: [] });
+            this.io.to(this.code).emit("game:reset_notepad");
+            this.addChatLog({ system: true, message: "🎮 Yeni oyun başladı! Bol şans!", timestamp: Date.now() });
+
+            if (this.isBettingEnabled) {
+                this.gameState = "BETTING";
+                this.bettingEndTime = Date.now() + 10000;
+                
+                for (let i = 0; i < this.users.length; i++) {
+                    this.users[i].status = this.users[i].disconnected ? 'spectator' : 'playing';
+                    this.users[i].lives = 3;
+                    this.users[i].assignedWord = null;
+                    this.users[i].isWaitingMirrorWord = false;
+                    this.users[i].hasSubmittedWord = false;
+                    this.users[i].hasPlacedBet = false;
+                }
+                this.broadcastState();
+
+                this.betTimer = setTimeout(() => {
+                    if (!this.destroyed && this.gameState === "BETTING") {
+                        this.startWordSelection();
+                    }
+                }, 10000);
                 return;
             }
 
-            this.gameState = "BETTING";
-            this.bettingEndTime = Date.now() + 10000;
-            
-            for (let i = 0; i < this.users.length; i++) {
-                this.users[i].status = this.users[i].disconnected ? 'spectator' : 'playing';
-                this.users[i].lives = 3;
-                this.users[i].assignedWord = null;
-                this.users[i].hasSubmittedWord = false;
-                this.users[i].hasPlacedBet = false;
-            }
-            this.broadcastState();
-
-            this.betTimer = setTimeout(() => {
-                this.startWordSelection();
-            }, 10000);
-            return;
+            this.startWordSelection();
+        } finally {
+            this.isStartingGame = false;
         }
-
-        this.startWordSelection();
     }
 
     startWordSelection() {
@@ -465,16 +549,19 @@ class Room {
     }
 
     selectJoker(userId, jokerId) {
-        if(this.gameState !== "JOKER_DRAFT") return;
+        if (this.gameState !== "JOKER_DRAFT") return;
         const user = this.users.find(u => u.id === userId);
-        if(!user || user.hasDrafted || !this.isJokersEnabled) return;
+        if (!user || user.hasDrafted || !this.isJokersEnabled) return;
         
-        if(user.jokerChoices.includes(jokerId)) {
+        if (user.jokerChoices.includes(jokerId)) {
             user.joker = jokerId;
             user.hasDrafted = true;
         }
 
         this.checkPhaseProgression();
+        if (this.gameState === "JOKER_DRAFT") {
+            this.broadcastState();
+        }
     }
 
     placeBet(userId, targetId) {
@@ -594,11 +681,13 @@ class Room {
 
         if (message.toLowerCase().startsWith('/kelime ')) {
             if (this.pendingMirrorWordOwner === userId) {
-                const newWord = message.substring(8).trim().toLocaleUpperCase("tr-TR").replace(/[^A-ZÇĞİÖŞÜ0-9 ]/g, "");
+                const newWord = message.substring(8).trim().toLocaleUpperCase("tr-TR").replace(/[^A-ZÇĞİÖŞÜ0-9 ]/g, "").trim();
+                const alnumLen = newWord.replace(/\s+/g, "").length;
                 const target = this.users.find(u => u.id === this.pendingMirrorWordTarget);
                 
-                if (target && newWord.length > 0) {
+                if (target && alnumLen >= 3) {
                     target.assignedWord = newWord.substring(0, 30);
+                    target.isWaitingMirrorWord = false;
                     target.revealedLetters = [];
                     this.pendingMirrorWordOwner = null;
                     this.pendingMirrorWordTarget = null;
@@ -609,7 +698,7 @@ class Room {
                     this.addChatLog({ system: true, message: `🧠 Ayna sahibi ${user.name}, geri seken jokerle ${target.name}'in yeni kelimesini acımasızca belirledi!`, timestamp: Date.now() });
                     this.broadcastState();
                 } else {
-                    this.io.to(userId).emit("game:error", { message: "Geçerli bir kelime girmelisiniz!" });
+                    this.io.to(userId).emit("game:error", { message: "Geçerli ve en az 3 harfli bir kelime girmelisiniz!" });
                 }
                 return;
             }
@@ -628,7 +717,7 @@ class Room {
     skipTurn(userId) {
         if (this.gameState !== "PLAYING") return;
         const currentUser = this.users[this.currentTurnIndex];
-        if (currentUser.id !== userId) return;
+        if (!currentUser || currentUser.id !== userId) return;
         
         if (currentUser.russianRouletteActive) return;
 
@@ -774,7 +863,7 @@ class Room {
             }
             
             const nextUser = this.users[this.currentTurnIndex];
-            if (nextUser && nextUser.status === 'playing') {
+            if (nextUser && nextUser.status === 'playing' && !nextUser.disconnected) {
                 if (nextUser.silencedTurns > 0) {
                     nextUser.silencedTurns--;
                     this.addChatLog({
@@ -813,15 +902,87 @@ class Room {
         }, this.turnTime * 1000);
     }
 
-    endGame() {
+    async endGame() {
+        if (this.destroyed || this.gameState === "ROUND_END") return;
+        const prevState = this.gameState;
         this.gameState = "ROUND_END";
-        if (this.timer) clearTimeout(this.timer);
-        if (this.questionTimer) clearTimeout(this.questionTimer);
-        if (this.mirrorWordTimer) clearTimeout(this.mirrorWordTimer);
-        if (this.betTimer) clearTimeout(this.betTimer);
-        if (this.jokerDraftTimer) clearTimeout(this.jokerDraftTimer);
-        
-        RewardService.grantParticipationRewards(this.users, this.winners);
+        this.objection = null;
+        this.activeQuestion = null;
+        this.clearAllTimers();
+
+        // If aborted before PLAYING started, refund paid bet fees instead of losing them
+        if (prevState === "BETTING" || prevState === "WORD_SELECTION" || prevState === "JOKER_DRAFT") {
+            if (this.isBettingEnabled && this.paidDbIds && this.paidDbIds.size > 0) {
+                const refundIds = Array.from(this.paidDbIds);
+                this.paidDbIds.clear();
+                await RewardService.refundBetFees(refundIds, this.betAmount);
+                this.addChatLog({
+                    system: true,
+                    message: `💸 Oyun başlamadan yetersiz oyuncu nedeniyle iptal edildi. ${this.betAmount} Altın giriş ücretleri iade edildi.`,
+                    timestamp: Date.now()
+                });
+            }
+            this.broadcastState();
+            return;
+        }
+
+        // If PLAYING ended by elimination/disconnect with 1 survivor who hasn't won yet, award them the pot share
+        const survivors = this.users.filter(u => u.status === 'playing' && !u.disconnected);
+        if (prevState === "PLAYING" && survivors.length === 1) {
+            const survivor = survivors[0];
+            if (!this.winners.includes(survivor.id)) {
+                this.winners.push(survivor.id);
+                survivor.status = 'spectator';
+
+                const rank = this.winners.length;
+                const playersCount = this.initialPlayerCount || this.users.length;
+                const totalPot = playersCount * (this.betAmount || 50);
+                const bettors = this.isBettingEnabled
+                    ? Object.keys(this.bets || {})
+                        .filter(uid => this.bets[uid] === survivor.id)
+                        .map(uid => this.users.find(u => u.id === uid))
+                        .filter(Boolean)
+                    : [];
+
+                const { winnerReward, bettorReward, repReward } = RewardService.calculatePotDistribution({
+                    isBettingEnabled: this.isBettingEnabled,
+                    totalPot,
+                    playersCount,
+                    rank,
+                    isRussianRoulette: false,
+                    bettorCount: bettors.length
+                });
+
+                const survivorRewards = {};
+                if (survivor.dbId) {
+                    survivorRewards[survivor.dbId] = { gold: winnerReward, rep: repReward, winCount: 1, playCount: 1, betWinCount: 0 };
+                    this.paidDbIds?.delete(survivor.dbId);
+                }
+                survivor.reputation = (survivor.reputation || 0) + repReward;
+
+                if (this.isBettingEnabled && bettorReward > 0 && bettors.length > 0) {
+                    for (const b of bettors) {
+                        if (b.dbId) {
+                            if (!survivorRewards[b.dbId]) survivorRewards[b.dbId] = { gold: 0, rep: 0, winCount: 0, playCount: 0, betWinCount: 0 };
+                            survivorRewards[b.dbId].gold += bettorReward;
+                            survivorRewards[b.dbId].rep += 5;
+                            survivorRewards[b.dbId].betWinCount += 1;
+                        }
+                        b.reputation = (b.reputation || 0) + 5;
+                    }
+                }
+
+                const msg = this.isBettingEnabled
+                    ? `👑 Hayatta kalan son oyuncu ${survivor.name} kazandı! Ödül: ${winnerReward} Altın.`
+                    : `👑 Hayatta kalan son oyuncu ${survivor.name} kazandı! (+${repReward} İtibar)`;
+                this.addChatLog({ system: true, message: msg, timestamp: Date.now() });
+                this.roundLogs.push(msg);
+
+                await RewardService.grantBatchRewards(survivorRewards);
+            }
+        }
+
+        await RewardService.grantParticipationRewards(this.users, this.winners);
         this.broadcastState();
     }
 
@@ -871,7 +1032,7 @@ class Room {
                 resolvedQuestionsThisTurn: this.resolvedQuestionsThisTurn || [],
                 users: usersPayload,
                 currentTurnUserId: this.gameState === "PLAYING" ? this.users[this.currentTurnIndex]?.id : null,
-                turnEndsAt: this.gameState === "PLAYING" ? (this.activeQuestion ? Date.now() + this.pausedRemainingMs : this.turnStartTime + (this.turnTime * 1000)) : null,
+                turnEndsAt: this.gameState === "PLAYING" ? ((this.activeQuestion || this.objection) ? Date.now() + this.pausedRemainingMs : this.turnStartTime + (this.turnTime * 1000)) : null,
                 winners: this.winners,
                 objection: this.objection,
                 hasObjectionUsed: this.hasObjectionUsed,

@@ -1,32 +1,69 @@
 const RewardService = require('../services/RewardService');
 
+function levenshtein(a, b) {
+    if (a === b) return 0;
+    if (!a.length) return b.length;
+    if (!b.length) return a.length;
+    const dp = Array.from({ length: b.length + 1 }, (_, i) => i);
+    for (let i = 1; i <= a.length; i++) {
+        let prev = i - 1;
+        dp[0] = i;
+        for (let j = 1; j <= b.length; j++) {
+            const temp = dp[j];
+            dp[j] = a[i - 1] === b[j - 1]
+                ? prev
+                : 1 + Math.min(prev, dp[j], dp[j - 1]);
+            prev = temp;
+        }
+    }
+    return dp[b.length];
+}
+
 async function guessWord(room, userId, guess) {
+    if (room.isProcessingGuess) return;
     try {
         if (room.gameState !== "PLAYING" || typeof guess !== 'string') return;
+        if (room.activeQuestion || room.objection) {
+            room.io.to(userId).emit("game:error", { message: "Aktif soru veya itiraz oylaması sırasında tahmin yapamazsınız!" });
+            return;
+        }
 
-    const currentUser = room.users[room.currentTurnIndex];
-    if (!currentUser || currentUser.id !== userId) return;
+        const currentUser = room.users[room.currentTurnIndex];
+        if (!currentUser || currentUser.id !== userId) return;
 
-    const user = room.users.find(u => u.id === userId);
-    if (!user || user.status !== 'playing') return;
+        const user = room.users.find(u => u.id === userId);
+        if (!user || user.status !== 'playing') return;
 
-    const normalizedTarget = (user.assignedWord || "").toLocaleLowerCase("tr-TR").replace(/[^a-z0-9çğıöşü]/g, "");
-    const normalizedGuess = (guess || "").toLocaleLowerCase("tr-TR").replace(/[^a-z0-9çğıöşü]/g, "");
-    if (!normalizedGuess || normalizedGuess.length < 3) return;
+        if (user.isWaitingMirrorWord) {
+            room.io.to(userId).emit("game:error", { message: "Ayna sahibi yeni kelimeni belirleyene kadar tahmin yapamazsın!" });
+            return;
+        }
 
-    const targetTokens = (user.assignedWord || "").toLocaleLowerCase("tr-TR").split(/\s+/).map(w => w.replace(/[^a-z0-9çğıöşü]/g, "")).filter(Boolean);
-    const isTokenMatch = targetTokens.some(w => w === normalizedGuess && w.length >= 3);
+        const normalizedTarget = (user.assignedWord || "").toLocaleLowerCase("tr-TR").replace(/[^a-z0-9çğıöşü]/g, "");
+        const normalizedGuess = (guess || "").toLocaleLowerCase("tr-TR").replace(/[^a-z0-9çğıöşü]/g, "");
+        if (!normalizedTarget || !normalizedGuess || normalizedGuess.length < 3) return;
 
-    const isSubstringMatch = (normalizedTarget.length >= 4 && normalizedGuess.length >= 4) &&
-                             (normalizedTarget.includes(normalizedGuess) || normalizedGuess.includes(normalizedTarget));
+        const targetTokens = (user.assignedWord || "").toLocaleLowerCase("tr-TR").split(/\s+/).map(w => w.replace(/[^a-z0-9çğıöşü]/g, "")).filter(Boolean);
+        const isTokenMatch = targetTokens.some(w => w === normalizedGuess && w.length >= 3);
+        const isNearMatch = normalizedTarget.length >= 5 &&
+            Math.abs(normalizedTarget.length - normalizedGuess.length) <= 1 &&
+            levenshtein(normalizedTarget, normalizedGuess) <= 1;
 
-    const isCorrect = (normalizedTarget === normalizedGuess) || isTokenMatch || isSubstringMatch;
-    const isRussianRoulette = user.russianRouletteActive;
+        const isCorrect = (normalizedTarget === normalizedGuess) || isTokenMatch || isNearMatch;
+        const isRussianRoulette = user.russianRouletteActive;
 
-    if (isCorrect) {
-        user.status = 'spectator';
-        user.bloodTieTarget = null;
-        room.winners.push(user.id);
+        if (isCorrect) {
+            room.isProcessingGuess = true;
+            if (room.timer) {
+                clearTimeout(room.timer);
+                room.timer = null;
+            }
+            user.status = 'spectator';
+            user.bloodTieTarget = null;
+            room.winners.push(user.id);
+            if (user.dbId && room.paidDbIds) {
+                room.paidDbIds.delete(user.dbId);
+            }
 
         if (user.timeBomb) {
             const caster = room.users.find(c => c.id === user.timeBomb.casterId);
@@ -183,12 +220,14 @@ async function guessWord(room, userId, guess) {
             room.broadcastState();
         }
     }
-} catch (error) {
-    console.error(`[guessHandler] Error in guessWord for user ${userId} in room ${room?.code}:`, error);
-    if (room && room.io && userId) {
-        room.io.to(userId).emit("game:error", { message: "Tahmin işlenirken bir sunucu hatası oluştu. Lütfen tekrar deneyin." });
+    } catch (error) {
+        console.error(`[guessHandler] Error in guessWord for user ${userId} in room ${room?.code}:`, error);
+        if (room && room.io && userId) {
+            room.io.to(userId).emit("game:error", { message: "Tahmin işlenirken bir sunucu hatası oluştu. Lütfen tekrar deneyin." });
+        }
+    } finally {
+        if (room) room.isProcessingGuess = false;
     }
-}
 }
 
 module.exports = {

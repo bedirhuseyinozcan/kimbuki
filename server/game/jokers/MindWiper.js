@@ -14,8 +14,9 @@ class MindWiper extends BaseJoker {
         }
 
         const cleanWord = payload.newWord.trim().substring(0, 30);
-        if (!cleanWord) {
-            room.io.to(user.id).emit("game:error", { message: "Geçerli bir kelime girmelisiniz!" });
+        const alnumLen = cleanWord.replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ0-9]/g, "").length;
+        if (!cleanWord || alnumLen < 3) {
+            room.io.to(user.id).emit("game:error", { message: "Geçerli ve en az 3 harfli bir kelime girmelisiniz!" });
             return false;
         }
 
@@ -26,7 +27,8 @@ class MindWiper extends BaseJoker {
         if (target.id === user.id && initialTargetId !== user.id) {
             room.pendingMirrorWordOwner = initialTargetId;
             room.pendingMirrorWordTarget = user.id;
-            target.assignedWord = "AYNA SAHİBİ KELİME BEKLENİYOR"; 
+            target.assignedWord = "AYNA SAHİBİ KELİME BEKLENİYOR";
+            target.isWaitingMirrorWord = true;
             target.revealedLetters = [];
             
             const mirrorOwner = room.users.find(u => u.id === initialTargetId);
@@ -39,11 +41,12 @@ class MindWiper extends BaseJoker {
                     const mirrorOwnerStillHere = room.users.find(u => u.id === room.pendingMirrorWordOwner && !u.disconnected);
                     const t = room.users.find(u => u.id === room.pendingMirrorWordTarget);
                     if (t) {
+                        t.isWaitingMirrorWord = false;
                         if (!mirrorOwnerStillHere) {
                             t.assignedWord = "BİLİNMEYEN";
                             room.addChatLog({ system: true, message: `⏳ Ayna sahibi oyundan koptuğu için ${t.name}'in kelimesi sıfırlandı!`, timestamp: Date.now() });
                         } else {
-                            t.assignedWord = Math.random().toString(36).substring(2, 8).toUpperCase();
+                            t.assignedWord = Math.random().toString(36).substring(2, 8).toUpperCase().padEnd(6, 'X');
                             room.addChatLog({ system: true, message: `⏳ Ayna sahibi süresinde kelime belirlemedi! ${t.name}'in kelimesi rastgele harflere dönüştü!`, timestamp: Date.now() });
                         }
                         room.broadcastState();
@@ -53,7 +56,8 @@ class MindWiper extends BaseJoker {
                 }
             }, 30000);
         } else {
-            target.assignedWord = cleanWord; 
+            target.assignedWord = cleanWord;
+            target.isWaitingMirrorWord = false;
             room.addChatLog({ system: true, message: `🧠 Hafıza Silici kullanıldı! ${target.name}'in kelimesi acımasızca değiştirildi!`, timestamp: Date.now() });
             target.revealedLetters = [];
             room.io.to(room.code).emit("game:visual_effect", { type: 'mind_wipe', targetId: target.id });
