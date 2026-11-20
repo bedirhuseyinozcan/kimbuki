@@ -18,6 +18,27 @@ interface LobbyProps {
     onCopyLink: () => void;
 }
 
+const DARK_MENU_PROPS = {
+    slotProps: {
+        paper: {
+            sx: {
+                bgcolor: '#1A1D24',
+                color: '#F6F5F2',
+                border: '2px solid #3E4659',
+                boxShadow: '5px 5px 0px #090A0D',
+                borderRadius: '4px',
+                '& .MuiMenuItem-root': {
+                    fontSize: '0.875rem',
+                    fontWeight: 600,
+                    '&:hover': { bgcolor: '#222630' },
+                    '&.Mui-selected': { bgcolor: '#FFBE0B', color: '#111318', fontWeight: 700 },
+                    '&.Mui-selected:hover': { bgcolor: '#FFD043' },
+                },
+            },
+        },
+    },
+};
+
 export default function Lobby({
     gameState, me, code, inviteUrl, myId, onStart, onCloseRoom, onLeaveRoom, onCopyLink, onSelectAvatar, onToggleVoice
 }: LobbyProps & { onSelectAvatar: (id: number) => void, onToggleVoice: (enabled: boolean) => void }) {
@@ -239,6 +260,7 @@ export default function Lobby({
                                     <Select
                                         value={category}
                                         onChange={(e) => setCategory(e.target.value)}
+                                        MenuProps={DARK_MENU_PROPS}
                                         size="small"
                                         fullWidth
                                         className="!bg-[#111318] !text-[#F6F5F2] !font-display !font-bold"
@@ -269,6 +291,7 @@ export default function Lobby({
                                             <Select
                                                 value={betAmount}
                                                 onChange={(e) => setBetAmount(e.target.value as number)}
+                                                MenuProps={DARK_MENU_PROPS}
                                                 size="small"
                                                 className="!bg-[#1A1D24] !text-[#FFBE0B] !font-mono !font-bold min-w-[125px]"
                                                 sx={{
@@ -298,6 +321,7 @@ export default function Lobby({
                                         <Select
                                             value={map}
                                             onChange={(e) => setMap(e.target.value)}
+                                            MenuProps={DARK_MENU_PROPS}
                                             variant="outlined"
                                             size="small"
                                             fullWidth
@@ -320,6 +344,7 @@ export default function Lobby({
                                         <Select
                                             value={theme}
                                             onChange={(e) => setTheme(e.target.value as "day" | "night")}
+                                            MenuProps={DARK_MENU_PROPS}
                                             variant="outlined"
                                             size="small"
                                             fullWidth

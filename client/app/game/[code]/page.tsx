@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useGameSocket } from "@/hooks/useGameSocket";
 import { useLiveKit } from "@/hooks/useLiveKit";
 import { useNotepad } from "@/hooks/useNotepad";
@@ -102,6 +102,7 @@ function LiveKitMicSync({ isVoiceEnabled }: { isVoiceEnabled: boolean }) {
 
 export default function GamePage() {
     const { code } = useParams();
+    const router = useRouter();
     const notepad = useNotepad(code);
     const game = useGameSocket(code, {
         onClearNotepad: notepad.clearNotepad,
@@ -191,8 +192,15 @@ export default function GamePage() {
                         ODAYA BAĞLANILIYOR
                     </h2>
                     <p className="font-mono text-xs uppercase tracking-wider text-[#A0A8B8] mt-2">
-                        OTURUM DOĞRULANIYOR, LÜTFEN BEKLEYİN...
+                        {game.connectionError || "OTURUM DOĞRULANIYOR, LÜTFEN BEKLEYİN..."}
                     </p>
+                    <button
+                        type="button"
+                        onClick={() => router.push("/")}
+                        className="swiss-btn-secondary mt-6 px-5 py-2 text-xs cursor-pointer"
+                    >
+                        ANA SAYFAYA DÖN
+                    </button>
                 </div>
             </main>
         );

@@ -92,6 +92,7 @@ export default function GameScene(props: GameSceneProps = {}) {
 
     const [timeLeft, setTimeLeft] = useState(0);
     const [questionTimeLeft, setQuestionTimeLeft] = useState(0);
+    const [objectionTimeLeft, setObjectionTimeLeft] = useState(0);
     const [questionDialogOpen, setQuestionDialogOpen] = useState(false);
     const [questionInput, setQuestionInput] = useState("");
     const [activeBubbles, setActiveBubbles] = useState<{[key:string]: { text: string, id: string }}>({});
@@ -189,6 +190,21 @@ export default function GameScene(props: GameSceneProps = {}) {
         const interval = setInterval(updateQTimer, 500);
         return () => clearInterval(interval);
     }, [gameState.activeQuestion?.endTime, timeOffset]);
+
+    useEffect(() => {
+        const endTime = gameState.objection?.endTime;
+        if (!endTime) {
+            setObjectionTimeLeft(0);
+            return;
+        }
+        const updateObjectionTimer = () => {
+            const left = Math.max(0, Math.ceil((endTime - (Date.now() + timeOffset)) / 1000));
+            setObjectionTimeLeft(left);
+        };
+        updateObjectionTimer();
+        const interval = setInterval(updateObjectionTimer, 500);
+        return () => clearInterval(interval);
+    }, [gameState.objection?.endTime, timeOffset]);
 
     const previousTurnRef = useRef<string | null>(null);
     const previousWinnersRef = useRef<number>(0);
@@ -309,6 +325,16 @@ export default function GameScene(props: GameSceneProps = {}) {
                                 💰 BAHİSLİ
                             </span>
                         )}
+                        {(me?.silencedTurns || 0) > 0 && (
+                            <span className="swiss-badge !bg-[#FF334B] !border-[#090A0D] !text-white shadow-[2px_2px_0px_#090A0D]">
+                                🤐 SUSTURULDU ({me?.silencedTurns})
+                            </span>
+                        )}
+                        {(me?.extraQuestions || 0) > 0 && (
+                            <span className="swiss-badge !bg-[#00E5A3] !border-[#090A0D] !text-[#111318] shadow-[2px_2px_0px_#090A0D]">
+                                🔫 +{me?.extraQuestions} SORU
+                            </span>
+                        )}
                     </div>
                 </div>
 
@@ -426,6 +452,28 @@ export default function GameScene(props: GameSceneProps = {}) {
                                     value={jokerTarget} 
                                     onChange={e => setJokerTarget(e.target.value)} 
                                     disabled={isSubmitting}
+                                    slotProps={{
+                                        select: {
+                                            MenuProps: {
+                                                slotProps: {
+                                                    paper: {
+                                                        sx: {
+                                                            bgcolor: '#1A1D24',
+                                                            color: '#F6F5F2',
+                                                            border: '2px solid #3E4659',
+                                                            boxShadow: '5px 5px 0px #090A0D',
+                                                            borderRadius: '4px',
+                                                            '& .MuiMenuItem-root': {
+                                                                fontWeight: 600,
+                                                                '&:hover': { bgcolor: '#222630' },
+                                                                '&.Mui-selected': { bgcolor: '#FFBE0B', color: '#111318', fontWeight: 700 },
+                                                            },
+                                                        },
+                                                    },
+                                                },
+                                            },
+                                        },
+                                    }}
                                     sx={{
                                         '& .MuiOutlinedInput-root': {
                                             backgroundColor: '#111318',
@@ -663,8 +711,11 @@ export default function GameScene(props: GameSceneProps = {}) {
                             </div>
                         )}
                         
-                        <div className="mt-5 font-mono text-xs text-[#687082] uppercase tnum">
-                            TOPLAM OY: {Object.keys(gameState.objection.votes).length} / {gameState.users.length}
+                        <div className="mt-5 font-mono text-xs text-[#A0A8B8] uppercase tnum flex items-center justify-center gap-4">
+                            <span>TOPLAM OY: {Object.keys(gameState.objection.votes).length} / {gameState.users.length}</span>
+                            {objectionTimeLeft > 0 && (
+                                <span className="text-[#FFBE0B] font-bold">⏳ {objectionTimeLeft}s</span>
+                            )}
                         </div>
                     </div>
                 </div>

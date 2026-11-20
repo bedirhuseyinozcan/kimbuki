@@ -24,7 +24,6 @@ const authMiddleware = (req, res, next) => {
 };
 
 const PREMIUM_AVATARS = [
-    { id: 'Warrior', price: 100, label: 'Savaşçı', icon: '⚔️', type: 'avatar' },
     { id: 'Wizard', price: 200, label: 'Büyücü', icon: '🔮', type: 'avatar' },
     { id: 'Rogue', price: 300, label: 'Suikastçi', icon: '🗡️', type: 'avatar' },
     { id: 'Ranger', price: 400, label: 'Okçu', icon: '🏹', type: 'avatar' },
@@ -40,8 +39,8 @@ const PREMIUM_PEDESTALS = [
 ];
 
 const PREMIUM_COLORS = [
-    { id: 'color_neon_pink', price: 1000, label: 'Neon Pembe', icon: '🎀', type: 'color' },
-    { id: 'color_electric_blue', price: 1000, label: 'Elektrik Mavisi', icon: '⚡', type: 'color' },
+    { id: 'color_neon_pink', price: 1000, label: 'Sinyal Mercan', icon: '🪸', type: 'color' },
+    { id: 'color_electric_blue', price: 1000, label: 'Nane Telemetri', icon: '⚡', type: 'color' },
     { id: 'color_gold', price: 2000, label: 'Saf Altın', icon: '✨', type: 'color' }
 ];
 

@@ -248,6 +248,7 @@ const sharedCloudPedestalSphere1 = new THREE.SphereGeometry(0.6, 12, 12);
 const sharedCloudPedestalSphere2 = new THREE.SphereGeometry(0.5, 12, 12);
 const sharedCloudPedestalSphere3 = new THREE.SphereGeometry(0.45, 12, 12);
 const sharedDefaultPedestalGeo = new THREE.CylinderGeometry(0.7, 0.75, 0.5, 8);
+const sharedTurnRingGeo = new THREE.TorusGeometry(1.05, 0.055, 10, 36);
 
 const PedestalNode = React.memo(function PedestalNode({ type }: { type: string }) {
     switch (type) {
@@ -368,6 +369,7 @@ interface PlayerNodeProps {
     u: User;
     index: number;
     totalUsers: number;
+    isCurrentTurn: boolean;
     isMe: boolean;
     isWinner: boolean;
     activeBubble?: string;
@@ -377,7 +379,7 @@ interface PlayerNodeProps {
 }
 
 const PlayerNode = React.memo(function PlayerNode({
-    u, index, totalUsers, isMe, isWinner, activeBubble, headRotationsRef, taunt, visualEffects
+    u, index, totalUsers, isCurrentTurn, isMe, isWinner, activeBubble, headRotationsRef, taunt, visualEffects
 }: PlayerNodeProps) {
     const radius = totalUsers > 4 ? PLAYER_CIRCLE_RADIUS_LARGE : PLAYER_CIRCLE_RADIUS_SMALL;
     const angleOffset = totalUsers === 3 ? (Math.PI / 2) : -(Math.PI / 2);
@@ -398,6 +400,12 @@ const PlayerNode = React.memo(function PlayerNode({
     return (
         <group position={[x, 0, z]} rotation={[0, -angle - Math.PI / 2, 0]}>
             <PedestalNode type={u.pedestal || 'default_stone'} />
+
+            {isCurrentTurn && !isWinner && (
+                <mesh position={[0, 0.06, 0]} rotation={[Math.PI / 2, 0, 0]} geometry={sharedTurnRingGeo}>
+                    <meshStandardMaterial color="#FFBE0B" emissive="#FFBE0B" emissiveIntensity={1.6} toneMapped={false} />
+                </mesh>
+            )}
 
             {myEffects.map((eff) => {
                 if (eff.type === 'bomb_explode') return <ParticleBurst key={eff.id} color="#ef4444" />;
@@ -466,7 +474,7 @@ const PlayerNode = React.memo(function PlayerNode({
             )}
 
             {!isMe && (
-                <Html position={[0, 2.5, 0]} center zIndexRange={[100, 0]} style={{ pointerEvents: 'none' }}>
+                <Html position={[0, 2.25, 0]} center zIndexRange={[100, 0]} style={{ pointerEvents: 'none' }}>
                     <div className='flex flex-col items-center select-none'>
                         {activeBubble && (
                             <div className='absolute -top-14 bg-[#F4F1EA] text-[#111318] px-3 py-1.5 rounded-[4px] border-2 border-[#090A0D] shadow-[3px_3px_0px_#090A0D] text-xs font-bold z-50 text-center whitespace-normal break-words' style={{ minWidth: 'max-content', maxWidth: '150px' }}>
@@ -478,7 +486,7 @@ const PlayerNode = React.memo(function PlayerNode({
                                 {u.assignedWord}
                             </div>
                         )}
-                        <span className={`mt-0.5 font-display font-bold text-[11px] bg-[#111318] border-2 border-[#090A0D] shadow-[2px_2px_0px_#090A0D] px-2.5 py-0.5 rounded-[3px] whitespace-nowrap flex items-center gap-1.5 ${u.status === 'spectator' ? 'line-through text-[#687082]' : (u.nameColor ? (NAME_COLORS.find(c => c.id === u.nameColor)?.className || 'text-[#F6F5F2]') : 'text-[#F6F5F2]')} ${u.disconnected ? 'text-[#FF334B]' : ''}`}>
+                        <span className={`mt-0.5 font-display font-bold text-[11px] bg-[#111318] border-2 ${isCurrentTurn && !isWinner ? 'border-[#FFBE0B] shadow-[0_0_12px_rgba(255,190,11,0.5)]' : 'border-[#090A0D] shadow-[2px_2px_0px_#090A0D]'} px-2.5 py-0.5 rounded-[3px] whitespace-nowrap flex items-center gap-1.5 ${u.status === 'spectator' ? 'line-through text-[#687082]' : (u.nameColor ? (NAME_COLORS.find(c => c.id === u.nameColor)?.className || 'text-[#F6F5F2]') : 'text-[#F6F5F2]')} ${u.disconnected ? 'text-[#FF334B]' : ''}`}>
                             <span className={`flex items-center gap-1 ${rankInfo.color}`}>
                                 <span className="text-[13px]">{rankInfo.icon}</span>
                                 <span className="text-[9px] font-mono uppercase tracking-wider font-bold">{rankInfo.title}</span>
@@ -557,6 +565,7 @@ const Scene3D = React.memo(function Scene3D({
                                 u={u}
                                 index={i}
                                 totalUsers={gameState.users.length}
+                                isCurrentTurn={u.id === gameState.currentTurnUserId}
                                 isMe={u.id === myId}
                                 isWinner={gameState.winners.includes(u.id)}
                                 activeBubble={activeBubbles[u.id]?.text}
