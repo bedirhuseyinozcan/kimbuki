@@ -24,3 +24,7 @@ coverage/
 Thumbs.db
 .vscode/
 .idea/
+
+# local scripts & code dumps
+topla.py
+tum_kodlar.txt
