@@ -89,13 +89,17 @@ export default function Home() {
     }
 
     fetch(`${process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:4000"}/api/stats/live`)
-      .then(res => res.json())
-      .then(data => setLiveStats(data))
+      .then(res => (res.ok ? res.json() : null))
+      .then(data => {
+        if (data && typeof data.activeRooms === "number") setLiveStats(data);
+      })
       .catch(() => {});
 
     fetch(`${process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:4000"}/api/shop/items`)
-      .then(res => res.json())
-      .then(data => setShopItems(data))
+      .then(res => (res.ok ? res.json() : null))
+      .then(data => {
+        if (Array.isArray(data)) setShopItems(data);
+      })
       .catch(() => {});
   }, []);
 
@@ -103,8 +107,17 @@ export default function Home() {
     fetch(`${process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:4000"}/api/auth/me`, {
       headers: { "Authorization": `Bearer ${token}` }
     })
-      .then(res => res.json())
+      .then(async (res) => {
+        if (res.status === 401) {
+          localStorage.removeItem("gameToken");
+          setUser(null);
+          return null;
+        }
+        if (!res.ok) return null;
+        return res.json();
+      })
       .then(data => {
+        if (!data) return;
         if (data.id) {
           setUser({ 
               id: data.id, 
@@ -123,11 +136,11 @@ export default function Home() {
               canClaimDaily: data.canClaimDaily,
               loginStreak: data.loginStreak
           });
-        } else {
-          localStorage.removeItem("gameToken");
         }
       })
-      .catch(() => localStorage.removeItem("gameToken"));
+      .catch(() => {
+        // Keep token on transient network error / cold start
+      });
   };
 
   useEffect(() => {
@@ -137,8 +150,12 @@ export default function Home() {
 
   const handleOpenLeaderboard = () => {
       fetch(`${process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:4000"}/api/stats/leaderboard`)
-        .then(res => res.json())
+        .then(res => {
+          if (!res.ok) throw new Error("Leaderboard fetch failed");
+          return res.json();
+        })
         .then(data => {
+            if (!Array.isArray(data)) throw new Error("Invalid leaderboard payload");
             setLeaderboard(data);
             setLeaderboardDialogOpen(true);
         })
@@ -1102,11 +1119,12 @@ export default function Home() {
                     const amounts = [50, 100, 150, 200, 250, 300, 500];
                     const amount = amounts[day - 1];
                     const streak = user?.loginStreak || 0;
+                    const effectiveStreak = user?.canClaimDaily && streak >= 7 ? 0 : streak;
                     
                     let status = 'locked';
                     if (user?.canClaimDaily) {
-                        if (day <= streak) status = 'claimed';
-                        else if (day === streak + 1) status = 'current';
+                        if (day <= effectiveStreak) status = 'claimed';
+                        else if (day === effectiveStreak + 1) status = 'current';
                     } else {
                         if (day <= streak) status = 'claimed';
                     }
@@ -1131,8 +1149,8 @@ export default function Home() {
                 variant="contained"
                 fullWidth
                 disabled={!user?.canClaimDaily}
-                onClick={() => {
-                    handleClaimDaily();
+                onClick={async () => {
+                    await handleClaimDaily();
                     setDailyRewardDialogOpen(false);
                 }}
                 className={`!py-3.5 !mt-6 ${user?.canClaimDaily ? 'swiss-btn-mint' : '!bg-[#111318] !text-[#687082] !border-2 !border-[#2D3342] !font-mono !font-bold'}`}

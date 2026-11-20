@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 export interface UseNotepadResult {
     notepad: string;
@@ -12,26 +12,31 @@ export interface UseNotepadResult {
 export function useNotepad(code?: string | string[]): UseNotepadResult {
     const [notepad, setNotepad] = useState<string>("");
     const [isLoaded, setIsLoaded] = useState<boolean>(false);
+    const loadedKeyRef = useRef<string | null>(null);
 
     const roomCode = Array.isArray(code) ? code[0] : code;
     const storageKey = roomCode ? `kimbuki_notepad_${roomCode}` : null;
 
     useEffect(() => {
-        if (!storageKey || typeof window === "undefined") return;
+        if (!storageKey || typeof window === "undefined") {
+            loadedKeyRef.current = null;
+            setIsLoaded(false);
+            return;
+        }
         try {
             const saved = localStorage.getItem(storageKey);
-            if (saved !== null) {
-                setNotepad(saved);
-            }
+            setNotepad(saved ?? "");
         } catch (e) {
             console.error("[useNotepad] LocalStorage okuma hatası:", e);
+            setNotepad("");
         } finally {
+            loadedKeyRef.current = storageKey;
             setIsLoaded(true);
         }
     }, [storageKey]);
 
     useEffect(() => {
-        if (!isLoaded || !storageKey || typeof window === "undefined") return;
+        if (!isLoaded || !storageKey || loadedKeyRef.current !== storageKey || typeof window === "undefined") return;
         try {
             localStorage.setItem(storageKey, notepad);
         } catch (e) {

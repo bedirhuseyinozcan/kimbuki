@@ -15,6 +15,16 @@ export default function JokerDraft({ gameState, me, onSelectJoker, timeOffset = 
     const [selected, setSelected] = useState<number | null>(null);
 
     useEffect(() => {
+        if (selected === null) return;
+        const timer = setTimeout(() => {
+            if (!me?.hasDrafted) {
+                setSelected(null);
+            }
+        }, 2500);
+        return () => clearTimeout(timer);
+    }, [selected, me?.hasDrafted]);
+
+    useEffect(() => {
         if (!gameState.jokerDraftEndTime) return;
         const updateTimer = () => {
             const serverTimeNow = Date.now() + timeOffset;

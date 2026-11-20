@@ -217,6 +217,8 @@ export default function GamePage() {
                     onStart={() =>
                         game.handleStart({
                             category: gameState.category || "Karışık",
+                            theme: gameState.theme || "day",
+                            map: gameState.map || "floating_island__low_poly_vr.glb",
                             bettingEnabled: gameState.isBettingEnabled,
                             jokersEnabled: gameState.isJokersEnabled,
                             betAmount: gameState.betAmount,

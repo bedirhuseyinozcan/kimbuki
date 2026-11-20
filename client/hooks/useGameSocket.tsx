@@ -100,6 +100,8 @@ export function useGameSocket(
     optionsRef.current = options;
 
     const userRef = useRef<any>(null);
+    const pendingInitChatRef = useRef<any[] | null>(null);
+    const prevGamePhaseRef = useRef<string | null>(null);
 
     const wordInputRef = useRef(wordInput);
     wordInputRef.current = wordInput;
@@ -198,30 +200,47 @@ export function useGameSocket(
 
         s.on("game:state", (state: GameState) => {
             clearSubmitting();
-            setGuessDialogOpen(false);
-            setGameState((prev) => {
-                const isNewGameStarting = prev?.gameState === "ROUND_END" &&
-                    (state.gameState === "BETTING" || state.gameState === "WORD_SELECTION" || state.gameState === "LOBBY");
 
-                if (isNewGameStarting) {
-                    optionsRef.current?.onClearNotepad?.();
-                    setGuessInput("");
-                    setWordInput("");
-                }
+            // Only close guess dialog if phase left PLAYING or it's no longer this player's turn
+            if (state.gameState !== "PLAYING" || state.currentTurnUserId !== s.id) {
+                setGuessDialogOpen(false);
+            }
 
-                return {
-                    ...state,
-                    chatHistory: isNewGameStarting ? [] : (prev?.chatHistory || state.chatHistory || []),
-                };
-            });
+            const isNewGameStarting = prevGamePhaseRef.current === "ROUND_END" &&
+                (state.gameState === "BETTING" || state.gameState === "WORD_SELECTION" || state.gameState === "LOBBY");
+            prevGamePhaseRef.current = state.gameState;
+
+            if (isNewGameStarting) {
+                optionsRef.current?.onClearNotepad?.();
+                setGuessInput("");
+                setWordInput("");
+            }
+
+            const bufferedChat = pendingInitChatRef.current;
+            if (bufferedChat !== null) {
+                pendingInitChatRef.current = null;
+            }
+
+            setGameState((prev) => ({
+                ...state,
+                chatHistory: isNewGameStarting
+                    ? []
+                    : (bufferedChat !== null ? bufferedChat : (prev?.chatHistory || state.chatHistory || [])),
+            }));
         });
 
         s.on("game:init_chat", ({ chatHistory }: { chatHistory: any[] }) => {
+            const incoming = chatHistory || [];
             setGameState((prev) => {
-                if (!prev) return prev;
+                if (!prev) {
+                    // Buffer chat until first game:state arrives
+                    pendingInitChatRef.current = incoming;
+                    return prev;
+                }
+                pendingInitChatRef.current = null;
                 return {
                     ...prev,
-                    chatHistory: chatHistory || [],
+                    chatHistory: incoming,
                 };
             });
         });
@@ -305,7 +324,7 @@ export function useGameSocket(
                 setVisualEffects((prev) => prev.filter((e) => e.id !== effId));
             }, 2500);
         });
-    }, [code, router]);
+    }, [code, router, clearSubmitting]);
 
     useEffect(() => {
         if (!socket || !isConnected) return;
@@ -321,32 +340,56 @@ export function useGameSocket(
 
     useEffect(() => {
         const gameToken = localStorage.getItem("gameToken");
+        const encodedCode = encodeURIComponent(Array.isArray(code) ? code[0] : (code || ""));
         if (!gameToken) {
-            router.push(`/?invite=${code}`);
+            router.push(`/?invite=${encodedCode}`);
             return;
         }
 
+        const controller = new AbortController();
+        let active = true;
+
         fetch(`${process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:4000"}/api/auth/me`, {
             headers: { Authorization: `Bearer ${gameToken}` },
+            signal: controller.signal,
         })
-            .then((res) => res.json())
+            .then(async (res) => {
+                if (res.status === 401) {
+                    localStorage.removeItem("gameToken");
+                    if (active) router.push(`/?invite=${encodedCode}`);
+                    return null;
+                }
+                if (!res.ok) throw new Error("Auth check failed");
+                return res.json();
+            })
             .then((data) => {
+                if (!active || !data) return;
                 if (data.username) {
                     connectToRoom(data);
                 } else {
                     localStorage.removeItem("gameToken");
-                    router.push(`/?invite=${code}`);
+                    router.push(`/?invite=${encodedCode}`);
                 }
             })
-            .catch(() => {
-                router.push(`/?invite=${code}`);
+            .catch((err) => {
+                if (!active || controller.signal.aborted) return;
+                console.error("[useGameSocket] Auth fetch error:", err);
+                setConnectionError("Sunucuya bağlanılamadı. Lütfen tekrar deneyin.");
             });
+
+        return () => {
+            active = false;
+            controller.abort();
+        };
     }, [code, router, connectToRoom]);
 
     // Socket temizleme
     useEffect(() => {
         return () => {
-            if (socket) socket.disconnect();
+            if (socket) {
+                socket.removeAllListeners();
+                socket.disconnect();
+            }
         };
     }, [socket]);
 
@@ -404,14 +447,21 @@ export function useGameSocket(
     }, [socket]);
 
     const copyLink = useCallback(() => {
-        navigator.clipboard.writeText(inviteUrl);
-        toast.success("Davet linki kopyalandı!");
+        if (!navigator?.clipboard?.writeText) {
+            toast.error("Tarayıcınız panoya kopyalamayı desteklemiyor.");
+            return;
+        }
+        navigator.clipboard.writeText(inviteUrl)
+            .then(() => toast.success("Davet linki kopyalandı!"))
+            .catch(() => toast.error("Davet linki kopyalanamadı."));
     }, [inviteUrl]);
 
     const handleLeaveRoom = useCallback(() => {
-        socket?.emit("game:leave");
-        if (socket) socket.disconnect();
-        sessionStorage.removeItem("username");
+        if (socket) {
+            socket.emit("game:leave");
+            const s = socket;
+            setTimeout(() => s.disconnect(), 120);
+        }
         router.push("/");
     }, [socket, router]);
 
@@ -470,9 +520,11 @@ export function useGameSocket(
                             variant="contained"
                             color="error"
                             onClick={() => {
-                                socket?.emit("room:close");
-                                if (socket) socket.disconnect();
-                                sessionStorage.removeItem("username");
+                                if (socket) {
+                                    socket.emit("room:close");
+                                    const s = socket;
+                                    setTimeout(() => s.disconnect(), 120);
+                                }
                                 router.push("/");
                                 if (closeToast) closeToast();
                             }}

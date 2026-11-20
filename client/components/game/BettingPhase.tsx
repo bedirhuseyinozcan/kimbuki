@@ -16,6 +16,16 @@ export default function BettingPhase({
     const [selectedId, setSelectedId] = useState<string | null>(null);
 
     useEffect(() => {
+        if (!selectedId) return;
+        const timer = setTimeout(() => {
+            if (!me?.hasPlacedBet) {
+                setSelectedId(null);
+            }
+        }, 2500);
+        return () => clearTimeout(timer);
+    }, [selectedId, me?.hasPlacedBet]);
+
+    useEffect(() => {
         if (!gameState.bettingEndTime) return;
         const updateTimer = () => {
             const serverTimeNow = Date.now() + timeOffset;
@@ -28,7 +38,7 @@ export default function BettingPhase({
     }, [gameState.bettingEndTime, timeOffset]);
 
     const handleBet = (id: string) => {
-        if (selectedId) return;
+        if (selectedId || me?.hasPlacedBet) return;
         setSelectedId(id);
         onPlaceBet(id);
     };

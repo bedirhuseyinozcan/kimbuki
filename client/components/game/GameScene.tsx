@@ -690,6 +690,7 @@ export default function GameScene(props: GameSceneProps = {}) {
                         {gameState.activeQuestion.askerId !== myId && me?.status === 'playing' ? (
                             <div className="grid grid-cols-3 gap-3">
                                 <Button 
+                                    disabled={isSubmitting}
                                     onClick={() => onSubmitVote("yes")} 
                                     className={`!py-3 !text-sm !font-display !font-bold !rounded-[4px] !border-2 !border-[#090A0D] ${
                                         gameState.activeQuestion.votes[myId] === 'yes' 
@@ -700,6 +701,7 @@ export default function GameScene(props: GameSceneProps = {}) {
                                     👍 EVET
                                 </Button>
                                 <Button 
+                                    disabled={isSubmitting}
                                     onClick={() => onSubmitVote("no")} 
                                     className={`!py-3 !text-sm !font-display !font-bold !rounded-[4px] !border-2 !border-[#090A0D] ${
                                         gameState.activeQuestion.votes[myId] === 'no' 
@@ -710,6 +712,7 @@ export default function GameScene(props: GameSceneProps = {}) {
                                     👎 HAYIR
                                 </Button>
                                 <Button 
+                                    disabled={isSubmitting}
                                     onClick={() => onSubmitVote("sometimes")} 
                                     className={`!py-3 !text-sm !font-display !font-bold !rounded-[4px] !border-2 !border-[#090A0D] ${
                                         gameState.activeQuestion.votes[myId] === 'sometimes' 
