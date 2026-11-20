@@ -15,25 +15,64 @@ import ConnectionStatus from "@/components/game/ui/ConnectionStatus";
 import { GameProvider, GameContextValue } from "@/context/GameContext";
 import { User } from "@/components/game/types";
 import { LiveKitRoom, RoomAudioRenderer, useRoomContext, useLocalParticipant } from "@livekit/components-react";
+import { RoomEvent } from "livekit-client";
+import { toast } from "react-toastify";
 import "@livekit/components-styles";
 
-if (typeof console !== "undefined") {
-    const originalError = console.error;
-    console.error = (...args) => {
-        if (typeof args[0] === "string" && (args[0].includes("Failed to set sink id") || args[0].includes("setSinkId error"))) {
-            return;
-        }
-        originalError(...args);
-    };
+if (typeof window !== "undefined" && typeof console !== "undefined") {
+    const win = window as unknown as { __kimbukiConsolePatched?: boolean };
+    if (!win.__kimbukiConsolePatched) {
+        win.__kimbukiConsolePatched = true;
+        const originalError = console.error;
+        console.error = (...args) => {
+            if (typeof args[0] === "string" && (args[0].includes("Failed to set sink id") || args[0].includes("setSinkId error"))) {
+                return;
+            }
+            originalError(...args);
+        };
+    }
 }
 
 function LiveKitSpeakerSync() {
     const room = useRoomContext();
     useEffect(() => {
-        const savedSpeaker = typeof window !== "undefined" ? localStorage.getItem("preferredSpeaker") : null;
-        if (savedSpeaker && room) {
-            room.switchActiveDevice("audiooutput", savedSpeaker).catch((e) => console.error("setSinkId error", e));
+        if (!room) return;
+
+        const applySpeaker = (outputId?: string | null) => {
+            const targetSpeaker = outputId ?? (typeof window !== "undefined" ? localStorage.getItem("preferredSpeaker") : null);
+            if (targetSpeaker && room.state === "connected") {
+                room.switchActiveDevice("audiooutput", targetSpeaker).catch((e) => console.error("setSinkId error", e));
+            }
+        };
+
+        const applyMicDevice = (inputId?: string | null) => {
+            const targetMic = inputId ?? (typeof window !== "undefined" ? localStorage.getItem("preferredMic") : null);
+            if (targetMic && room.state === "connected") {
+                room.switchActiveDevice("audioinput", targetMic).catch((e) => console.error("Mic device switch error", e));
+            }
+        };
+
+        const handleConnected = () => {
+            applySpeaker();
+            applyMicDevice();
+        };
+
+        const handleDeviceChangeEvent = (ev: Event) => {
+            const detail = (ev as CustomEvent<{ inputId?: string; outputId?: string }>).detail;
+            if (detail?.inputId) applyMicDevice(detail.inputId);
+            if (detail?.outputId) applySpeaker(detail.outputId);
+        };
+
+        if (room.state === "connected") {
+            applySpeaker();
         }
+        room.on(RoomEvent.Connected, handleConnected);
+        window.addEventListener("kimbuki:audio-device-changed", handleDeviceChangeEvent);
+
+        return () => {
+            room.off(RoomEvent.Connected, handleConnected);
+            window.removeEventListener("kimbuki:audio-device-changed", handleDeviceChangeEvent);
+        };
     }, [room]);
     return null;
 }
@@ -43,9 +82,19 @@ function LiveKitMicSync({ isVoiceEnabled }: { isVoiceEnabled: boolean }) {
     const room = useRoomContext();
 
     useEffect(() => {
-        if (localParticipant && room && room.state === "connected") {
-            localParticipant.setMicrophoneEnabled(isVoiceEnabled).catch((e) => console.error("Mic sync error", e));
-        }
+        if (!room || !localParticipant) return;
+
+        const syncMic = () => {
+            if (room.state === "connected") {
+                localParticipant.setMicrophoneEnabled(isVoiceEnabled).catch((e) => console.error("Mic sync error", e));
+            }
+        };
+
+        syncMic();
+        room.on(RoomEvent.Connected, syncMic);
+        return () => {
+            room.off(RoomEvent.Connected, syncMic);
+        };
     }, [isVoiceEnabled, localParticipant, room]);
 
     return null;
@@ -57,7 +106,13 @@ export default function GamePage() {
     const game = useGameSocket(code, {
         onClearNotepad: notepad.clearNotepad,
     });
-    const livekit = useLiveKit(code, game.me ? (game.me.dbId || game.me.name || game.me.id) : undefined);
+    const livekit = useLiveKit(code, game.isJoined && Boolean(game.me));
+
+    useEffect(() => {
+        if (livekit.error) {
+            toast.warning(`Sesli sohbet: ${livekit.error}`, { toastId: "livekit-error" });
+        }
+    }, [livekit.error]);
 
     if (game.checkingAuth || !game.isJoined) {
         return (

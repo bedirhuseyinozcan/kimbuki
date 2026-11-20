@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Select, MenuItem, FormControl } from '@mui/material';
 import { toast } from 'react-toastify';
 
@@ -7,26 +7,129 @@ interface AudioSettingsDialogProps {
     onClose: () => void;
 }
 
+const DARK_MENU_PROPS = {
+    slotProps: {
+        paper: {
+            sx: {
+                bgcolor: '#1A1D24',
+                color: '#F6F5F2',
+                border: '2px solid #3E4659',
+                boxShadow: '5px 5px 0px #090A0D',
+                borderRadius: '4px',
+                '& .MuiMenuItem-root': {
+                    fontSize: '0.875rem',
+                    '&:hover': { bgcolor: '#222630' },
+                    '&.Mui-selected': { bgcolor: '#FFBE0B', color: '#111318', fontWeight: 700 },
+                    '&.Mui-selected:hover': { bgcolor: '#FFD043' },
+                },
+            },
+        },
+    },
+};
+
 export default function AudioSettingsDialog({ open, onClose }: AudioSettingsDialogProps) {
     const [inputDevices, setInputDevices] = useState<MediaDeviceInfo[]>([]);
     const [outputDevices, setOutputDevices] = useState<MediaDeviceInfo[]>([]);
     
     const [selectedInput, setSelectedInput] = useState<string>('');
     const [selectedOutput, setSelectedOutput] = useState<string>('');
+    const [permissionError, setPermissionError] = useState<string | null>(null);
     
     const [volume, setVolume] = useState<number>(0);
     const streamRef = useRef<MediaStream | null>(null);
     const audioContextRef = useRef<AudioContext | null>(null);
     const analyserRef = useRef<AnalyserNode | null>(null);
     const animationRef = useRef<number | null>(null);
-    const testAudioRef = useRef<HTMLAudioElement | null>(null);
+    const testRunIdRef = useRef<number>(0);
+
+    const stopTest = useCallback(() => {
+        testRunIdRef.current += 1;
+        if (animationRef.current !== null) {
+            cancelAnimationFrame(animationRef.current);
+            animationRef.current = null;
+        }
+        analyserRef.current = null;
+        if (streamRef.current) {
+            streamRef.current.getTracks().forEach(t => t.stop());
+            streamRef.current = null;
+        }
+        if (audioContextRef.current) {
+            if (audioContextRef.current.state !== 'closed') {
+                audioContextRef.current.close().catch(() => {});
+            }
+            audioContextRef.current = null;
+        }
+        setVolume(0);
+    }, []);
+
+    const startTest = useCallback(async (deviceId: string) => {
+        stopTest();
+        const runId = testRunIdRef.current;
+
+        try {
+            const constraints: MediaStreamConstraints = {
+                audio: {
+                    deviceId: { exact: deviceId },
+                    echoCancellation: true,
+                    autoGainControl: true,
+                    noiseSuppression: true,
+                },
+            };
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+
+            // If dialog closed or another test started while awaiting permission, release immediately
+            if (runId !== testRunIdRef.current) {
+                stream.getTracks().forEach(t => t.stop());
+                return;
+            }
+
+            streamRef.current = stream;
+
+            const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+            const audioCtx = new AudioCtx();
+            audioContextRef.current = audioCtx;
+            const analyser = audioCtx.createAnalyser();
+            analyser.fftSize = 256;
+            const source = audioCtx.createMediaStreamSource(stream);
+            source.connect(analyser);
+            analyserRef.current = analyser;
+
+            const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+            const updateVolume = () => {
+                if (runId !== testRunIdRef.current || !analyserRef.current) return;
+                analyserRef.current.getByteFrequencyData(dataArray);
+                let sum = 0;
+                for (let i = 0; i < dataArray.length; i++) {
+                    sum += dataArray[i];
+                }
+                const avg = sum / dataArray.length;
+                setVolume(avg);
+                animationRef.current = requestAnimationFrame(updateVolume);
+            };
+            updateVolume();
+        } catch (err) {
+            console.error("Test stream error", err);
+        }
+    }, [stopTest]);
 
     useEffect(() => {
-        if (open) {
-            navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-                stream.getTracks().forEach(t => t.stop()); // İzni aldık, akışı kapatabiliriz
+        if (!open) {
+            stopTest();
+            return;
+        }
+
+        let cancelled = false;
+        setPermissionError(null);
+
+        navigator.mediaDevices.getUserMedia({ audio: true })
+            .then(stream => {
+                stream.getTracks().forEach(t => t.stop());
+                if (cancelled) return null;
                 return navigator.mediaDevices.enumerateDevices();
-            }).then(deviceInfos => {
+            })
+            .then(deviceInfos => {
+                if (cancelled || !deviceInfos) return;
                 const audioInputs = deviceInfos.filter(d => d.kind === 'audioinput');
                 const audioOutputs = deviceInfos.filter(d => d.kind === 'audiooutput');
                 
@@ -46,82 +149,60 @@ export default function AudioSettingsDialog({ open, onClose }: AudioSettingsDial
                 } else if (audioOutputs.length > 0) {
                     setSelectedOutput(audioOutputs[0].deviceId);
                 }
-            }).catch(err => {
+            })
+            .catch(err => {
                 console.error("Audio permission error in settings:", err);
+                if (!cancelled) {
+                    setPermissionError("Mikrofon izni reddedildi veya cihaz bulunamadı. Tarayıcı izinlerini kontrol edin.");
+                }
             });
-        } else {
+
+        return () => {
+            cancelled = true;
             stopTest();
-        }
-    }, [open]);
+        };
+    }, [open, stopTest]);
 
     useEffect(() => {
         if (open && selectedInput) {
             startTest(selectedInput);
         }
         return () => stopTest();
-    }, [selectedInput, open]);
-
-    const startTest = async (deviceId: string) => {
-        stopTest();
-        try {
-            const constraints = { audio: { deviceId: { exact: deviceId }, echoCancellation: true, autoGainControl: true, noiseSuppression: true } };
-            const stream = await navigator.mediaDevices.getUserMedia(constraints);
-            streamRef.current = stream;
-
-            const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-            audioContextRef.current = audioCtx;
-            const analyser = audioCtx.createAnalyser();
-            analyser.fftSize = 256;
-            const source = audioCtx.createMediaStreamSource(stream);
-            source.connect(analyser);
-            analyserRef.current = analyser;
-
-            const dataArray = new Uint8Array(analyser.frequencyBinCount);
-
-            const updateVolume = () => {
-                if (!analyserRef.current) return;
-                analyserRef.current.getByteFrequencyData(dataArray);
-                let sum = 0;
-                for (let i = 0; i < dataArray.length; i++) {
-                    sum += dataArray[i];
-                }
-                const avg = sum / dataArray.length;
-                setVolume(avg);
-                animationRef.current = requestAnimationFrame(updateVolume);
-            };
-            updateVolume();
-        } catch (err) {
-            console.error("Test stream error", err);
-        }
-    };
-
-    const stopTest = () => {
-        if (animationRef.current) cancelAnimationFrame(animationRef.current);
-        if (streamRef.current) {
-            streamRef.current.getTracks().forEach(t => t.stop());
-            streamRef.current = null;
-        }
-        if (audioContextRef.current) {
-            audioContextRef.current.close();
-            audioContextRef.current = null;
-        }
-        if (testAudioRef.current) {
-            testAudioRef.current.pause();
-            testAudioRef.current.currentTime = 0;
-        }
-        setVolume(0);
-    };
+    }, [selectedInput, open, startTest, stopTest]);
 
     const playTestSound = async () => {
-        if (!testAudioRef.current) {
-            testAudioRef.current = new Audio('/sounds/turn.mp3');
-        }
         try {
-            if ('setSinkId' in testAudioRef.current && selectedOutput) {
-                await (testAudioRef.current as any).setSinkId(selectedOutput);
+            const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+            if (!AudioCtx) {
+                toast.error("Tarayıcınız Web Audio API desteklemiyor.");
+                return;
             }
-            testAudioRef.current.currentTime = 0;
-            testAudioRef.current.play();
+            const ctx = new AudioCtx();
+            const ctxWithSink = ctx as AudioContext & { setSinkId?: (id: string) => Promise<void> };
+            if (selectedOutput && typeof ctxWithSink.setSinkId === 'function') {
+                await ctxWithSink.setSinkId(selectedOutput).catch(() => {});
+            }
+            if (ctx.state === 'suspended') {
+                await ctx.resume();
+            }
+
+            const notes = [523.25, 659.25, 783.99];
+            notes.forEach((freq, i) => {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(freq, ctx.currentTime + i * 0.12);
+                gain.gain.setValueAtTime(0.22, ctx.currentTime + i * 0.12);
+                gain.gain.exponentialRampToValueAtTime(0.005, ctx.currentTime + i * 0.12 + 0.25);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start(ctx.currentTime + i * 0.12);
+                osc.stop(ctx.currentTime + i * 0.12 + 0.28);
+            });
+
+            setTimeout(() => {
+                if (ctx.state !== 'closed') ctx.close().catch(() => {});
+            }, 900);
         } catch (err) {
             console.error("Speaker test error", err);
             toast.error("Hoparlör test edilemedi. Tarayıcınız desteklemiyor olabilir.");
@@ -131,7 +212,14 @@ export default function AudioSettingsDialog({ open, onClose }: AudioSettingsDial
     const handleSave = () => {
         if (selectedInput) localStorage.setItem("preferredMic", selectedInput);
         if (selectedOutput) localStorage.setItem("preferredSpeaker", selectedOutput);
-        window.location.reload(); 
+        stopTest();
+        window.dispatchEvent(
+            new CustomEvent("kimbuki:audio-device-changed", {
+                detail: { inputId: selectedInput, outputId: selectedOutput },
+            })
+        );
+        toast.success("Ses cihazları canlı olarak güncellendi!");
+        onClose();
     };
 
     return (
@@ -151,6 +239,11 @@ export default function AudioSettingsDialog({ open, onClose }: AudioSettingsDial
                 SES & DONANIM AYARLARI
             </DialogTitle>
             <DialogContent className="flex flex-col gap-6 pt-6 px-6">
+                {permissionError && (
+                    <div className="text-xs font-mono text-[#FF334B] bg-[#FF334B]/10 p-3 rounded-[4px] border-l-4 border-[#FF334B] mt-2">
+                        {permissionError}
+                    </div>
+                )}
                 
                 <div className="flex flex-col gap-3 mt-2">
                     <span className="swiss-label">GİRİŞ CİHAZI (MİKROFON)</span>
@@ -158,6 +251,7 @@ export default function AudioSettingsDialog({ open, onClose }: AudioSettingsDial
                         <Select
                             value={selectedInput}
                             onChange={(e) => setSelectedInput(e.target.value)}
+                            MenuProps={DARK_MENU_PROPS}
                             className="!text-[#F6F5F2] !bg-[#111318] !rounded-[4px]"
                             sx={{
                                 '.MuiOutlinedInput-notchedOutline': { borderColor: '#2D3342', borderWidth: '2px' },
@@ -167,7 +261,7 @@ export default function AudioSettingsDialog({ open, onClose }: AudioSettingsDial
                             }}
                         >
                             {inputDevices.map((d, i) => (
-                                <MenuItem key={i} value={d.deviceId}>{d.label || `Mikrofon ${i + 1}`}</MenuItem>
+                                <MenuItem key={d.deviceId || i} value={d.deviceId}>{d.label || `Mikrofon ${i + 1}`}</MenuItem>
                             ))}
                         </Select>
                     </FormControl>
@@ -193,6 +287,7 @@ export default function AudioSettingsDialog({ open, onClose }: AudioSettingsDial
                         <Select
                             value={selectedOutput}
                             onChange={(e) => setSelectedOutput(e.target.value)}
+                            MenuProps={DARK_MENU_PROPS}
                             className="!text-[#F6F5F2] !bg-[#111318] !rounded-[4px]"
                             sx={{
                                 '.MuiOutlinedInput-notchedOutline': { borderColor: '#2D3342', borderWidth: '2px' },
@@ -202,7 +297,7 @@ export default function AudioSettingsDialog({ open, onClose }: AudioSettingsDial
                             }}
                         >
                             {outputDevices.map((d, i) => (
-                                <MenuItem key={i} value={d.deviceId}>{d.label || `Hoparlör ${i + 1}`}</MenuItem>
+                                <MenuItem key={d.deviceId || i} value={d.deviceId}>{d.label || `Hoparlör ${i + 1}`}</MenuItem>
                             ))}
                             {outputDevices.length === 0 && <MenuItem value="">Tarayıcınız çıkış cihazlarını listeleyemiyor</MenuItem>}
                         </Select>
@@ -216,13 +311,13 @@ export default function AudioSettingsDialog({ open, onClose }: AudioSettingsDial
                     </Button>
                 </div>
 
-                <div className="text-xs font-mono text-[#FFBE0B] bg-[#FFBE0B]/10 p-3 rounded-[4px] border-l-4 border-[#FFBE0B]">
-                    NOT: Kaydettikten sonra ses kanallarının güncellenmesi için sayfa yenilenecektir.
+                <div className="text-xs font-mono text-[#00E5A3] bg-[#00E5A3]/10 p-3 rounded-[4px] border-l-4 border-[#00E5A3]">
+                    BİLGİ: Değişiklikler sayfa yenilenmeden ve oyundan kopmadan anında uygulanır.
                 </div>
             </DialogContent>
             <DialogActions className="justify-between px-6 py-4 border-t-2 border-[#2D3342] bg-[#111318]">
                 <Button onClick={onClose} className="swiss-btn-secondary !px-5 !py-2">İPTAL</Button>
-                <Button onClick={handleSave} className="swiss-btn-primary !px-6 !py-2">KAYDET & YENİLE</Button>
+                <Button onClick={handleSave} className="swiss-btn-primary !px-6 !py-2">KAYDET & UYGULA</Button>
             </DialogActions>
         </Dialog>
     );

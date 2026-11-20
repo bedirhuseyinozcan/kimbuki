@@ -64,6 +64,7 @@ const server = http.createServer(app);
 app.use("/api/auth", require("./routes/auth"));
 app.use("/api/shop", require("./routes/shop"));
 app.use("/api/stats", require("./routes/stats"));
+app.use("/api/livekit", require("./routes/livekit"));
 
 app.get("/health", (req, res) => {
   res.json({ ok: true, service: "kimbuki-server" });
