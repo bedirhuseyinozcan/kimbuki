@@ -19,7 +19,10 @@ export default function ConnectionStatus({
 }: ConnectionStatusProps) {
     let pingColor = "text-[#00E5A3] border-[#00E5A3]/60 bg-[#1A1D24]";
     let pingDot = "bg-[#00E5A3]";
-    if (pingMs !== null) {
+    if (!isConnected) {
+        pingColor = "text-[#FF334B] border-[#FF334B] bg-[#1A1D24]";
+        pingDot = "bg-[#FF334B]";
+    } else if (pingMs !== null) {
         if (pingMs > 180) {
             pingColor = "text-[#FF334B] border-[#FF334B] bg-[#1A1D24]";
             pingDot = "bg-[#FF334B]";
@@ -48,7 +51,7 @@ export default function ConnectionStatus({
                 )}
             </AnimatePresence>
 
-            <div className="fixed bottom-3 left-3 z-40 flex items-center gap-2 pointer-events-auto select-none">
+            <div className="fixed top-14 right-2 md:top-auto md:right-auto md:bottom-3 md:left-3 z-40 flex items-center gap-2 pointer-events-auto select-none">
                 <div
                     className={`flex items-center gap-2 px-2.5 py-1 rounded-[4px] text-[11px] font-mono font-bold uppercase tracking-wider border-2 shadow-[2px_2px_0px_#090A0D] ${
                         isReconnecting
@@ -67,9 +70,11 @@ export default function ConnectionStatus({
                         }`}
                     />
                     {isReconnecting ? (
-                        <span>RECONNECTING</span>
+                        <span>BAĞLANIYOR</span>
+                    ) : !isConnected ? (
+                        <span>KOPTU</span>
                     ) : (
-                        <span className="tnum">{pingMs !== null ? `${pingMs} MS` : "ONLINE"}</span>
+                        <span className="tnum">{pingMs !== null ? `${pingMs} MS` : "BAĞLI"}</span>
                     )}
                 </div>
             </div>

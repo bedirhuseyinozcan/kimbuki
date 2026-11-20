@@ -782,6 +782,9 @@ export default function Home() {
                   size="small"
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleAuth();
+                  }}
                   sx={inputFieldSx}
                   slotProps={{ 
                     input: {
@@ -855,6 +858,9 @@ export default function Home() {
                   placeholder="ODA KODU (ÖRN: A7B9K2)"
                   value={roomCode}
                   onChange={(e) => setRoomCode(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleJoin();
+                  }}
                   sx={{
                     input: { 
                       color: '#111318', 

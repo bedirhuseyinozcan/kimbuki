@@ -130,6 +130,7 @@ export default function WordSelection({
                             variant="contained" 
                             fullWidth 
                             size="large" 
+                            disabled={!wordInput.trim()}
                             onClick={onSetWord} 
                             className="swiss-btn-primary !py-3.5 !text-base"
                         >

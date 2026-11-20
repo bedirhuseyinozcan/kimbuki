@@ -16,7 +16,7 @@
   /* Typography Hierarchy */
   --text-primary: #F6F5F2;
   --text-secondary: #A0A8B8;
-  --text-muted: #687082;
+  --text-muted: #8B94A7;
   --text-ink: #111318;
 
   /* Tier 2: Trio-Tone Systematic Character Palette */
@@ -248,4 +248,12 @@ h1, h2, h3, h4, .font-display {
   box-shadow: var(--shadow-hard-md) !important;
   font-family: var(--font-sans), sans-serif !important;
   font-weight: 600 !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

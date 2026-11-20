@@ -256,8 +256,7 @@ export default function GameScene(props: GameSceneProps = {}) {
                 />
             </div>
             
-            {/* Tactile Taunt Keypad (Teenage Engineering OP-1 style buttons) */}
-            <div className="absolute left-2 md:left-[calc(25%+2rem)] xl:left-[415px] top-[35%] md:top-1/2 -translate-y-1/2 z-20 flex flex-col gap-2 pointer-events-auto">
+            <div className="absolute left-2 md:left-[calc(25%+2rem)] xl:left-[415px] top-[28%] md:top-1/2 -translate-y-1/2 z-20 flex flex-col gap-1.5 md:gap-2 pointer-events-auto">
                 {[
                     { type: 'fire', emoji: '🔥', title: 'Sinirli (Alev)', border: 'hover:border-[#FF5938]' },
                     { type: 'party', emoji: '🎉', title: 'Kutlama', border: 'hover:border-[#00E5A3]' },
@@ -269,20 +268,20 @@ export default function GameScene(props: GameSceneProps = {}) {
                         onClick={() => handleTauntClick(t.type)} 
                         disabled={tauntCooldown} 
                         title={t.title}
-                        className={`!bg-[#1A1D24] !border-2 !border-[#3E4659] ${t.border} !rounded-[4px] !shadow-[3px_3px_0px_#090A0D] !p-2 md:!p-2.5 transition-transform active:translate-y-0.5 ${tauntCooldown ? 'opacity-40' : 'hover:-translate-y-0.5'}`}
+                        aria-label={t.title}
+                        className={`!bg-[#1A1D24] !border-2 !border-[#3E4659] ${t.border} !rounded-[4px] !shadow-[3px_3px_0px_#090A0D] !p-1.5 md:!p-2.5 transition-transform active:translate-y-0.5 ${tauntCooldown ? 'opacity-40' : 'hover:-translate-y-0.5'}`}
                     >
-                        <span className="text-2xl md:text-3xl leading-none">{t.emoji}</span>
+                        <span className="text-xl md:text-3xl leading-none">{t.emoji}</span>
                     </IconButton>
                 ))}
             </div>
             
-            {/* Bottom-Right Lives Counter Badge */}
-            <div className="absolute bottom-4 right-4 z-20 pointer-events-none flex flex-col items-end">
-                <div className="flex items-center gap-2 bg-[#1A1D24] px-3.5 py-1.5 rounded-[4px] border-2 border-[#3E4659] shadow-[3px_3px_0px_#090A0D]">
+            <div className="absolute top-14 left-2 md:top-auto md:left-auto md:bottom-4 md:right-4 z-20 pointer-events-none flex flex-col items-start md:items-end">
+                <div className="flex items-center gap-2 bg-[#1A1D24] px-3 py-1 md:px-3.5 md:py-1.5 rounded-[4px] border-2 border-[#3E4659] shadow-[3px_3px_0px_#090A0D]">
                     <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-[#A0A8B8]">CAN</span>
                     <div className="flex gap-1">
                         {[...Array(3)].map((_, i) => (
-                            <span key={i} className="text-sm">{i < (me?.lives ?? 3) ? '❤️' : '🖤'}</span>
+                            <span key={i} className="text-xs md:text-sm">{i < (me?.lives ?? 3) ? '❤️' : '🖤'}</span>
                         ))}
                     </div>
                 </div>
