@@ -986,6 +986,7 @@ class Room {
 
     broadcastState() {
         this.users.forEach(user => {
+            if (user.disconnected) return;
             const usersPayload = this.users.map(u => ({
                 id: u.id,
                 dbId: u.id === user.id ? u.dbId : undefined,
@@ -1044,17 +1045,20 @@ class Room {
         });
     }
 
-    broadcastHeadRotation(userId, payload) {
+    broadcastHeadRotation(socketOrId, payload) {
         if (!payload || typeof payload.pitch !== 'number' || typeof payload.yaw !== 'number') return;
-        
+
+        const isSocket = typeof socketOrId === 'object' && socketOrId !== null && typeof socketOrId.to === 'function';
+        const userId = isSocket ? socketOrId.id : socketOrId;
         const user = this.users.find(u => u.id === userId);
         if (!user) return;
 
         const now = Date.now();
-        if (now - user.lastHeadRotTime < 50) return; 
+        if (now - user.lastHeadRotTime < 50) return;
         user.lastHeadRotTime = now;
 
-        this.io.to(this.code).emit("game:head_update", {
+        const emitter = isSocket ? socketOrId.to(this.code) : this.io.to(this.code);
+        emitter.emit("game:head_update", {
             userId,
             pitch: payload.pitch,
             yaw: payload.yaw

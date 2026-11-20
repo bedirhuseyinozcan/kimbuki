@@ -318,7 +318,7 @@ router.get("/me", authMiddleware, async (req, res) => {
             user.markModified('unlockedTitles');
         }
 
-        if (questsUpdated || canClaimDaily || arraysUpdated) await user.save();
+        if (questsUpdated || arraysUpdated) await user.save();
 
         res.json({
             id: user._id,

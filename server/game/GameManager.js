@@ -9,6 +9,7 @@ class GameManager {
     constructor(io) {
         this.io = io;
         this.rooms = new Map();
+        this.socketToRoom = new Map();
         this.creationRateLimiter = new Map();
         
         const cleanupInterval = setInterval(() => this.creationRateLimiter.clear(), 10 * 60 * 1000);
@@ -57,17 +58,18 @@ class GameManager {
     }
 
     leaveOtherRooms(socket, exceptCode = null) {
-        for (const [code, room] of this.rooms) {
-            if (code === exceptCode) continue;
-            const user = room.users.find(u => u.id === socket.id);
+        const mappedRoom = this.socketToRoom.get(socket.id);
+        if (mappedRoom && mappedRoom.code !== exceptCode) {
+            socket.leave(mappedRoom.code);
+            const user = mappedRoom.users.find(u => u.id === socket.id);
             if (user) {
-                socket.leave(code);
                 user.disconnected = true;
-                room.permanentlyRemoveUser(socket.id);
-                if (room.users.length === 0) {
-                    if (typeof room.destroy === 'function') room.destroy();
-                    this.rooms.delete(code);
-                }
+                mappedRoom.permanentlyRemoveUser(socket.id);
+            }
+            this.socketToRoom.delete(socket.id);
+            if (mappedRoom.users.length === 0 && this.rooms.get(mappedRoom.code) === mappedRoom) {
+                if (typeof mappedRoom.destroy === 'function') mappedRoom.destroy();
+                this.rooms.delete(mappedRoom.code);
             }
         }
     }
@@ -169,6 +171,7 @@ class GameManager {
 
     handleLeave(socket) {
         const room = this.getRoomBySocket(socket);
+        this.socketToRoom.delete(socket.id);
         if (room) {
             socket.leave(room.code);
             const user = room.users.find(u => u.id === socket.id);
@@ -188,11 +191,13 @@ class GameManager {
         if (room) {
             const user = room.users.find(u => u.id === socket.id);
             if (user && user.isHost) {
-                // Refund active bets if host closes room mid-game before payout
                 if (room.isBettingEnabled && room.gameState !== "LOBBY" && room.gameState !== "ROUND_END" && room.paidDbIds?.size > 0) {
                     const refundIds = Array.from(room.paidDbIds);
                     room.paidDbIds.clear();
                     RewardService.refundBetFees(refundIds, room.betAmount).catch(e => console.error("Close room refund error:", e));
+                }
+                for (const u of room.users) {
+                    this.socketToRoom.delete(u.id);
                 }
                 this.io.to(room.code).emit("game:closed");
                 this.io.in(room.code).socketsLeave(room.code);
@@ -228,6 +233,7 @@ class GameManager {
             const profile = await RewardService.getUserProfileForRoom(userId);
             const { safeAvatar, safePedestal, safeNameColor, safeTitle } = this.sanitizeCosmetics(profile, avatar, pedestal, nameColor, title);
             room.addUser(socket.id, name, userId, safeAvatar, safePedestal, profile.reputation, safeNameColor, safeTitle);
+            this.socketToRoom.set(socket.id, room);
 
             cb?.({ ok: true, roomCode: code });
         } catch (err) {
@@ -291,6 +297,7 @@ class GameManager {
 
             const { safeAvatar, safePedestal, safeNameColor, safeTitle } = this.sanitizeCosmetics(profile, avatar, pedestal, nameColor, title);
             room.addUser(socket.id, name, userId, safeAvatar, safePedestal, profile.reputation, safeNameColor, safeTitle);
+            this.socketToRoom.set(socket.id, room);
 
             cb?.({ ok: true });
         } catch (err) {
@@ -474,7 +481,7 @@ class GameManager {
         const val = payloadValidator.validateHeadRotation(payload, socket.id);
         if (!val.ok) return;
         const room = this.getRoomBySocket(socket);
-        if (room) room.broadcastHeadRotation(socket.id, val.data);
+        if (room) room.broadcastHeadRotation(socket, val.data);
     }
 
     handleTaunt(socket, rawType) {
@@ -489,11 +496,15 @@ class GameManager {
 
     handleDisconnect(socket) {
         const room = this.getRoomBySocket(socket);
+        this.socketToRoom.delete(socket.id);
         if (room) {
             const isEmpty = room.removeUser(socket.id);
             if (isEmpty) {
                 setTimeout(() => {
                     if (room.users.every(u => u.disconnected) && this.rooms.get(room.code) === room) {
+                        for (const u of room.users) {
+                            this.socketToRoom.delete(u.id);
+                        }
                         room.destroy();
                         this.rooms.delete(room.code);
                         console.log(`Room ${room.code} deleted (empty).`);
@@ -504,8 +515,12 @@ class GameManager {
     }
 
     getRoomBySocket(socket) {
-        for (const [code, room] of this.rooms) {
-            if (room.users.find(u => u.id === socket.id)) return room;
+        const room = this.socketToRoom.get(socket.id);
+        if (room && this.rooms.get(room.code) === room && room.users.some(u => u.id === socket.id)) {
+            return room;
+        }
+        if (room) {
+            this.socketToRoom.delete(socket.id);
         }
         return null;
     }

@@ -123,3 +123,39 @@ test('GameManager.sanitizeCosmetics strips unowned shop items', () => {
         safeTitle: 'title_rich'
     });
 });
+
+test('GameManager maintains O(1) socketToRoom index across join, leave and close', async () => {
+    const io = {
+        to: () => ({ emit: () => {} }),
+        in: () => ({ socketsLeave: () => {} })
+    };
+    const gm = new GameManager(io);
+    const makeSocket = (id) => ({
+        id,
+        handshake: { address: '127.0.0.1', headers: {} },
+        join: () => {},
+        leave: () => {},
+        emit: () => {}
+    });
+
+    const s1 = makeSocket('sock-1');
+    const s2 = makeSocket('sock-2');
+    let createdCode = null;
+    await gm.handleCreateRoom(s1, 'Host', null, 'Warrior', 'default_stone', 'text-white', '', (res) => {
+        createdCode = res.roomCode;
+    });
+
+    assert.ok(createdCode);
+    assert.equal(gm.getRoomBySocket(s1)?.code, createdCode);
+
+    await gm.handleJoinRoom(s2, createdCode, 'Guest', null, 'Warrior', 'default_stone', 'text-white', '', () => {});
+    assert.equal(gm.getRoomBySocket(s2)?.code, createdCode);
+
+    gm.handleLeave(s2);
+    assert.equal(gm.getRoomBySocket(s2), null);
+    assert.equal(gm.getRoomBySocket(s1)?.code, createdCode);
+
+    gm.handleCloseRoom(s1);
+    assert.equal(gm.getRoomBySocket(s1), null);
+    assert.equal(gm.rooms.size, 0);
+});

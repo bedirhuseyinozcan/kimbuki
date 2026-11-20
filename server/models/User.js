@@ -86,4 +86,6 @@ const userSchema = new mongoose.Schema({
     }
 });
 
+userSchema.index({ reputation: -1, gold: -1 });
+
 module.exports = mongoose.model("User", userSchema);
