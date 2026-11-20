@@ -2,13 +2,74 @@ const Room = require("./Room");
 const RewardService = require("./services/RewardService");
 const payloadValidator = require("./validators/payloadValidator");
 
+const MAX_ROOMS = 200;
+const MAX_PLAYERS_PER_ROOM = 10;
+
 class GameManager {
     constructor(io) {
         this.io = io;
         this.rooms = new Map();
         this.creationRateLimiter = new Map();
         
-        setInterval(() => this.creationRateLimiter.clear(), 10 * 60 * 1000);
+        const cleanupInterval = setInterval(() => this.creationRateLimiter.clear(), 10 * 60 * 1000);
+        if (cleanupInterval.unref) cleanupInterval.unref();
+    }
+
+    sanitizeCosmetics(profile, avatar, pedestal, nameColor, title) {
+        const safeAvatar = (typeof avatar === 'string' && profile.unlockedAvatars.includes(avatar))
+            ? avatar
+            : 'Warrior';
+        const safePedestal = (typeof pedestal === 'string' && profile.unlockedPedestals.includes(pedestal))
+            ? pedestal
+            : 'default_stone';
+        const safeNameColor = (typeof nameColor === 'string' && profile.unlockedNameColors.includes(nameColor))
+            ? nameColor
+            : 'text-white';
+        const safeTitle = (typeof title === 'string' && (title === '' || profile.unlockedTitles.includes(title)))
+            ? title
+            : '';
+        return { safeAvatar, safePedestal, safeNameColor, safeTitle };
+    }
+
+    checkRoomCreationRateLimit(socket) {
+        const clientIP = socket.handshake.address || 'unknown';
+        const now = Date.now();
+        if (this.creationRateLimiter.has(clientIP)) {
+            const lastTime = this.creationRateLimiter.get(clientIP);
+            if (now - lastTime < 5000) {
+                return false;
+            }
+        }
+        this.creationRateLimiter.set(clientIP, now);
+        return true;
+    }
+
+    generateUniqueRoomCode() {
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        for (let attempt = 0; attempt < 20; attempt++) {
+            let code = '';
+            for (let i = 0; i < 6; i++) {
+                code += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            if (!this.rooms.has(code)) return code;
+        }
+        return Math.random().toString(36).slice(2, 8).toUpperCase().padEnd(6, 'X');
+    }
+
+    leaveOtherRooms(socket, exceptCode = null) {
+        for (const [code, room] of this.rooms) {
+            if (code === exceptCode) continue;
+            const user = room.users.find(u => u.id === socket.id);
+            if (user) {
+                socket.leave(code);
+                user.disconnected = true;
+                room.permanentlyRemoveUser(socket.id);
+                if (room.users.length === 0) {
+                    if (typeof room.destroy === 'function') room.destroy();
+                    this.rooms.delete(code);
+                }
+            }
+        }
     }
 
     handleConnection(socket) {
@@ -134,26 +195,27 @@ class GameManager {
 
     async handleCreateRoom(socket, name, userId, avatar, pedestal, nameColor, title, cb) {
         try {
-            const forwardedFor = socket.handshake.headers['x-forwarded-for'];
-            const clientIP = (typeof forwardedFor === 'string' ? forwardedFor.split(',')[0] : forwardedFor) || socket.handshake.address;
-            const now = Date.now();
-            if (this.creationRateLimiter.has(clientIP)) {
-                const lastTime = this.creationRateLimiter.get(clientIP);
-                if (now - lastTime < 5000) { 
-                    cb?.({ ok: false, error: "Lütfen yavaşlayın! Kısa sürede çok fazla oda kurdunuz." });
-                    return;
-                }
+            if (this.rooms.size >= MAX_ROOMS) {
+                cb?.({ ok: false, error: "Sunucu şu an maksimum oda kapasitesine ulaştı. Lütfen biraz sonra tekrar deneyin." });
+                return;
             }
-            this.creationRateLimiter.set(clientIP, now);
 
-            const code = Math.random().toString(36).slice(2, 8).toUpperCase();
+            if (!this.checkRoomCreationRateLimit(socket)) {
+                cb?.({ ok: false, error: "Lütfen yavaşlayın! Kısa sürede çok fazla oda kurdunuz." });
+                return;
+            }
+
+            this.leaveOtherRooms(socket);
+
+            const code = this.generateUniqueRoomCode();
             const room = new Room(code, this.io);
             this.rooms.set(code, room);
 
             socket.join(code);
             
-            const reputation = await RewardService.getUserReputation(userId);
-            room.addUser(socket.id, name, userId, avatar, pedestal, reputation, nameColor, title);
+            const profile = await RewardService.getUserProfileForRoom(userId);
+            const { safeAvatar, safePedestal, safeNameColor, safeTitle } = this.sanitizeCosmetics(profile, avatar, pedestal, nameColor, title);
+            room.addUser(socket.id, name, userId, safeAvatar, safePedestal, profile.reputation, safeNameColor, safeTitle);
 
             cb?.({ ok: true, roomCode: code });
         } catch (err) {
@@ -168,22 +230,55 @@ class GameManager {
             let room = this.rooms.get(code);
 
             if (room) {
-                const isReconnecting = (userId ? room.users.some(u => u.dbId === userId) : false)
-                    || room.users.some(u => u.disconnected && u.name === name);
+                const isReconnecting = (userId ? room.users.some(u => u.dbId && u.dbId === userId) : false)
+                    || (!userId && room.users.some(u => !u.dbId && u.disconnected && u.name === name));
 
                 if (room.gameState !== "LOBBY" && !isReconnecting) {
                     cb?.({ ok: false, error: "Oyun zaten başladı! Bu odaya şu an katılamazsınız." });
                     return;
                 }
+                if (!isReconnecting && room.users.length >= MAX_PLAYERS_PER_ROOM) {
+                    cb?.({ ok: false, error: `Bu oda dolu (Maksimum ${MAX_PLAYERS_PER_ROOM} oyuncu).` });
+                    return;
+                }
             } else {
+                if (this.rooms.size >= MAX_ROOMS) {
+                    cb?.({ ok: false, error: "Sunucu şu an maksimum oda kapasitesine ulaştı." });
+                    return;
+                }
+                if (!this.checkRoomCreationRateLimit(socket)) {
+                    cb?.({ ok: false, error: "Lütfen yavaşlayın! Kısa sürede çok fazla oda kurdunuz." });
+                    return;
+                }
                 room = new Room(code, this.io);
                 this.rooms.set(code, room);
             }
 
+            this.leaveOtherRooms(socket, code);
+
+            const profile = await RewardService.getUserProfileForRoom(userId);
+
+            // Re-check room state after async DB lookup to prevent mid-game join race
+            const currentRoom = this.rooms.get(code);
+            if (!currentRoom || currentRoom !== room) {
+                cb?.({ ok: false, error: "Oda artık mevcut değil." });
+                return;
+            }
+            const isReconnectingNow = (userId ? room.users.some(u => u.dbId && u.dbId === userId) : false)
+                || (!userId && room.users.some(u => !u.dbId && u.disconnected && u.name === name));
+            if (room.gameState !== "LOBBY" && !isReconnectingNow) {
+                cb?.({ ok: false, error: "Oyun siz bağlanırken başladı!" });
+                return;
+            }
+            if (!isReconnectingNow && room.users.length >= MAX_PLAYERS_PER_ROOM) {
+                cb?.({ ok: false, error: `Bu oda dolu (Maksimum ${MAX_PLAYERS_PER_ROOM} oyuncu).` });
+                return;
+            }
+
             socket.join(code);
-            
-            const reputation = await RewardService.getUserReputation(userId);
-            room.addUser(socket.id, name, userId, avatar, pedestal, reputation, nameColor, title);
+
+            const { safeAvatar, safePedestal, safeNameColor, safeTitle } = this.sanitizeCosmetics(profile, avatar, pedestal, nameColor, title);
+            room.addUser(socket.id, name, userId, safeAvatar, safePedestal, profile.reputation, safeNameColor, safeTitle);
 
             cb?.({ ok: true });
         } catch (err) {
@@ -192,16 +287,20 @@ class GameManager {
         }
     }
 
-    handleUpdateAvatar(socket, avatarIndex) {
+    async handleUpdateAvatar(socket, avatarId) {
+        if (typeof avatarId !== 'string' || !avatarId.trim() || avatarId.length > 40) return;
         const room = this.getRoomBySocket(socket);
-        if (room) room.updateAvatar(socket.id, avatarIndex);
+        if (!room) return;
+        const profile = await RewardService.getUserProfileForRoom(socket.data?.userId);
+        if (!profile.unlockedAvatars.includes(avatarId)) {
+            socket.emit("game:error", { message: "Bu karaktere sahip değilsiniz." });
+            return;
+        }
+        room.updateAvatar(socket.id, avatarId);
     }
 
     handleSetAvatar(socket, avatarId) {
-        const room = this.getRoomBySocket(socket);
-        if (room) {
-            room.updateAvatar(socket.id, avatarId);
-        }
+        return this.handleUpdateAvatar(socket, avatarId);
     }
 
     handleToggleVoice(socket, enabled) {

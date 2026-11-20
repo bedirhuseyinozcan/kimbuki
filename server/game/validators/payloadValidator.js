@@ -5,7 +5,7 @@ const tauntRateLimits = new Map();
 const actionRateLimits = new Map();     
 
 
-setInterval(() => {
+const validatorCleanupInterval = setInterval(() => {
     const now = Date.now();
     for (const [id, timestamps] of chatRateLimits.entries()) {
         const recent = timestamps.filter(t => now - t < 5000);
@@ -22,6 +22,7 @@ setInterval(() => {
         if (now - lastTime > 10000) actionRateLimits.delete(key);
     }
 }, 30000);
+if (validatorCleanupInterval.unref) validatorCleanupInterval.unref();
 
 const payloadValidator = {
    

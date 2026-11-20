@@ -11,11 +11,12 @@ if (!JWT_SECRET) {
 }
 
 const authMiddleware = (req, res, next) => {
-    const token = req.header("Authorization")?.replace("Bearer ", "");
+    const authHeader = req.header("Authorization");
+    const token = authHeader && authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : null;
     if (!token) return res.status(401).json({ error: "Erişim reddedildi. Token yok." });
 
     try {
-        const decoded = jwt.verify(token, JWT_SECRET);
+        const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ["HS256"] });
         req.user = decoded;
         next();
     } catch (err) {
@@ -70,27 +71,30 @@ function generateDailyQuests() {
 
 router.post("/register", async (req, res) => {
     try {
-        const { username, email, password } = req.body;
+        const { username: rawUsername, email: rawEmail, password } = req.body || {};
         
-        if (typeof username !== 'string' || typeof email !== 'string' || typeof password !== 'string') {
+        if (typeof rawUsername !== 'string' || typeof rawEmail !== 'string' || typeof password !== 'string') {
             return res.status(400).json({ error: "Geçersiz veri formatı." });
         }
+
+        const username = rawUsername.trim();
+        const email = rawEmail.trim().toLowerCase();
 
         if (!username || !email || !password) {
             return res.status(400).json({ error: "Lütfen kullanıcı adı, e-posta ve şifre girin." });
         }
         
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
+        if (!emailRegex.test(email) || email.length > 120) {
             return res.status(400).json({ error: "Lütfen geçerli bir e-posta adresi girin." });
         }
 
-        if (username.length < 3) {
-            return res.status(400).json({ error: "Kullanıcı adı en az 3 karakter olmalıdır." });
+        if (username.length < 3 || username.length > 20) {
+            return res.status(400).json({ error: "Kullanıcı adı 3 ile 20 karakter arasında olmalıdır." });
         }
 
-        if (password.length < 8) {
-            return res.status(400).json({ error: "Şifre en az 8 karakter olmalıdır." });
+        if (password.length < 8 || password.length > 128) {
+            return res.status(400).json({ error: "Şifre 8 ile 128 karakter arasında olmalıdır." });
         }
         if (!/(?=.*[a-z])/.test(password)) {
             return res.status(400).json({ error: "Şifre en az bir küçük harf içermelidir." });
@@ -116,6 +120,8 @@ router.post("/register", async (req, res) => {
             password: hashedPassword,
             avatar: "Warrior",
             pedestal: "default_stone",
+            nameColor: "text-white",
+            title: "",
             gold: 0,
             unlockedAvatars: ["Warrior"],
             unlockedPedestals: ["default_stone"],
@@ -133,12 +139,21 @@ router.post("/register", async (req, res) => {
                 username: user.username, 
                 email: user.email, 
                 avatar: user.avatar,
+                pedestal: user.pedestal,
+                nameColor: user.nameColor,
+                title: user.title,
                 gold: user.gold,
                 unlockedAvatars: user.unlockedAvatars,
+                unlockedPedestals: user.unlockedPedestals,
+                unlockedNameColors: user.unlockedNameColors,
+                unlockedTitles: user.unlockedTitles,
                 rankInfo: getRankInfo(user.reputation || 0)
             }
         });
     } catch (error) {
+        if (error && error.code === 11000) {
+            return res.status(400).json({ error: "Bu kullanıcı adı veya e-posta zaten kullanımda." });
+        }
         console.error("Register error:", error);
         res.status(500).json({ error: "Sunucu hatası" });
     }
@@ -146,11 +161,13 @@ router.post("/register", async (req, res) => {
 
 router.post("/login", async (req, res) => {
     try {
-        const { email, password } = req.body;
+        const { email: rawEmail, password } = req.body || {};
         
-        if (typeof email !== 'string' || typeof password !== 'string') {
+        if (typeof rawEmail !== 'string' || typeof password !== 'string') {
             return res.status(400).json({ error: "Geçersiz veri formatı." });
         }
+
+        const email = rawEmail.trim().toLowerCase();
 
         if (!email || !password) {
             return res.status(400).json({ error: "Lütfen e-posta ve şifre girin." });
@@ -158,12 +175,12 @@ router.post("/login", async (req, res) => {
 
         const user = await User.findOne({ email });
         if (!user) {
-            return res.status(400).json({ error: "Kullanıcı bulunamadı." });
+            return res.status(400).json({ error: "E-posta veya şifre hatalı." });
         }
 
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
-            return res.status(400).json({ error: "Hatalı şifre." });
+            return res.status(400).json({ error: "E-posta veya şifre hatalı." });
         }
 
         let isModified = false;
@@ -329,7 +346,7 @@ router.get("/me", authMiddleware, async (req, res) => {
 
 router.post("/daily-reward", authMiddleware, async (req, res) => {
     try {
-        const user = await User.findById(req.user.id);
+        const user = await User.findById(req.user.id).select("lastLoginDate loginStreak").lean();
         if (!user) return res.status(404).json({ error: "Kullanıcı bulunamadı." });
 
         const now = new Date();
@@ -348,36 +365,61 @@ router.post("/daily-reward", authMiddleware, async (req, res) => {
         } else {
             streak = 1;
         }
-        if (streak > 7) streak = 7;
+        if (streak > 7) streak = 1;
 
         const rewardAmounts = { 1: 50, 2: 100, 3: 150, 4: 200, 5: 250, 6: 300, 7: 500 };
         const amount = rewardAmounts[streak] || 50;
 
-        user.gold += amount;
-        user.lastLoginDate = today;
-        user.loginStreak = streak;
-        await user.save();
+        // Atomic precondition prevents concurrent double-spend
+        const updatedUser = await User.findOneAndUpdate(
+            {
+                _id: req.user.id,
+                $or: [
+                    { lastLoginDate: { $lt: today } },
+                    { lastLoginDate: null },
+                    { lastLoginDate: { $exists: false } }
+                ]
+            },
+            {
+                $inc: { gold: amount },
+                $set: { lastLoginDate: today, loginStreak: streak }
+            },
+            { new: true }
+        );
 
-        res.json({ success: true, amount, streak, gold: user.gold });
+        if (!updatedUser) {
+            return res.status(400).json({ error: "Bugünün ödülünü zaten aldın!" });
+        }
+
+        res.json({ success: true, amount, streak: updatedUser.loginStreak, gold: updatedUser.gold });
     } catch (error) {
+        console.error("Daily reward error:", error);
         res.status(500).json({ error: "Sunucu hatası" });
     }
 });
 
 router.put("/profile", authMiddleware, async (req, res) => {
     try {
-        const { username, avatar, pedestal, nameColor, title } = req.body;
+        const { username: rawUsername, avatar, pedestal, nameColor, title } = req.body || {};
         
-        if (username && typeof username !== 'string') return res.status(400).json({ error: "Geçersiz format" });
+        if (rawUsername !== undefined && typeof rawUsername !== 'string') {
+            return res.status(400).json({ error: "Geçersiz format" });
+        }
 
         const user = await User.findById(req.user.id);
         
         if (!user) return res.status(404).json({ error: "Kullanıcı bulunamadı." });
 
-        if (username && username !== user.username) {
-            const existing = await User.findOne({ username });
-            if (existing) return res.status(400).json({ error: "Bu kullanıcı adı zaten kullanımda." });
-            user.username = username;
+        if (rawUsername !== undefined) {
+            const username = rawUsername.trim();
+            if (username.length < 3 || username.length > 20) {
+                return res.status(400).json({ error: "Kullanıcı adı 3 ile 20 karakter arasında olmalıdır." });
+            }
+            if (username !== user.username) {
+                const existing = await User.findOne({ username });
+                if (existing) return res.status(400).json({ error: "Bu kullanıcı adı zaten kullanımda." });
+                user.username = username;
+            }
         }
 
         if (!user.unlockedAvatars) user.unlockedAvatars = ['Warrior'];
@@ -417,38 +459,62 @@ router.put("/profile", authMiddleware, async (req, res) => {
             rankInfo: getRankInfo(user.reputation || 0)
         });
     } catch (error) {
+        if (error && error.code === 11000) {
+            return res.status(400).json({ error: "Bu kullanıcı adı zaten kullanımda." });
+        }
+        console.error("Profile update error:", error);
         res.status(500).json({ error: "Sunucu hatası" });
     }
 });
 
 router.post("/claim-quest", authMiddleware, async (req, res) => {
     try {
-        const { questId } = req.body;
-        if (typeof questId !== 'string') return res.status(400).json({ error: "Geçersiz format" });
+        const { questId } = req.body || {};
+        if (typeof questId !== 'string' || !questId.trim()) {
+            return res.status(400).json({ error: "Geçersiz format" });
+        }
 
-        const user = await User.findById(req.user.id);
-        
-        if (!user || !user.quests || !user.quests.active) return res.status(400).json({ error: "Görev bulunamadı." });
+        const user = await User.findById(req.user.id).select("quests").lean();
+        if (!user || !user.quests || !user.quests.active) {
+            return res.status(400).json({ error: "Görev bulunamadı." });
+        }
         
         const quest = user.quests.active.find(q => q.id === questId);
         if (!quest) return res.status(400).json({ error: "Görev bulunamadı." });
         if (quest.isClaimed) return res.status(400).json({ error: "Bu ödülü zaten aldın." });
         if (quest.progress < quest.target) return res.status(400).json({ error: "Görev henüz tamamlanmadı." });
 
-        quest.isClaimed = true;
-        user.gold += quest.rewardGold;
-        user.reputation += quest.rewardRep;
-        
-        user.markModified('quests');
-        await user.save();
+        // Atomic precondition prevents concurrent double-spend
+        const updatedUser = await User.findOneAndUpdate(
+            {
+                _id: req.user.id,
+                "quests.active": {
+                    $elemMatch: {
+                        id: questId,
+                        isClaimed: false,
+                        progress: { $gte: quest.target }
+                    }
+                }
+            },
+            {
+                $set: { "quests.active.$.isClaimed": true },
+                $inc: { gold: quest.rewardGold, reputation: quest.rewardRep }
+            },
+            { new: true }
+        );
+
+        if (!updatedUser) {
+            return res.status(400).json({ error: "Bu ödülü zaten aldın veya görev tamamlanmadı." });
+        }
 
         res.json({
             success: true,
-            gold: user.gold,
-            rankInfo: getRankInfo(user.reputation),
-            quests: user.quests.active
+            gold: updatedUser.gold,
+            rankInfo: getRankInfo(updatedUser.reputation),
+            quests: updatedUser.quests.active
         });
     } catch (error) {
+        console.error("Claim quest error:", error);
         res.status(500).json({ error: "Sunucu hatası" });
     }
 });

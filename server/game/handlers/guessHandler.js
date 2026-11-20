@@ -63,12 +63,20 @@ async function guessWord(room, userId, guess) {
         const playersCount = room.initialPlayerCount || room.users.length;
         const totalPot = playersCount * (room.betAmount || 50);
 
+        const bettors = (room.isBettingEnabled && !isRussianRoulette)
+            ? Object.keys(room.bets || {})
+                .filter(uid => room.bets[uid] === user.id)
+                .map(uid => room.users.find(u => u.id === uid))
+                .filter(Boolean)
+            : [];
+
         const { winnerReward, bettorReward, repReward } = RewardService.calculatePotDistribution({
             isBettingEnabled: room.isBettingEnabled,
             totalPot,
             playersCount,
             rank,
-            isRussianRoulette
+            isRussianRoulette,
+            bettorCount: bettors.length
         });
 
         let playerRewards = {};
@@ -96,21 +104,17 @@ async function guessWord(room, userId, guess) {
         if (!room.roundLogs) room.roundLogs = [];
         room.roundLogs.push(winMsg);
 
-        if (room.isBettingEnabled && bettorReward > 0 && !isRussianRoulette) {
-            const bettors = Object.keys(room.bets || {}).filter(uid => room.bets[uid] === user.id);
+        if (room.isBettingEnabled && bettorReward > 0 && !isRussianRoulette && bettors.length > 0) {
             let bettorNames = [];
 
-            for (let uid of bettors) {
-                const bettorUser = room.users.find(u => u.id === uid);
-                if (bettorUser) {
-                    addReward(bettorUser.dbId, bettorReward, 5, 'bet_win');
-                    bettorUser.reputation = (bettorUser.reputation || 0) + 5;
-                    bettorNames.push(bettorUser.name);
-                }
+            for (let bettorUser of bettors) {
+                addReward(bettorUser.dbId, bettorReward, 5, 'bet_win');
+                bettorUser.reputation = (bettorUser.reputation || 0) + 5;
+                bettorNames.push(bettorUser.name);
             }
 
             if (bettorNames.length > 0) {
-                const betMsg = `🎲 Bahis Kazananları (${user.name} üzerine oynayanlar): ${bettorNames.join(', ')} -> Bahis kazancı: Ekstra ${bettorReward} Altın!`;
+                const betMsg = `🎲 Bahis Kazananları (${user.name} üzerine oynayanlar): ${bettorNames.join(', ')} -> Bahis kazancı: ${bettorReward} Altın!`;
                 room.addChatLog({ system: true, message: betMsg, timestamp: Date.now() });
                 room.roundLogs.push(betMsg);
             }

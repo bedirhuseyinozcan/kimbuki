@@ -176,20 +176,51 @@ class RewardService {
     }
 
     /**
-     * Calculates winner gold, bettor gold, and reputation rewards based on player count, rank, and game mode.
-     * @param {Object} params
-     * @param {boolean} params.isBettingEnabled
-     * @param {number} params.totalPot
-     * @param {number} params.playersCount
-     * @param {number} params.rank
-     * @param {boolean} params.isRussianRoulette
-     * @returns {Object} { winnerReward, bettorReward, repReward }
+     * Fetches user reputation and unlocked cosmetics in a single lean query for room join/create validation.
+     * @param {string} userId
      */
-    static calculatePotDistribution({ isBettingEnabled = false, totalPot = 0, playersCount = 2, rank = 1, isRussianRoulette = false }) {
+    static async getUserProfileForRoom(userId) {
+        const defaults = {
+            reputation: 0,
+            unlockedAvatars: ['Warrior'],
+            unlockedPedestals: ['default_stone'],
+            unlockedNameColors: ['text-white'],
+            unlockedTitles: []
+        };
+        if (!userId) return defaults;
+        try {
+            const user = await User.findById(userId)
+                .select('reputation unlockedAvatars unlockedPedestals unlockedNameColors unlockedTitles')
+                .lean();
+            if (!user) return defaults;
+            return {
+                reputation: user.reputation || 0,
+                unlockedAvatars: Array.isArray(user.unlockedAvatars) && user.unlockedAvatars.length > 0 ? user.unlockedAvatars : ['Warrior'],
+                unlockedPedestals: Array.isArray(user.unlockedPedestals) && user.unlockedPedestals.length > 0 ? user.unlockedPedestals : ['default_stone'],
+                unlockedNameColors: Array.isArray(user.unlockedNameColors) && user.unlockedNameColors.length > 0 ? user.unlockedNameColors : ['text-white'],
+                unlockedTitles: Array.isArray(user.unlockedTitles) ? user.unlockedTitles : []
+            };
+        } catch {
+            return defaults;
+        }
+    }
+
+    /**
+     * Calculates winner gold, bettor gold, and reputation rewards based on player count, rank, and game mode.
+     * Total distributed gold never exceeds totalPot (75% winner / 25% split among bettors if bettors exist, else 100% winner).
+     */
+    static calculatePotDistribution({
+        isBettingEnabled = false,
+        totalPot = 0,
+        playersCount = 2,
+        rank = 1,
+        isRussianRoulette = false,
+        bettorCount = 0
+    }) {
         let winnerReward = 0;
         let bettorReward = 0;
 
-        if (isBettingEnabled) {
+        if (isBettingEnabled && totalPot > 0) {
             if (isRussianRoulette) {
                 winnerReward = totalPot;
                 bettorReward = 0;
@@ -208,8 +239,17 @@ class RewardService {
                     else if (rank === 4) pct = 0.10;
                     else pct = 0;
                 }
-                winnerReward = Math.floor(totalPot * pct);
-                bettorReward = Math.max(1, Math.floor(winnerReward / 2));
+                const rankShare = Math.floor(totalPot * pct);
+                if (rankShare > 0) {
+                    if (bettorCount > 0) {
+                        winnerReward = Math.floor(rankShare * 0.75);
+                        const bettorPool = rankShare - winnerReward;
+                        bettorReward = Math.floor(bettorPool / bettorCount);
+                    } else {
+                        winnerReward = rankShare;
+                        bettorReward = 0;
+                    }
+                }
             }
         }
 

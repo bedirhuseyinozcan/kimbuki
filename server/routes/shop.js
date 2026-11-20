@@ -10,11 +10,12 @@ if (!JWT_SECRET) {
 }
 
 const authMiddleware = (req, res, next) => {
-    const token = req.header("Authorization")?.replace("Bearer ", "");
+    const authHeader = req.header("Authorization");
+    const token = authHeader && authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : null;
     if (!token) return res.status(401).json({ error: "Erişim reddedildi. Token yok." });
 
     try {
-        const decoded = jwt.verify(token, JWT_SECRET);
+        const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ["HS256"] });
         req.user = decoded;
         next();
     } catch (err) {
@@ -58,7 +59,7 @@ router.get("/items", (req, res) => {
 
 router.post("/buy", authMiddleware, async (req, res) => {
     try {
-        const { itemId } = req.body;
+        const { itemId } = req.body || {};
         const itemToBuy = ALL_ITEMS.find(a => a.id === itemId);
         
         if (!itemToBuy) {

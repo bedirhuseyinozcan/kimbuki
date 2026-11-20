@@ -55,7 +55,11 @@ class Room {
     }
 
     addUser(socketId, name, dbId, avatar, pedestal = 'default_stone', reputation = 0, nameColor = 'text-white', title = '') {
-        const existingUser = this.users.find(u => (dbId && u.dbId === dbId) || (u.disconnected && u.name === name));
+        // Prevent seat/dbId hijacking: authenticated seats can ONLY be reclaimed by matching dbId
+        const existingUser = this.users.find(u =>
+            (dbId && u.dbId && u.dbId === dbId) ||
+            (!u.dbId && !dbId && u.disconnected && u.name === name)
+        );
         if (existingUser) {
             const oldId = existingUser.id;
             if (existingUser.disconnectTimer) {
@@ -825,7 +829,7 @@ class Room {
         this.users.forEach(user => {
             const usersPayload = this.users.map(u => ({
                 id: u.id,
-                dbId: u.dbId,
+                dbId: u.id === user.id ? u.dbId : undefined,
                 name: u.name,
                 isHost: u.isHost,
                 avatar: u.avatar,
