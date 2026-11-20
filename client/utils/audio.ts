@@ -1,17 +1,32 @@
 let sharedAudioCtx: AudioContext | null = null;
+let cachedNoiseBuffer: AudioBuffer | null = null;
 
 export const getAudioContext = () => {
     if (typeof window === 'undefined') return null;
     if (!sharedAudioCtx) {
-        const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-        if (AudioContext) {
-            sharedAudioCtx = new AudioContext();
+        const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+        if (AudioCtx) {
+            sharedAudioCtx = new AudioCtx();
         }
     }
     if (sharedAudioCtx && sharedAudioCtx.state === 'suspended') {
-        sharedAudioCtx.resume();
+        sharedAudioCtx.resume().catch(() => {});
     }
     return sharedAudioCtx;
+};
+
+const getNoiseBuffer = (ctx: AudioContext) => {
+    if (cachedNoiseBuffer && cachedNoiseBuffer.sampleRate === ctx.sampleRate) {
+        return cachedNoiseBuffer;
+    }
+    const bufferSize = Math.floor(ctx.sampleRate * 1.5);
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+        data[i] = Math.random() * 2 - 1;
+    }
+    cachedNoiseBuffer = buffer;
+    return buffer;
 };
 
 export const playTurnSound = () => {
@@ -24,20 +39,17 @@ export const playTurnSound = () => {
         gain.connect(ctx.destination);
         osc.type = 'sine';
         osc.frequency.setValueAtTime(523.25, ctx.currentTime);
-        gain.gain.setValueAtTime(0.5, ctx.currentTime);
+        gain.gain.setValueAtTime(0.4, ctx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
         osc.start(ctx.currentTime);
         osc.stop(ctx.currentTime + 0.3);
-    } catch (e) {
-        console.error("Audio failed", e);
-    }
+    } catch {}
 };
 
 export const playWinSound = () => {
     try {
         const ctx = getAudioContext();
         if (!ctx) return;
-        
         [523.25, 659.25, 783.99, 1046.50].forEach((freq, i) => {
             const osc = ctx.createOscillator();
             const gain = ctx.createGain();
@@ -50,67 +62,49 @@ export const playWinSound = () => {
             osc.start(ctx.currentTime + i * 0.1);
             osc.stop(ctx.currentTime + i * 0.1 + 0.5);
         });
-    } catch (e) {
-        console.error("Audio failed", e);
-    }
+    } catch {}
 };
 
 export const playExplosionSound = () => {
     try {
         const ctx = getAudioContext();
         if (!ctx) return;
-        const bufferSize = ctx.sampleRate * 1.5; 
-        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-        const data = buffer.getChannelData(0);
-        for (let i = 0; i < bufferSize; i++) {
-            data[i] = Math.random() * 2 - 1; 
-        }
         const noise = ctx.createBufferSource();
-        noise.buffer = buffer;
+        noise.buffer = getNoiseBuffer(ctx);
         const filter = ctx.createBiquadFilter();
         filter.type = 'lowpass';
         filter.frequency.setValueAtTime(1000, ctx.currentTime);
         filter.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 1.5);
         const gain = ctx.createGain();
-        gain.gain.setValueAtTime(1, ctx.currentTime);
+        gain.gain.setValueAtTime(0.7, ctx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 1.5);
         noise.connect(filter);
         filter.connect(gain);
         gain.connect(ctx.destination);
         noise.start(ctx.currentTime);
         noise.stop(ctx.currentTime + 1.5);
-    } catch (e) {
-        console.error("Audio failed", e);
-    }
+    } catch {}
 };
 
 export const playGunshotSound = () => {
     try {
         const ctx = getAudioContext();
         if (!ctx) return;
-        const bufferSize = ctx.sampleRate * 0.5; 
-        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-        const data = buffer.getChannelData(0);
-        for (let i = 0; i < bufferSize; i++) {
-            data[i] = Math.random() * 2 - 1; 
-        }
         const noise = ctx.createBufferSource();
-        noise.buffer = buffer;
+        noise.buffer = getNoiseBuffer(ctx);
         const filter = ctx.createBiquadFilter();
         filter.type = 'bandpass';
         filter.frequency.setValueAtTime(3000, ctx.currentTime);
         filter.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.3);
         const gain = ctx.createGain();
-        gain.gain.setValueAtTime(1, ctx.currentTime);
+        gain.gain.setValueAtTime(0.7, ctx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
         noise.connect(filter);
         filter.connect(gain);
         gain.connect(ctx.destination);
         noise.start(ctx.currentTime);
         noise.stop(ctx.currentTime + 0.3);
-    } catch (e) {
-        console.error("Audio failed", e);
-    }
+    } catch {}
 };
 
 export const playMagicSound = () => {
@@ -129,16 +123,13 @@ export const playMagicSound = () => {
         gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.6);
         osc.start(ctx.currentTime);
         osc.stop(ctx.currentTime + 0.6);
-    } catch (e) {
-        console.error("Audio failed", e);
-    }
+    } catch {}
 };
 
 export const playHeartbeatSound = () => {
     try {
         const ctx = getAudioContext();
         if (!ctx) return;
-        
         const playBeat = (startTime: number) => {
             const osc = ctx.createOscillator();
             const gain = ctx.createGain();
@@ -147,15 +138,14 @@ export const playHeartbeatSound = () => {
             osc.type = 'sine';
             osc.frequency.setValueAtTime(50, startTime);
             gain.gain.setValueAtTime(0, startTime);
-            gain.gain.linearRampToValueAtTime(0.8, startTime + 0.1);
+            gain.gain.linearRampToValueAtTime(0.7, startTime + 0.1);
             gain.gain.exponentialRampToValueAtTime(0.01, startTime + 0.3);
             osc.start(startTime);
             osc.stop(startTime + 0.3);
         };
-        
         playBeat(ctx.currentTime);
         playBeat(ctx.currentTime + 0.3);
-    } catch(e) {}
+    } catch {}
 };
 
 export const playGlitchSound = () => {
@@ -174,19 +164,15 @@ export const playGlitchSound = () => {
         gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
         osc.start(ctx.currentTime);
         osc.stop(ctx.currentTime + 0.3);
-    } catch(e) {}
+    } catch {}
 };
 
 export const playSilenceSound = () => {
     try {
         const ctx = getAudioContext();
         if (!ctx) return;
-        const bufferSize = ctx.sampleRate * 0.5;
-        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-        const data = buffer.getChannelData(0);
-        for(let i=0; i<bufferSize; i++) data[i] = Math.random() * 2 - 1;
         const noise = ctx.createBufferSource();
-        noise.buffer = buffer;
+        noise.buffer = getNoiseBuffer(ctx);
         const filter = ctx.createBiquadFilter();
         filter.type = 'lowpass';
         filter.frequency.setValueAtTime(400, ctx.currentTime);
@@ -200,7 +186,7 @@ export const playSilenceSound = () => {
         gain.connect(ctx.destination);
         noise.start(ctx.currentTime);
         noise.stop(ctx.currentTime + 0.5);
-    } catch(e) {}
+    } catch {}
 };
 
 export const playReloadSound = () => {
@@ -221,7 +207,7 @@ export const playReloadSound = () => {
         };
         playClick(ctx.currentTime, 800);
         playClick(ctx.currentTime + 0.15, 600);
-    } catch(e) {}
+    } catch {}
 };
 
 export const playSparkleSound = () => {
@@ -240,5 +226,5 @@ export const playSparkleSound = () => {
         gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
         osc.start(ctx.currentTime);
         osc.stop(ctx.currentTime + 0.4);
-    } catch(e) {}
+    } catch {}
 };

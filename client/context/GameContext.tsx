@@ -5,34 +5,24 @@ import { GameState, User } from "@/components/game/types";
 import { GameActions } from "@/hooks/useGameSocket";
 
 export interface GameContextValue {
-    // Temel Oyun ve Oyuncu Durumu
     gameState: GameState;
     me: User;
     myId: string;
     isMyTurn: boolean;
     currentTurnUser?: User;
-
-   
     actions: GameActions;
-
-   
     notepad: string;
     setNotepad: (val: string) => void;
-
-    
     chatInput: string;
     setChatInput: (val: string) => void;
-
-   
     guessInput: string;
     setGuessInput: (val: string) => void;
     guessDialogOpen: boolean;
     setGuessDialogOpen: (val: boolean) => void;
-
     headRotations: { [key: string]: { pitch: number; yaw: number } };
+    headRotationsRef: React.MutableRefObject<{ [key: string]: { pitch: number; yaw: number } }>;
     taunts: { [key: string]: { type: string; id: number } };
     visualEffects: any[];
-
     isSubmitting: boolean;
     isConnected: boolean;
     isReconnecting: boolean;

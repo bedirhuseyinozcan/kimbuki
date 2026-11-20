@@ -1,4 +1,4 @@
-import React, { useRef, Suspense, useMemo, useEffect } from 'react';
+import React, { useRef, Suspense, useMemo, useEffect, Component, ReactNode } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Html, ContactShadows, useGLTF } from '@react-three/drei';
 import { SkeletonUtils } from 'three-stdlib';
@@ -6,51 +6,91 @@ import { User, GameState, AVATARS, getRankInfo, NAME_COLORS, TITLES } from './ty
 import * as THREE from 'three';
 import { motion, AnimatePresence } from "framer-motion";
 
-const PLAYER_CENTER = [2, 0, -1]; 
+const PLAYER_CENTER = [2, 0, -1];
 const MAP_CONFIGS: { [key: string]: { position: [number, number, number], scale: number } } = {
     "floating_island__low_poly_vr.glb": { position: [0, -1.70, 0], scale: 0.5 },
-    "snow.glb": { position: [2, -0.1, -1], scale: 1.5 }, 
+    "snow.glb": { position: [2, -0.1, -1], scale: 1.5 },
     "desert.glb": { position: [4.0, 4.5, -1], scale: 7.5 }
 };
 const PLAYER_CIRCLE_RADIUS_SMALL = 3.5;
 const PLAYER_CIRCLE_RADIUS_LARGE = 4.5;
 
-function FirstPersonCamera({ myId, users, radius, onHeadRotation }: any) {
+type HeadRotationMap = { [key: string]: { pitch: number; yaw: number } };
+
+class WebGLErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+    constructor(props: { children: ReactNode }) {
+        super(props);
+        this.state = { hasError: false };
+    }
+
+    static getDerivedStateFromError() {
+        return { hasError: true };
+    }
+
+    componentDidCatch(error: Error) {
+        console.error("[Scene3D] WebGL render error:", error);
+    }
+
+    render() {
+        if (this.state.hasError) {
+            return (
+                <div className="w-full h-full flex flex-col items-center justify-center bg-[#111318] text-[#F6F5F2] p-6 text-center">
+                    <div className="swiss-panel p-6 max-w-sm">
+                        <p className="font-display text-lg font-bold uppercase text-[#FFBE0B] mb-2">
+                            3D SAHNE YÜKLENEMEDİ
+                        </p>
+                        <p className="font-mono text-xs text-[#A0A8B8]">
+                            WebGL bağlamı başlatılamadı. Oyun sohbet ve aksiyon paneliyle devam edebilir.
+                        </p>
+                    </div>
+                </div>
+            );
+        }
+        return this.props.children;
+    }
+}
+
+function FirstPersonCamera({ myId, users, radius, onHeadRotation }: {
+    myId: string;
+    users: User[];
+    radius: number;
+    onHeadRotation?: (pitch: number, yaw: number) => void;
+}) {
     const { camera, gl } = useThree();
     const lastEmitTime = useRef(0);
     const lastEmittedRot = useRef({ pitch: 0, yaw: 0 });
     const isDragging = useRef(false);
     const currentLook = useRef({ yaw: 0, pitch: 0 });
     const lastTargetLook = useRef({ yaw: 0, pitch: 0 });
-
     const lastPos = useRef({ x: 0, y: 0 });
+    const tempTargetPos = useRef(new THREE.Vector3());
 
-    React.useEffect(() => {
-        const handleDown = (e: PointerEvent) => { 
-            if(e.isPrimary) {
-                isDragging.current = true; 
-                lastPos.current = { x: e.screenX, y: e.screenY };
+    useEffect(() => {
+        const handleDown = (e: PointerEvent) => {
+            if (e.isPrimary) {
+                isDragging.current = true;
+                lastPos.current = { x: e.clientX, y: e.clientY };
                 (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
             }
         };
-        const handleUp = (e: PointerEvent) => { 
-            if(e.isPrimary) {
-                isDragging.current = false; 
+        const handleUp = (e: PointerEvent) => {
+            if (e.isPrimary) {
+                isDragging.current = false;
                 (e.target as HTMLElement).releasePointerCapture?.(e.pointerId);
             }
         };
         const handleMove = (e: PointerEvent) => {
             if (isDragging.current && e.isPrimary) {
-                const maxYaw = Math.PI / 2.5; 
-                const maxPitch = Math.PI / 4; 
-                
-                const deltaX = e.screenX - lastPos.current.x;
-                const deltaY = e.screenY - lastPos.current.y;
-                lastPos.current = { x: e.screenX, y: e.screenY };
+                const maxYaw = Math.PI / 2.5;
+                const maxPitch = Math.PI / 4;
+
+                const deltaX = e.clientX - lastPos.current.x;
+                const deltaY = e.clientY - lastPos.current.y;
+                lastPos.current = { x: e.clientX, y: e.clientY };
 
                 const deltaYaw = -(deltaX / window.innerWidth) * Math.PI * 1.5;
                 const deltaPitch = -(deltaY / window.innerHeight) * Math.PI * 1.5;
-                
+
                 lastTargetLook.current.yaw = Math.max(-maxYaw, Math.min(maxYaw, lastTargetLook.current.yaw + deltaYaw));
                 lastTargetLook.current.pitch = Math.max(-maxPitch, Math.min(maxPitch, lastTargetLook.current.pitch + deltaPitch));
             }
@@ -66,32 +106,35 @@ function FirstPersonCamera({ myId, users, radius, onHeadRotation }: any) {
             target.removeEventListener('pointerup', handleUp as EventListener);
             target.removeEventListener('pointercancel', handleUp as EventListener);
             target.removeEventListener('pointermove', handleMove as EventListener);
-        }
+        };
     }, [gl.domElement]);
 
-    useFrame((state, delta) => {
-        const myIndex = users.findIndex((u: any) => u.id === myId);
+    useFrame((_, rawDelta) => {
+        const delta = Math.min(rawDelta, 0.05);
+        const myIndex = users.findIndex((u) => u.id === myId);
         if (myIndex === -1) {
-            camera.position.lerp(new THREE.Vector3(PLAYER_CENTER[0], 5, PLAYER_CENTER[2] + 8), 2 * delta);
+            tempTargetPos.current.set(PLAYER_CENTER[0], 5, PLAYER_CENTER[2] + 8);
+            camera.position.lerp(tempTargetPos.current, 2 * delta);
             camera.lookAt(PLAYER_CENTER[0], 0, PLAYER_CENTER[2]);
             return;
         }
 
         const angleOffset = users.length === 3 ? (Math.PI / 2) : -(Math.PI / 2);
         const angle = (myIndex / users.length) * (2 * Math.PI) + angleOffset;
-        
+
         const headX = PLAYER_CENTER[0] + Math.cos(angle) * radius;
         const headZ = PLAYER_CENTER[2] + Math.sin(angle) * radius;
-        const headY = PLAYER_CENTER[1] + 1.2; 
+        const headY = PLAYER_CENTER[1] + 1.2;
 
-        camera.position.lerp(new THREE.Vector3(headX, headY, headZ), 5 * delta);
+        tempTargetPos.current.set(headX, headY, headZ);
+        camera.position.lerp(tempTargetPos.current, 5 * delta);
 
         const targetX = PLAYER_CENTER[0];
         const targetY = PLAYER_CENTER[1] + 0.8;
         const targetZ = PLAYER_CENTER[2];
 
         camera.lookAt(targetX, targetY, targetZ);
-        
+
         currentLook.current.yaw = THREE.MathUtils.lerp(currentLook.current.yaw, lastTargetLook.current.yaw, 10 * delta);
         currentLook.current.pitch = THREE.MathUtils.lerp(currentLook.current.pitch, lastTargetLook.current.pitch, 10 * delta);
 
@@ -116,47 +159,71 @@ function FirstPersonCamera({ myId, users, radius, onHeadRotation }: any) {
     return null;
 }
 
-function AvatarModel({ url, isWinner, targetRot }: { url: string, isWinner: boolean, targetRot?: { pitch: number, yaw: number } }) {
+function AvatarModel({ url, userId, headRotationsRef }: {
+    url: string;
+    userId: string;
+    headRotationsRef?: React.MutableRefObject<HeadRotationMap>;
+}) {
     const { scene } = useGLTF(`/avatars/${url}`);
     const groupRef = useRef<THREE.Group>(null);
     const headBone = useRef<THREE.Object3D | null>(null);
 
-    const clonedScene = React.useMemo(() => {
+    const clonedScene = useMemo(() => {
         const clone = SkeletonUtils.clone(scene);
-        clone.traverse((child: any) => {
-            if (child.isMesh || child.isSkinnedMesh) {
+        clone.traverse((child) => {
+            const mesh = child as THREE.Mesh;
+            if (mesh.isMesh || (child as THREE.SkinnedMesh).isSkinnedMesh) {
                 child.frustumCulled = false;
             }
         });
         return clone;
     }, [scene]);
 
-    React.useEffect(() => {
+    useEffect(() => {
         if (!groupRef.current) return;
         headBone.current = null;
         groupRef.current.traverse((child) => {
-            if ((child as any).isBone) {
+            if ((child as THREE.Bone).isBone) {
                 const name = child.name.toLowerCase();
-                if (name.includes('head') || name.includes('neck')) {
-                    if (!headBone.current) headBone.current = child; 
+                if ((name.includes('head') || name.includes('neck')) && !headBone.current) {
+                    headBone.current = child;
                 }
             }
         });
     }, [clonedScene]);
 
-    useFrame((state, delta) => {
-        if (targetRot) {
-            if (headBone.current) {
-                const bone = headBone.current as any;
-                if (!bone.userData.initialRotation) {
-                    bone.userData.initialRotation = bone.rotation.clone();
+    useEffect(() => {
+        return () => {
+            clonedScene.traverse((child) => {
+                const mesh = child as THREE.Mesh;
+                if (mesh.isMesh) {
+                    if (mesh.geometry && mesh.geometry !== (scene as unknown as THREE.Mesh).geometry) {
+                        mesh.geometry.dispose?.();
+                    }
+                    if (Array.isArray(mesh.material)) {
+                        mesh.material.forEach((m) => m.dispose?.());
+                    } else if (mesh.material) {
+                        mesh.material.dispose?.();
+                    }
                 }
-                const initRot = bone.userData.initialRotation;
-                bone.rotation.y = THREE.MathUtils.lerp(bone.rotation.y, initRot.y + targetRot.yaw, 5 * delta);
-                bone.rotation.x = THREE.MathUtils.lerp(bone.rotation.x, initRot.x - targetRot.pitch, 5 * delta);
-            } else if (groupRef.current) {
-                groupRef.current.rotation.y = THREE.MathUtils.lerp(groupRef.current.rotation.y, targetRot.yaw, 5 * delta);
+            });
+        };
+    }, [clonedScene, scene]);
+
+    useFrame((_, rawDelta) => {
+        const targetRot = headRotationsRef?.current?.[userId];
+        if (!targetRot) return;
+        const delta = Math.min(rawDelta, 0.05);
+        if (headBone.current) {
+            const bone = headBone.current;
+            if (!bone.userData.initialRotation) {
+                bone.userData.initialRotation = bone.rotation.clone();
             }
+            const initRot = bone.userData.initialRotation as THREE.Euler;
+            bone.rotation.y = THREE.MathUtils.lerp(bone.rotation.y, initRot.y + targetRot.yaw, 5 * delta);
+            bone.rotation.x = THREE.MathUtils.lerp(bone.rotation.x, initRot.x - targetRot.pitch, 5 * delta);
+        } else if (groupRef.current) {
+            groupRef.current.rotation.y = THREE.MathUtils.lerp(groupRef.current.rotation.y, targetRot.yaw, 5 * delta);
         }
     });
 
@@ -169,20 +236,20 @@ function AvatarModel({ url, isWinner, targetRot }: { url: string, isWinner: bool
 
 const sharedParticleSphereGeo = new THREE.SphereGeometry(0.5, 16, 16);
 const sharedRingTorusGeo = new THREE.TorusGeometry(1, 0.1, 16, 32);
-const sharedMirrorSphereGeo = new THREE.SphereGeometry(1.5, 32, 32);
-const sharedFallbackCylinderGeo = new THREE.CylinderGeometry(0.5, 0.5, 1, 32);
+const sharedMirrorSphereGeo = new THREE.SphereGeometry(1.5, 24, 24);
+const sharedFallbackCylinderGeo = new THREE.CylinderGeometry(0.5, 0.5, 1, 24);
 const sharedFallbackBoxGeo = new THREE.BoxGeometry(0.5, 1, 0.5);
 
-const sharedGoldPedestalGeo = new THREE.CylinderGeometry(0.8, 0.9, 0.5, 32);
+const sharedGoldPedestalGeo = new THREE.CylinderGeometry(0.8, 0.9, 0.5, 24);
 const sharedLavaPedestalCylinderGeo = new THREE.CylinderGeometry(0.7, 0.8, 0.4, 16);
-const sharedLavaPedestalTorusGeo = new THREE.TorusGeometry(0.65, 0.12, 16, 32);
+const sharedLavaPedestalTorusGeo = new THREE.TorusGeometry(0.65, 0.12, 12, 24);
 const sharedIcePedestalBoxGeo = new THREE.BoxGeometry(1.5, 0.5, 1.5);
-const sharedCloudPedestalSphere1 = new THREE.SphereGeometry(0.6, 16, 16);
-const sharedCloudPedestalSphere2 = new THREE.SphereGeometry(0.5, 16, 16);
-const sharedCloudPedestalSphere3 = new THREE.SphereGeometry(0.45, 16, 16);
+const sharedCloudPedestalSphere1 = new THREE.SphereGeometry(0.6, 12, 12);
+const sharedCloudPedestalSphere2 = new THREE.SphereGeometry(0.5, 12, 12);
+const sharedCloudPedestalSphere3 = new THREE.SphereGeometry(0.45, 12, 12);
 const sharedDefaultPedestalGeo = new THREE.CylinderGeometry(0.7, 0.75, 0.5, 8);
 
-function PedestalNode({ type }: { type: string }) {
+const PedestalNode = React.memo(function PedestalNode({ type }: { type: string }) {
     switch (type) {
         case 'gold_pedestal':
             return (
@@ -204,7 +271,7 @@ function PedestalNode({ type }: { type: string }) {
         case 'ice_block':
             return (
                 <mesh position={[0, 0.25, 0]} castShadow receiveShadow geometry={sharedIcePedestalBoxGeo}>
-                    <meshPhysicalMaterial color="#bae6fd" transmission={0.9} opacity={1} transparent roughness={0.1} thickness={0.5} />
+                    <meshStandardMaterial color="#bae6fd" transparent opacity={0.65} roughness={0.15} metalness={0.1} />
                 </mesh>
             );
         case 'cloud_base':
@@ -223,18 +290,21 @@ function PedestalNode({ type }: { type: string }) {
                 </mesh>
             );
     }
-}
+});
 
 function ParticleBurst({ color }: { color: string }) {
     const meshRef = useRef<THREE.Mesh>(null);
     const materialRef = useRef<THREE.MeshStandardMaterial>(null);
 
-    useFrame((state, delta) => {
+    useFrame((_, rawDelta) => {
+        if (!materialRef.current || materialRef.current.opacity <= 0) return;
+        const delta = Math.min(rawDelta, 0.05);
         if (meshRef.current) {
             meshRef.current.scale.addScalar(delta * 20);
         }
-        if (materialRef.current) {
-            materialRef.current.opacity = Math.max(0, materialRef.current.opacity - delta * 2);
+        materialRef.current.opacity = Math.max(0, materialRef.current.opacity - delta * 2);
+        if (materialRef.current.opacity <= 0 && meshRef.current) {
+            meshRef.current.visible = false;
         }
     });
 
@@ -262,12 +332,15 @@ function RingBurst({ color }: { color: string }) {
     const meshRef = useRef<THREE.Mesh>(null);
     const materialRef = useRef<THREE.MeshStandardMaterial>(null);
 
-    useFrame((state, delta) => {
+    useFrame((_, rawDelta) => {
+        if (!materialRef.current || materialRef.current.opacity <= 0) return;
+        const delta = Math.min(rawDelta, 0.05);
         if (meshRef.current) {
             meshRef.current.scale.addScalar(delta * 10);
         }
-        if (materialRef.current) {
-            materialRef.current.opacity = Math.max(0, materialRef.current.opacity - delta * 1.5);
+        materialRef.current.opacity = Math.max(0, materialRef.current.opacity - delta * 1.5);
+        if (materialRef.current.opacity <= 0 && meshRef.current) {
+            meshRef.current.visible = false;
         }
     });
 
@@ -291,7 +364,21 @@ function RingBurst({ color }: { color: string }) {
     );
 }
 
-function PlayerNode({ u, index, totalUsers, isCurrentTurn, isMe, isWinner, activeBubble, gameState, headRotations, taunt, visualEffects }: any) {
+interface PlayerNodeProps {
+    u: User;
+    index: number;
+    totalUsers: number;
+    isMe: boolean;
+    isWinner: boolean;
+    activeBubble?: string;
+    headRotationsRef?: React.MutableRefObject<HeadRotationMap>;
+    taunt?: { type: string; id: number };
+    visualEffects?: Array<{ id: number; type: string; targetId?: string; userId?: string }>;
+}
+
+const PlayerNode = React.memo(function PlayerNode({
+    u, index, totalUsers, isMe, isWinner, activeBubble, headRotationsRef, taunt, visualEffects
+}: PlayerNodeProps) {
     const radius = totalUsers > 4 ? PLAYER_CIRCLE_RADIUS_LARGE : PLAYER_CIRCLE_RADIUS_SMALL;
     const angleOffset = totalUsers === 3 ? (Math.PI / 2) : -(Math.PI / 2);
     const angle = (index / totalUsers) * (2 * Math.PI) + angleOffset;
@@ -299,24 +386,20 @@ function PlayerNode({ u, index, totalUsers, isCurrentTurn, isMe, isWinner, activ
     const z = Math.sin(angle) * radius;
 
     const userAvatar = AVATARS.find(a => a.id === u.avatar) || AVATARS[0];
-    const groupRef = useRef<THREE.Group>(null);
-    const bodyRef = useRef<THREE.Group>(null);
+    const rankInfo = useMemo(() => getRankInfo(u.reputation || 0), [u.reputation]);
 
-    const targetRot = headRotations?.[u.id];
-    
     const bomb = u.timeBomb;
     const hasMirror = isMe && (u.mirrorRoundsLeft && u.mirrorRoundsLeft > 0);
-    
+
     const myEffects = useMemo(() => {
-        return visualEffects?.filter((e: any) => e.targetId === u.id || e.userId === u.id) || [];
+        return visualEffects?.filter((e) => e.targetId === u.id || e.userId === u.id) || [];
     }, [visualEffects, u.id]);
-    
+
     return (
-        <group ref={groupRef} position={[x, 0, z]} rotation={[0, -angle - Math.PI / 2, 0]}>
-            
+        <group position={[x, 0, z]} rotation={[0, -angle - Math.PI / 2, 0]}>
             <PedestalNode type={u.pedestal || 'default_stone'} />
 
-            {myEffects.map((eff: any) => {
+            {myEffects.map((eff) => {
                 if (eff.type === 'bomb_explode') return <ParticleBurst key={eff.id} color="#ef4444" />;
                 if (eff.type === 'roulette_die') return <ParticleBurst key={eff.id} color="#000000" />;
                 if (eff.type === 'mind_wipe') return <ParticleBurst key={eff.id} color="#a855f7" />;
@@ -332,17 +415,17 @@ function PlayerNode({ u, index, totalUsers, isCurrentTurn, isMe, isWinner, activ
 
             {hasMirror && (
                 <mesh position={[0, 1.2, 0]} geometry={sharedMirrorSphereGeo}>
-                    <meshPhysicalMaterial color="#38bdf8" transmission={0.9} opacity={0.3} transparent roughness={0.1} />
+                    <meshStandardMaterial color="#38bdf8" transparent opacity={0.28} roughness={0.15} metalness={0.3} depthWrite={false} />
                 </mesh>
             )}
 
             {!isMe && (
-                <group ref={bodyRef}>
+                <group>
                     {userAvatar.model || u.avatar.includes('default') ? (
                         <Suspense fallback={
-                            <mesh position={[0, 1, 0]} geometry={sharedFallbackBoxGeo}><meshStandardMaterial color="gray"/></mesh>
+                            <mesh position={[0, 1, 0]} geometry={sharedFallbackBoxGeo}><meshStandardMaterial color="gray" /></mesh>
                         }>
-                            <AvatarModel url={userAvatar.model || "Warrior.gltf"} isWinner={isWinner} targetRot={targetRot} />
+                            <AvatarModel url={userAvatar.model || "Warrior.gltf"} userId={u.id} headRotationsRef={headRotationsRef} />
                         </Suspense>
                     ) : (
                         <mesh position={[0, 1, 0]} castShadow receiveShadow geometry={sharedFallbackCylinderGeo}>
@@ -351,7 +434,7 @@ function PlayerNode({ u, index, totalUsers, isCurrentTurn, isMe, isWinner, activ
                     )}
                 </group>
             )}
-            
+
             {bomb && (
                 <Html position={[0, 2.90, 0]} center zIndexRange={[95, 0]} style={{ pointerEvents: 'none' }}>
                     <div className="flex flex-col items-center animate-bounce">
@@ -391,14 +474,14 @@ function PlayerNode({ u, index, totalUsers, isCurrentTurn, isMe, isWinner, activ
                             </div>
                         )}
                         {!isWinner && (
-                            <div className={`mb-1.5 px-3 py-1 rounded-[3px] border-2 border-[#090A0D] shadow-[3px_3px_0px_#090A0D] font-display font-bold uppercase tracking-wide text-center text-xs max-w-[120px] break-words z-20 bg-[#FFBE0B] text-[#111318] transform -rotate-2`}>
+                            <div className="mb-1.5 px-3 py-1 rounded-[3px] border-2 border-[#090A0D] shadow-[3px_3px_0px_#090A0D] font-display font-bold uppercase tracking-wide text-center text-xs max-w-[120px] break-words z-20 bg-[#FFBE0B] text-[#111318] transform -rotate-2">
                                 {u.assignedWord}
                             </div>
                         )}
                         <span className={`mt-0.5 font-display font-bold text-[11px] bg-[#111318] border-2 border-[#090A0D] shadow-[2px_2px_0px_#090A0D] px-2.5 py-0.5 rounded-[3px] whitespace-nowrap flex items-center gap-1.5 ${u.status === 'spectator' ? 'line-through text-[#687082]' : (u.nameColor ? (NAME_COLORS.find(c => c.id === u.nameColor)?.className || 'text-[#F6F5F2]') : 'text-[#F6F5F2]')} ${u.disconnected ? 'text-[#FF334B]' : ''}`}>
-                            <span className={`flex items-center gap-1 ${getRankInfo(u.reputation || 0).color}`}>
-                                <span className="text-[13px]">{getRankInfo(u.reputation || 0).icon}</span>
-                                <span className="text-[9px] font-mono uppercase tracking-wider font-bold">{getRankInfo(u.reputation || 0).title}</span>
+                            <span className={`flex items-center gap-1 ${rankInfo.color}`}>
+                                <span className="text-[13px]">{rankInfo.icon}</span>
+                                <span className="text-[9px] font-mono uppercase tracking-wider font-bold">{rankInfo.title}</span>
                             </span>
                             {u.title && (
                                 <span className="text-[8px] font-mono font-bold px-1.5 py-0.5 rounded-[2px] bg-[#222630] text-[#F6F5F2] border border-[#3E4659]">
@@ -420,67 +503,81 @@ function PlayerNode({ u, index, totalUsers, isCurrentTurn, isMe, isWinner, activ
             )}
         </group>
     );
-}
+});
 
-function MapModel({ url }: { url: string }) {
+const MapModel = React.memo(function MapModel({ url }: { url: string }) {
     const { scene } = useGLTF(`/maps/${url}`);
     const config = MAP_CONFIGS[url] || { position: [0, 0, 0], scale: 1 };
-    
+
     return (
         <group position={config.position} scale={config.scale}>
             <primitive object={scene} castShadow receiveShadow />
         </group>
     );
+});
+
+interface Scene3DProps {
+    gameState: GameState;
+    myId: string;
+    activeBubbles: { [key: string]: { text: string; id: string } };
+    headRotationsRef?: React.MutableRefObject<HeadRotationMap>;
+    onHeadRotation?: (pitch: number, yaw: number) => void;
+    taunts?: { [key: string]: { type: string; id: number } };
+    visualEffects?: Array<{ id: number; type: string; targetId?: string; userId?: string }>;
 }
 
-export default function Scene3D({ gameState, myId, activeBubbles, headRotations, onHeadRotation, taunts, visualEffects }: any) {
+const Scene3D = React.memo(function Scene3D({
+    gameState, myId, activeBubbles, headRotationsRef, onHeadRotation, taunts, visualEffects
+}: Scene3DProps) {
     const isDay = gameState?.theme !== "night";
 
     return (
-        <div className='absolute inset-0 w-full h-full z-0 pointer-events-auto'>
-            <Canvas shadows dpr={[1, 1.5]} camera={{ position: [0, 4.5, 8], fov: 45 }}>
-                <color attach='background' args={[isDay ? '#38bdf8' : '#0f172a']} />
-                <fog attach='fog' args={[isDay ? '#38bdf8' : '#0f172a', isDay ? 15 : 8, isDay ? 40 : 30]} />
-                <ambientLight intensity={isDay ? 0.9 : 0.4} />
-                <directionalLight castShadow position={[10, 15, 5]} intensity={isDay ? 2.2 : 1.2} color={isDay ? "#ffedd5" : "#e0f2fe"} shadow-mapSize={[1024, 1024]} />
-                <pointLight position={[0, 4, 0]} intensity={isDay ? 0.5 : 1.5} color={isDay ? '#eab308' : '#38bdf8'} distance={10} />
-                
-                <Suspense fallback={
-                    <mesh position={[0, -0.1, 0]} receiveShadow>
-                        <cylinderGeometry args={[2.8, 3.2, 0.2, 64]} />
-                        <meshStandardMaterial color='#334155' roughness={0.7} />
-                    </mesh>
-                }>
-                <MapModel url={gameState?.map || "floating_island__low_poly_vr.glb"} />
-            </Suspense>
+        <div className='absolute inset-0 w-full h-full z-0 pointer-events-auto touch-none'>
+            <WebGLErrorBoundary>
+                <Canvas shadows dpr={[1, 1.5]} camera={{ position: [0, 4.5, 8], fov: 45 }}>
+                    <color attach='background' args={[isDay ? '#38bdf8' : '#0f172a']} />
+                    <fog attach='fog' args={[isDay ? '#38bdf8' : '#0f172a', isDay ? 15 : 8, isDay ? 40 : 30]} />
+                    <ambientLight intensity={isDay ? 0.9 : 0.4} />
+                    <directionalLight castShadow position={[10, 15, 5]} intensity={isDay ? 2.2 : 1.2} color={isDay ? "#ffedd5" : "#e0f2fe"} shadow-mapSize={[1024, 1024]} />
+                    <pointLight position={[0, 4, 0]} intensity={isDay ? 0.5 : 1.5} color={isDay ? '#eab308' : '#38bdf8'} distance={10} />
 
-            <group position={PLAYER_CENTER as [number, number, number]}>
-                {gameState.users.map((u: any, i: number) => (
-                    <PlayerNode 
-                        key={u.id} 
-                        u={u} 
-                        index={i} 
-                        totalUsers={gameState.users.length} 
-                        isCurrentTurn={u.id === gameState.currentTurnUserId} 
-                        isMe={u.id === myId} 
-                        isWinner={gameState.winners.includes(u.id)} 
-                        activeBubble={activeBubbles[u.id]?.text}
-                        gameState={gameState}
-                        headRotations={headRotations}
-                        taunt={taunts?.[u.id]}
-                        visualEffects={visualEffects}
+                    <Suspense fallback={
+                        <mesh position={[0, -0.1, 0]} receiveShadow>
+                            <cylinderGeometry args={[2.8, 3.2, 0.2, 32]} />
+                            <meshStandardMaterial color='#334155' roughness={0.7} />
+                        </mesh>
+                    }>
+                        <MapModel url={gameState?.map || "floating_island__low_poly_vr.glb"} />
+                    </Suspense>
+
+                    <group position={PLAYER_CENTER as [number, number, number]}>
+                        {gameState.users.map((u, i) => (
+                            <PlayerNode
+                                key={u.id}
+                                u={u}
+                                index={i}
+                                totalUsers={gameState.users.length}
+                                isMe={u.id === myId}
+                                isWinner={gameState.winners.includes(u.id)}
+                                activeBubble={activeBubbles[u.id]?.text}
+                                headRotationsRef={headRotationsRef}
+                                taunt={taunts?.[u.id]}
+                                visualEffects={visualEffects}
+                            />
+                        ))}
+                    </group>
+
+                    <ContactShadows frames={1} position={[PLAYER_CENTER[0], PLAYER_CENTER[1] - 0.05, PLAYER_CENTER[2]]} opacity={0.5} scale={15} blur={2.5} far={4} />
+                    <FirstPersonCamera
+                        myId={myId}
+                        users={gameState.users}
+                        radius={gameState.users.length > 4 ? PLAYER_CIRCLE_RADIUS_LARGE : PLAYER_CIRCLE_RADIUS_SMALL}
+                        onHeadRotation={onHeadRotation}
                     />
-                ))}
-            </group>
+                </Canvas>
+            </WebGLErrorBoundary>
+        </div>
+    );
+});
 
-            <ContactShadows position={[PLAYER_CENTER[0], PLAYER_CENTER[1] - 0.05, PLAYER_CENTER[2]]} opacity={0.5} scale={15} blur={2.5} far={4} />
-            <FirstPersonCamera 
-                myId={myId} 
-                users={gameState.users} 
-                radius={gameState.users.length > 4 ? PLAYER_CIRCLE_RADIUS_LARGE : PLAYER_CIRCLE_RADIUS_SMALL} 
-                onHeadRotation={onHeadRotation}
-            />
-        </Canvas>
-    </div>
-);
-}
+export default Scene3D;

@@ -92,7 +92,7 @@ export function useGameSocket(
     const [guessDialogOpen, setGuessDialogOpen] = useState(false);
     const [guessInput, setGuessInput] = useState("");
 
-    const [headRotations, setHeadRotations] = useState<{ [key: string]: { pitch: number; yaw: number } }>({});
+    const headRotationsRef = useRef<{ [key: string]: { pitch: number; yaw: number } }>({});
     const [taunts, setTaunts] = useState<{ [key: string]: { type: string; id: number } }>({});
     const [visualEffects, setVisualEffects] = useState<any[]>([]);
 
@@ -265,7 +265,7 @@ export function useGameSocket(
         });
 
         s.on("game:head_update", ({ userId, pitch, yaw }: any) => {
-            setHeadRotations((prev) => ({ ...prev, [userId]: { pitch, yaw } }));
+            headRotationsRef.current[userId] = { pitch, yaw };
         });
 
         s.on("game:error", ({ message }: { message: string }) => {
@@ -593,7 +593,8 @@ export function useGameSocket(
         checkingAuth,
         myId,
         me,
-        headRotations,
+        headRotations: headRotationsRef.current,
+        headRotationsRef,
         taunts,
         visualEffects,
 

@@ -232,11 +232,10 @@ export default function GameScene(props: GameSceneProps = {}) {
     return (
         <main className="min-h-[100dvh] h-[100dvh] text-[#F6F5F2] p-3 md:p-4 flex flex-col overflow-hidden relative">
             
-            {/* 3D Canvas Stage */}
             <div className="fixed inset-0 z-0 pointer-events-auto bg-[#111318]">
                 <Scene3D 
                     gameState={gameState} myId={myId} activeBubbles={activeBubbles} 
-                    headRotations={headRotations} onHeadRotation={onHeadRotation} taunts={taunts}
+                    headRotationsRef={ctx.headRotationsRef} onHeadRotation={onHeadRotation} taunts={taunts}
                     visualEffects={visualEffects}
                 />
             </div>

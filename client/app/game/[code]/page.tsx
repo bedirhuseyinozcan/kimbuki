@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { useGameSocket } from "@/hooks/useGameSocket";
 import { useLiveKit } from "@/hooks/useLiveKit";
@@ -114,6 +114,74 @@ export default function GamePage() {
         }
     }, [livekit.error]);
 
+    const roomOptions = useMemo(() => ({
+        audioCaptureDefaults: {
+            deviceId: typeof window !== "undefined" ? localStorage.getItem("preferredMic") || undefined : undefined,
+            echoCancellation: true,
+            autoGainControl: true,
+            noiseSuppression: true,
+        },
+    }), []);
+
+    const currentTurnUser = useMemo(
+        () => game.gameState?.users.find((u: User) => u.id === game.gameState?.currentTurnUserId),
+        [game.gameState]
+    );
+
+    const gameContextValue = useMemo<GameContextValue | null>(() => {
+        if (!game.gameState || !game.me) return null;
+        return {
+            gameState: game.gameState,
+            me: game.me,
+            myId: game.myId!,
+            isMyTurn: game.gameState.currentTurnUserId === game.myId,
+            currentTurnUser,
+            actions: game.actions,
+            notepad: notepad.notepad,
+            setNotepad: notepad.setNotepad,
+            chatInput: game.chatInput,
+            setChatInput: game.setChatInput,
+            guessInput: game.guessInput,
+            setGuessInput: game.setGuessInput,
+            guessDialogOpen: game.guessDialogOpen,
+            setGuessDialogOpen: game.setGuessDialogOpen,
+            headRotations: game.headRotations,
+            headRotationsRef: game.headRotationsRef,
+            taunts: game.taunts,
+            visualEffects: game.visualEffects,
+            isSubmitting: game.isSubmitting,
+            isConnected: game.isConnected,
+            isReconnecting: game.isReconnecting,
+            pingMs: game.pingMs,
+            timeOffset: game.timeOffset,
+            connectionError: game.connectionError,
+        };
+    }, [
+        game.gameState,
+        game.me,
+        game.myId,
+        currentTurnUser,
+        game.actions,
+        notepad.notepad,
+        notepad.setNotepad,
+        game.chatInput,
+        game.setChatInput,
+        game.guessInput,
+        game.setGuessInput,
+        game.guessDialogOpen,
+        game.setGuessDialogOpen,
+        game.headRotations,
+        game.headRotationsRef,
+        game.taunts,
+        game.visualEffects,
+        game.isSubmitting,
+        game.isConnected,
+        game.isReconnecting,
+        game.pingMs,
+        game.timeOffset,
+        game.connectionError,
+    ]);
+
     if (game.checkingAuth || !game.isJoined) {
         return (
             <main className="flex min-h-screen flex-col items-center justify-center p-6 text-center bg-[#111318] text-[#F6F5F2]">
@@ -130,7 +198,7 @@ export default function GamePage() {
         );
     }
 
-    if (!game.gameState || !game.me) {
+    if (!game.gameState || !game.me || !gameContextValue) {
         return (
             <div className="min-h-screen bg-[#111318] flex items-center justify-center text-[#F6F5F2] font-display text-xl uppercase tracking-wider">
                 SAHNE YÜKLENİYOR...
@@ -139,34 +207,6 @@ export default function GamePage() {
     }
 
     const { gameState, me, myId } = game;
-    const isMyTurn = gameState.currentTurnUserId === myId;
-    const currentTurnUser = gameState.users.find((u: User) => u.id === gameState.currentTurnUserId);
-
-    const gameContextValue: GameContextValue = {
-        gameState,
-        me,
-        myId: myId!,
-        isMyTurn,
-        currentTurnUser,
-        actions: game.actions,
-        notepad: notepad.notepad,
-        setNotepad: notepad.setNotepad,
-        chatInput: game.chatInput,
-        setChatInput: game.setChatInput,
-        guessInput: game.guessInput,
-        setGuessInput: game.setGuessInput,
-        guessDialogOpen: game.guessDialogOpen,
-        setGuessDialogOpen: game.setGuessDialogOpen,
-        headRotations: game.headRotations,
-        taunts: game.taunts,
-        visualEffects: game.visualEffects,
-        isSubmitting: game.isSubmitting,
-        isConnected: game.isConnected,
-        isReconnecting: game.isReconnecting,
-        pingMs: game.pingMs,
-        timeOffset: game.timeOffset,
-        connectionError: game.connectionError,
-    };
 
     const renderGameState = () => {
         if (gameState.gameState === "LOBBY") {
@@ -229,15 +269,6 @@ export default function GamePage() {
             );
         }
         return null;
-    };
-
-    const roomOptions = {
-        audioCaptureDefaults: {
-            deviceId: typeof window !== "undefined" ? localStorage.getItem("preferredMic") || undefined : undefined,
-            echoCancellation: true,
-            autoGainControl: true,
-            noiseSuppression: true,
-        },
     };
 
     return (
