@@ -1,6 +1,6 @@
 import React, { useRef, Suspense, useMemo, useEffect } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { OrbitControls, Html, ContactShadows, useGLTF } from '@react-three/drei';
+import { Html, ContactShadows, useGLTF } from '@react-three/drei';
 import { SkeletonUtils } from 'three-stdlib';
 import { User, GameState, AVATARS, getRankInfo, NAME_COLORS, TITLES } from './types';
 import * as THREE from 'three';
@@ -484,13 +484,3 @@ export default function Scene3D({ gameState, myId, activeBubbles, headRotations,
     </div>
 );
 }
-
-useGLTF.preload('/avatars/Warrior.gltf');
-useGLTF.preload('/avatars/Wizard.gltf');
-useGLTF.preload('/avatars/Rogue.gltf');
-useGLTF.preload('/avatars/Ranger.gltf');
-useGLTF.preload('/avatars/Monk.gltf');
-useGLTF.preload('/avatars/Cleric.gltf');
-useGLTF.preload('/maps/floating_island__low_poly_vr.glb');
-useGLTF.preload('/maps/snow.glb');
-useGLTF.preload('/maps/desert.glb');

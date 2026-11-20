@@ -9,12 +9,21 @@ import { User, GameState, JOKERS } from "./types";
 import { playTurnSound, playWinSound } from "@/utils/audio";
 import confetti from "canvas-confetti";
 import { motion, AnimatePresence } from "framer-motion";
-import Scene3D from "./Scene3D";
+import dynamic from "next/dynamic";
 import Notepad from "./ui/Notepad";
 import ChatPanel from "./ui/ChatPanel";
 import ActionMenu from "./ui/ActionMenu";
 import JokerGuideDialog from './JokerGuideDialog';
 import { useGameContext } from "@/context/GameContext";
+
+const Scene3D = dynamic(() => import("./Scene3D"), {
+    ssr: false,
+    loading: () => (
+        <div className="absolute inset-0 w-full h-full z-0 flex items-center justify-center bg-[#111318] text-[#A0A8B8] font-mono text-xs uppercase tracking-wider">
+            3D SAHNE YÜKLENİYOR...
+        </div>
+    ),
+});
 
 export interface GameSceneProps {
     gameState?: GameState;
