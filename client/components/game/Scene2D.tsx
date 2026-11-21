@@ -12,12 +12,10 @@ interface Scene2DProps {
 }
 
 const TAUNT_EMOJIS: Record<string, string> = {
+    fire: "🔥",
+    party: "🎉",
     laugh: "😂",
-    clap: "👏",
-    shock: "😱",
-    angry: "😡",
-    think: "🤔",
-    cool: "😎"
+    cry: "😭"
 };
 
 function Scene2DComponent({
@@ -32,7 +30,7 @@ function Scene2DComponent({
 
     return (
         <div
-            className={`absolute inset-0 w-full h-full z-0 flex items-center justify-center overflow-y-auto px-4 py-24 md:py-28 ${
+            className={`absolute inset-0 w-full h-full z-0 flex items-center justify-center overflow-y-auto pl-14 pr-4 pt-36 pb-28 md:pl-[calc(25%+6.5rem)] md:pr-[240px] md:pt-44 md:pb-56 xl:pl-[490px] xl:pr-[260px] ${
                 isDay ? "bg-[#151B26]" : "bg-[#0B0E14]"
             }`}
             style={{
@@ -41,8 +39,8 @@ function Scene2DComponent({
                 backgroundSize: "24px 24px"
             }}
         >
-            <div className="w-full max-w-5xl mx-auto">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 md:gap-4">
+            <div className="w-full max-w-4xl mx-auto">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-3.5 md:gap-4">
                     {users.map((u) => {
                         const isMe = u.id === myId;
                         const isCurrentTurn = u.id === gameState.currentTurnUserId;
