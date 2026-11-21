@@ -1,6 +1,6 @@
 import React, { useRef, Suspense, useMemo, useEffect, Component, ReactNode } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { Html, ContactShadows, useGLTF } from '@react-three/drei';
+import { Html, useGLTF } from '@react-three/drei';
 import { SkeletonUtils } from 'three-stdlib';
 import { User, GameState, AVATARS, getRankInfo, NAME_COLORS, TITLES } from './types';
 import * as THREE from 'three';
@@ -612,9 +612,6 @@ const Scene3D = React.memo(function Scene3D({
                         ))}
                     </group>
 
-                    {!lowGraphics && (
-                        <ContactShadows frames={1} position={[PLAYER_CENTER[0], PLAYER_CENTER[1] - 0.05, PLAYER_CENTER[2]]} opacity={0.5} scale={15} blur={2.5} far={4} />
-                    )}
                     <FirstPersonCamera
                         myId={myId}
                         users={gameState.users}
