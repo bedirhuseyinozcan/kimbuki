@@ -5,7 +5,7 @@ const objectionHandler = require('./handlers/objectionHandler');
 const StateSerializer = require('./managers/StateSerializer');
 const PhaseManager = require('./managers/PhaseManager');
 const TurnManager = require('./managers/TurnManager');
-const { VALID_MAPS, VALID_THEMES, VALID_CATEGORIES, VALID_BET_AMOUNTS } = require('../config/catalog');
+const { VALID_MAPS, VALID_THEMES, VALID_CATEGORIES, VALID_BET_AMOUNTS, VALID_GAME_MODES } = require('../config/catalog');
 
 class Room {
     constructor(code, io) {
@@ -14,6 +14,7 @@ class Room {
         this.users = [];
         this.gameState = "LOBBY";
         this.category = "Karışık"; this.theme = "day"; this.map = "floating_island__low_poly_vr.glb";
+        this.gameMode = "classic";
         this.activeQuestion = null;
         
         this.turnTime = 60;
@@ -396,6 +397,10 @@ class Room {
         }
         if (typeof settings.jokersEnabled === "boolean") {
             this.isJokersEnabled = settings.jokersEnabled;
+        }
+        if (typeof settings.gameMode === "string" && VALID_GAME_MODES.includes(settings.gameMode)) {
+            this.gameMode = settings.gameMode;
+            this.turnTime = this.gameMode === "blitz" ? 30 : 60;
         }
 
         this.broadcastState();

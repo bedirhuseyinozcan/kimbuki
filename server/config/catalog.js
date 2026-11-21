@@ -43,6 +43,7 @@ const VALID_MAPS = ["floating_island__low_poly_vr.glb", "snow.glb", "desert.glb"
 const VALID_THEMES = ["day", "night"];
 const VALID_CATEGORIES = ["Karışık", "Ünlüler", "Hayvanlar", "Tarihi Kişiler", "Filmler / Diziler"];
 const VALID_BET_AMOUNTS = [50, 100, 250, 500];
+const VALID_GAME_MODES = ["classic", "blitz"];
 
 module.exports = {
     FREE_DEFAULTS,
@@ -54,5 +55,6 @@ module.exports = {
     VALID_MAPS,
     VALID_THEMES,
     VALID_CATEGORIES,
-    VALID_BET_AMOUNTS
+    VALID_BET_AMOUNTS,
+    VALID_GAME_MODES
 };

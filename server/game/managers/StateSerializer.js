@@ -38,6 +38,7 @@ function serializeStateForUser(room, user) {
         category: room.category,
         theme: room.theme,
         map: room.map,
+        gameMode: room.gameMode || "classic",
         isBettingEnabled: room.isBettingEnabled,
         betAmount: room.betAmount,
         isJokersEnabled: room.isJokersEnabled,

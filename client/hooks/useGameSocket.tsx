@@ -21,6 +21,7 @@ export interface UseGameSocketOptions {
 
 export interface GameStartSettings {
     category?: string;
+    gameMode?: "classic" | "blitz";
     bettingEnabled?: boolean;
     jokersEnabled?: boolean;
     betAmount?: number;

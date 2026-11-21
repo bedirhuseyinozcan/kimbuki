@@ -79,7 +79,7 @@ function renderMatchPoster(gameState: GameState): HTMLCanvasElement {
     ctx.font = "700 76px 'Space Grotesk', sans-serif";
     ctx.fillText("KİMBUKİ", innerX, 224);
 
-    const modeLabel = gameState.gameMode === "blitz" ? "⚡ BLITZ (20SN)" : "KLASİK (60SN)";
+    const modeLabel = gameState.gameMode === "blitz" ? "⚡ BLITZ (30SN)" : "KLASİK (60SN)";
     const metaPills = [
         `KATEGORİ: ${(gameState.category || "KARIŞIK").toLocaleUpperCase("tr-TR")}`,
         `TUR #${gameState.roundCount || 1}`,

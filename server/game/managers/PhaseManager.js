@@ -59,6 +59,8 @@ async function startGame(room, settings = {}) {
         room.category = settings.category || "Karışık";
         room.theme = settings.theme || "day";
         room.map = settings.map || "floating_island__low_poly_vr.glb";
+        room.gameMode = settings.gameMode === "blitz" ? "blitz" : "classic";
+        room.turnTime = room.gameMode === "blitz" ? 30 : 60;
         room.initialPlayerCount = activeUsers.length;
         room.isBettingEnabled = isBettingEnabled;
         room.betAmount = betAmount;
@@ -168,7 +170,8 @@ function startJokerDraft(room) {
         }
     }
 
-    room.jokerDraftEndTime = Date.now() + 15000;
+    const draftMs = room.gameMode === "blitz" ? 10000 : 15000;
+    room.jokerDraftEndTime = Date.now() + draftMs;
     room.jokerDraftTimer = setTimeout(() => {
         for (let u of room.users) {
             if (u.status === 'playing' && !u.hasDrafted && room.isJokersEnabled) {
@@ -177,7 +180,7 @@ function startJokerDraft(room) {
             }
         }
         room.startPlaying();
-    }, 15000);
+    }, draftMs);
 
     room.broadcastState();
 }

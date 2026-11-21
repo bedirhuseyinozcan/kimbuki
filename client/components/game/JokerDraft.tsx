@@ -11,7 +11,7 @@ interface JokerDraftProps {
 }
 
 export default function JokerDraft({ gameState, me, onSelectJoker, timeOffset = 0 }: JokerDraftProps) {
-    const [timeLeft, setTimeLeft] = useState(15);
+    const [timeLeft, setTimeLeft] = useState(() => (gameState.gameMode === "blitz" ? 10 : 15));
     const [selected, setSelected] = useState<number | null>(null);
 
     useEffect(() => {

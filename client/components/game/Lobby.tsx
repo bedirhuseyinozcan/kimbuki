@@ -12,8 +12,8 @@ interface LobbyProps {
     code: string;
     inviteUrl: string;
     myId: string;
-    onStart: (settings: { category: string, bettingEnabled: boolean, jokersEnabled: boolean, betAmount: number, theme: "day"|"night", map: string }) => void;
-    onUpdateSettings?: (settings: { category: string, bettingEnabled: boolean, jokersEnabled: boolean, betAmount: number, theme: "day"|"night", map: string }) => void;
+    onStart: (settings: { category: string, gameMode: "classic"|"blitz", bettingEnabled: boolean, jokersEnabled: boolean, betAmount: number, theme: "day"|"night", map: string }) => void;
+    onUpdateSettings?: (settings: { category: string, gameMode: "classic"|"blitz", bettingEnabled: boolean, jokersEnabled: boolean, betAmount: number, theme: "day"|"night", map: string }) => void;
     onCloseRoom: () => void;
     onLeaveRoom: () => void;
     onCopyLink: () => void;
@@ -50,15 +50,17 @@ export default function Lobby({
     gameState, me, code, inviteUrl, myId, onStart, onUpdateSettings, onCloseRoom, onLeaveRoom, onCopyLink, onSelectAvatar, onToggleVoice
 }: LobbyProps & { onSelectAvatar: (id: number) => void, onToggleVoice: (enabled: boolean) => void }) {
     const [category, setCategory] = useState(gameState.category || "Karışık");
+    const [gameMode, setGameMode] = useState<"classic" | "blitz">(gameState.gameMode || "classic");
     const [bettingEnabled, setBettingEnabled] = useState(Boolean(gameState.isBettingEnabled));
     const [betAmount, setBetAmount] = useState(gameState.betAmount || 50);
     const [jokersEnabled, setJokersEnabled] = useState(gameState.isJokersEnabled !== false);
     const [theme, setTheme] = useState<"day" | "night">(gameState.theme || "day");
     const [map, setMap] = useState(gameState.map || "floating_island__low_poly_vr.glb");
 
-    const emitSettings = (patch: Partial<{ category: string; bettingEnabled: boolean; jokersEnabled: boolean; betAmount: number; theme: "day" | "night"; map: string }>) => {
-        const next = { category, bettingEnabled, jokersEnabled, betAmount, theme, map, ...patch };
+    const emitSettings = (patch: Partial<{ category: string; gameMode: "classic" | "blitz"; bettingEnabled: boolean; jokersEnabled: boolean; betAmount: number; theme: "day" | "night"; map: string }>) => {
+        const next = { category, gameMode, bettingEnabled, jokersEnabled, betAmount, theme, map, ...patch };
         if (patch.category !== undefined) setCategory(patch.category);
+        if (patch.gameMode !== undefined) setGameMode(patch.gameMode);
         if (patch.bettingEnabled !== undefined) setBettingEnabled(patch.bettingEnabled);
         if (patch.jokersEnabled !== undefined) setJokersEnabled(patch.jokersEnabled);
         if (patch.betAmount !== undefined) setBetAmount(patch.betAmount);
@@ -274,6 +276,40 @@ export default function Lobby({
                         {me?.isHost ? (
                             <div className="space-y-5">
                                 <div>
+                                    <label className="swiss-label block mb-2">OYUN MODU</label>
+                                    <div className="grid grid-cols-2 gap-2.5">
+                                        <button
+                                            type="button"
+                                            onClick={() => emitSettings({ gameMode: "classic" })}
+                                            className={`p-2.5 rounded-[4px] border-2 font-mono text-xs font-bold uppercase tracking-wider text-left transition-colors cursor-pointer ${
+                                                gameMode === "classic"
+                                                    ? 'bg-[#FFBE0B] text-[#111318] border-[#090A0D] shadow-[3px_3px_0px_#090A0D]'
+                                                    : 'bg-[#111318] text-[#A0A8B8] border-[#2D3342] hover:border-[#3E4659]'
+                                            }`}
+                                        >
+                                            <div>KLASİK</div>
+                                            <div className={`text-[10px] mt-0.5 font-normal ${gameMode === "classic" ? 'text-[#111318]/80' : 'text-[#8B94A7]'}`}>
+                                                60 sn tur süresi
+                                            </div>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => emitSettings({ gameMode: "blitz" })}
+                                            className={`p-2.5 rounded-[4px] border-2 font-mono text-xs font-bold uppercase tracking-wider text-left transition-colors cursor-pointer ${
+                                                gameMode === "blitz"
+                                                    ? 'bg-[#00E5A3] text-[#111318] border-[#090A0D] shadow-[3px_3px_0px_#090A0D]'
+                                                    : 'bg-[#111318] text-[#A0A8B8] border-[#2D3342] hover:border-[#3E4659]'
+                                            }`}
+                                        >
+                                            <div>⚡ HIZLI (BLITZ)</div>
+                                            <div className={`text-[10px] mt-0.5 font-normal ${gameMode === "blitz" ? 'text-[#111318]/80' : 'text-[#8B94A7]'}`}>
+                                                30 sn tempolu tur
+                                            </div>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div>
                                     <label className="swiss-label block mb-2">KELİME KATEGORİSİ</label>
                                     <Select
                                         value={category}
@@ -391,6 +427,12 @@ export default function Lobby({
                                     </p>
                                 </div>
                                 <div className="grid grid-cols-2 gap-2.5 text-left">
+                                    <div className="p-2.5 bg-[#1A1D24] border border-[#2D3342] rounded-[4px] col-span-2 flex items-center justify-between">
+                                        <span className="swiss-label text-[10px]">OYUN MODU</span>
+                                        <span className={`font-mono font-bold text-xs ${gameState.gameMode === "blitz" ? "text-[#00E5A3]" : "text-[#F6F5F2]"}`}>
+                                            {gameState.gameMode === "blitz" ? "⚡ HIZLI MOD (BLITZ — 30SN)" : "KLASİK MOD (60SN)"}
+                                        </span>
+                                    </div>
                                     <div className="p-2.5 bg-[#1A1D24] border border-[#2D3342] rounded-[4px]">
                                         <span className="swiss-label block text-[10px]">KATEGORİ</span>
                                         <span className="font-display font-bold text-sm text-[#F6F5F2]">{gameState.category || "Karışık"}</span>
@@ -426,7 +468,7 @@ export default function Lobby({
                                 variant="contained" 
                                 size="large" 
                                 fullWidth 
-                                onClick={() => onStart({ category, bettingEnabled, jokersEnabled, betAmount, theme, map })} 
+                                onClick={() => onStart({ category, gameMode, bettingEnabled, jokersEnabled, betAmount, theme, map })} 
                                 className="swiss-btn-primary !py-4 !text-lg"
                             >
                                 🚀 MAÇI BAŞLAT

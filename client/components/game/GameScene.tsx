@@ -200,12 +200,12 @@ export default function GameScene(props: GameSceneProps = {}) {
             setTimeLeft(remaining);
         };
         queueMicrotask(updateTimer);
-        if (!gameState.turnEndsAt || gameState.activeQuestion) {
+        if (!gameState.turnEndsAt || gameState.activeQuestion || gameState.objection) {
             return;
         }
         const interval = setInterval(updateTimer, 500);
         return () => clearInterval(interval);
-    }, [gameState.turnEndsAt, gameState.activeQuestion, timeOffset]);
+    }, [gameState.turnEndsAt, gameState.activeQuestion, gameState.objection, timeOffset]);
 
     useEffect(() => {
         const updateQTimer = () => {
@@ -361,6 +361,11 @@ export default function GameScene(props: GameSceneProps = {}) {
                         <span className="swiss-badge !bg-[#1A1D24] !border-[#3E4659] !text-[#F6F5F2] shadow-[2px_2px_0px_#090A0D] tnum">
                             TUR #{currentRound}
                         </span>
+                        {gameState.gameMode === "blitz" && (
+                            <span className="swiss-badge !bg-[#00E5A3] !border-[#090A0D] !text-[#111318] shadow-[2px_2px_0px_#090A0D]">
+                                ⚡ BLITZ 30SN
+                            </span>
+                        )}
                         {gameState.category && (
                             <span className="swiss-badge !bg-[#1A1D24] !border-[#FFBE0B] !text-[#FFBE0B] shadow-[2px_2px_0px_#090A0D]">
                                 {gameState.category}

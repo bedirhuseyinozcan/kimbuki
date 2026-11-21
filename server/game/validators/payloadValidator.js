@@ -144,6 +144,7 @@ const payloadValidator = {
             ok: true,
             data: {
                 category: typeof rawSettings.category === "string" ? rawSettings.category.substring(0, 30) : "Karışık",
+                gameMode: rawSettings.gameMode === "blitz" ? "blitz" : "classic",
                 theme: rawSettings.theme === "night" ? "night" : "day",
                 map: typeof rawSettings.map === "string" ? rawSettings.map.substring(0, 60) : "floating_island__low_poly_vr.glb",
                 bettingEnabled: Boolean(rawSettings.bettingEnabled),

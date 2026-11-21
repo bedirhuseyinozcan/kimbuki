@@ -148,3 +148,29 @@ test('Room.updateSettings only allows host in LOBBY and validates values', () =>
     assert.equal(room.betAmount, 250);
     room.destroy();
 });
+
+test('Blitz gameMode sets turnTime to 30s and classic keeps 60s', async () => {
+    const payloadValidator = require('../game/validators/payloadValidator');
+    const room = new Room('BLITZ1', createMockIo());
+    room.addUser('s1', 'Host', null, 'Warrior');
+    room.addUser('s2', 'Player2', null, 'Warrior');
+
+    const val = payloadValidator.validateGameStart({ gameMode: 'blitz', jokersEnabled: false }, room.users[0], room);
+    assert.equal(val.ok, true);
+    assert.equal(val.data.gameMode, 'blitz');
+
+    room.updateSettings('s1', { gameMode: 'blitz' });
+    assert.equal(room.gameMode, 'blitz');
+    assert.equal(room.turnTime, 30);
+
+    await room.startGame(val.data);
+    assert.equal(room.gameMode, 'blitz');
+    assert.equal(room.turnTime, 30);
+
+    room.gameState = 'LOBBY';
+    await room.startGame({ gameMode: 'classic', jokersEnabled: false });
+    assert.equal(room.gameMode, 'classic');
+    assert.equal(room.turnTime, 60);
+
+    room.destroy();
+});
