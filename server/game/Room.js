@@ -1,8 +1,10 @@
-const RewardService = require('./services/RewardService');
 const JokerManager = require('./jokers');
 const questionHandler = require('./handlers/questionHandler');
 const guessHandler = require('./handlers/guessHandler');
 const objectionHandler = require('./handlers/objectionHandler');
+const StateSerializer = require('./managers/StateSerializer');
+const PhaseManager = require('./managers/PhaseManager');
+const TurnManager = require('./managers/TurnManager');
 
 class Room {
     constructor(code, io) {
@@ -202,23 +204,7 @@ class Room {
     }
 
     checkPhaseProgression() {
-        const playingUsers = this.users.filter(u => u.status === 'playing' && !u.disconnected);
-        if (playingUsers.length < 2) return;
-
-        if (this.gameState === "BETTING") {
-            if (playingUsers.every(u => u.hasPlacedBet)) {
-                this.startWordSelection();
-            }
-        } else if (this.gameState === "WORD_SELECTION") {
-            if (playingUsers.every(u => u.hasSubmittedWord)) {
-                this.startJokerDraft();
-            }
-        } else if (this.gameState === "JOKER_DRAFT") {
-            if (playingUsers.every(u => u.hasDrafted)) {
-                if (this.jokerDraftTimer) clearTimeout(this.jokerDraftTimer);
-                this.startPlaying();
-            }
-        }
+        return PhaseManager.checkPhaseProgression(this);
     }
 
     removeUser(socketId) {
@@ -421,165 +407,15 @@ class Room {
     }
 
     async startGame(settings = {}) {
-        if (this.isStartingGame || this.destroyed) return;
-        if (this.gameState !== "LOBBY" && this.gameState !== "ROUND_END") return;
-
-        const activeUsers = this.users.filter(u => !u.disconnected);
-        if (activeUsers.length < 2) return;
-
-        this.isStartingGame = true;
-        try {
-            const isBettingEnabled = Boolean(settings.bettingEnabled);
-            const betAmount = settings.betAmount || 50;
-
-            if (isBettingEnabled) {
-                const betResult = await RewardService.deductBetFees(activeUsers, betAmount);
-                if (this.destroyed) {
-                    if (betResult.ok) {
-                        await RewardService.refundBetFees(activeUsers.map(u => u.dbId).filter(Boolean), betAmount);
-                    }
-                    return;
-                }
-                if (!betResult.ok) {
-                    this.io.to(this.code).emit("game:error", {
-                        message: `${betResult.failedUser?.name || 'Bir oyuncunun'} yeterli altını (${betAmount}) yok veya giriş yapmamış!`
-                    });
-                    if (this.gameState === "ROUND_END") {
-                        this.gameState = "LOBBY";
-                        this.broadcastState();
-                    }
-                    return;
-                }
-                this.paidDbIds = new Set(activeUsers.map(u => u.dbId).filter(Boolean));
-            } else {
-                this.paidDbIds = new Set();
-            }
-
-            this.clearAllTimers();
-            this.category = settings.category || "Karışık";
-            this.theme = settings.theme || "day";
-            this.map = settings.map || "floating_island__low_poly_vr.glb";
-            this.initialPlayerCount = activeUsers.length;
-            this.isBettingEnabled = isBettingEnabled;
-            this.betAmount = betAmount;
-            this.isJokersEnabled = settings.jokersEnabled !== undefined ? settings.jokersEnabled : true;
-            this.bets = {};
-            this.hasObjectionUsed = false;
-            this.objection = null;
-            this.roundCount = 1;
-            this.isProcessingGuess = false;
-
-            this.chatHistory = [];
-            this.roundLogs = [];
-            this.winners = [];
-            this.io.to(this.code).emit("game:init_chat", { chatHistory: [] });
-            this.io.to(this.code).emit("game:reset_notepad");
-            this.addChatLog({ system: true, message: "🎮 Yeni oyun başladı! Bol şans!", timestamp: Date.now() });
-
-            if (this.isBettingEnabled) {
-                this.gameState = "BETTING";
-                this.bettingEndTime = Date.now() + 10000;
-                
-                for (let i = 0; i < this.users.length; i++) {
-                    this.users[i].status = this.users[i].disconnected ? 'spectator' : 'playing';
-                    this.users[i].lives = 3;
-                    this.users[i].assignedWord = null;
-                    this.users[i].isWaitingMirrorWord = false;
-                    this.users[i].hasSubmittedWord = false;
-                    this.users[i].hasPlacedBet = false;
-                }
-                this.broadcastState();
-
-                this.betTimer = setTimeout(() => {
-                    if (!this.destroyed && this.gameState === "BETTING") {
-                        this.startWordSelection();
-                    }
-                }, 10000);
-                return;
-            }
-
-            this.startWordSelection();
-        } finally {
-            this.isStartingGame = false;
-        }
+        return PhaseManager.startGame(this, settings);
     }
 
     startWordSelection() {
-        if (this.betTimer) clearTimeout(this.betTimer);
-        this.gameState = "WORD_SELECTION";
-
-        const activeUsers = this.users.filter(u => !u.disconnected);
-
-        for (let i = 0; i < this.users.length; i++) {
-            this.users[i].status = this.users[i].disconnected ? 'spectator' : 'playing';
-            this.users[i].lives = 3;
-            this.users[i].assignedWord = null;
-            this.users[i].hasSubmittedWord = false;
-            this.users[i].joker = null;
-            this.users[i].hasDrafted = false;
-            this.users[i].jokerChoices = [];
-            this.users[i].hasUsedJoker = false;
-            this.users[i].russianRouletteActive = false;
-            this.users[i].bloodTieTarget = null;
-            this.users[i].timeBomb = null;
-            this.users[i].detectiveUses = 0;
-            this.users[i].lastDetectiveRound = 0;
-            this.users[i].mirrorRoundsLeft = 0;
-            this.users[i].shieldActive = false;
-            this.users[i].extraQuestionChain = false;
-            this.users[i].revealedLetters = [];
-            this.users[i].silencedTurns = 0;
-            this.users[i].extraQuestions = 0;
-            this.users[i].questionsAskedThisTurn = 0;
-            this.users[i].targetId = null;
-        }
-
-        for (let i = 0; i < activeUsers.length; i++) {
-            const nextIndex = (i + 1) % activeUsers.length;
-            activeUsers[i].targetId = activeUsers[nextIndex].id;
-        }
-
-        this.broadcastState();
+        return PhaseManager.startWordSelection(this);
     }
 
     startJokerDraft() {
-        if (!this.isJokersEnabled) {
-            this.startPlaying();
-            return;
-        }
-
-        this.gameState = "JOKER_DRAFT";
-        
-        const getRandomJoker = () => {
-            const r = Math.random() * 100;
-            if (r < 10) return [4, 5, 6, 7, 13][Math.floor(Math.random() * 5)];
-            if (r < 40) return [2, 3, 8, 12, 15][Math.floor(Math.random() * 5)];
-            return [0, 1, 9, 10, 11, 14, 16][Math.floor(Math.random() * 7)];
-        };
-
-        for (let u of this.users) {
-            if (u.status === 'playing' && !u.disconnected) {
-                let j1 = getRandomJoker();
-                let j2 = getRandomJoker();
-                while (j1 === j2) j2 = getRandomJoker();
-                u.jokerChoices = [j1, j2];
-                u.hasDrafted = false;
-                u.joker = null;
-            }
-        }
-        
-        this.jokerDraftEndTime = Date.now() + 15000;
-        this.jokerDraftTimer = setTimeout(() => {
-            for (let u of this.users) {
-                if (u.status === 'playing' && !u.hasDrafted && this.isJokersEnabled) {
-                    u.joker = u.jokerChoices ? u.jokerChoices[0] : null;
-                    u.hasDrafted = true;
-                }
-            }
-            this.startPlaying();
-        }, 15000);
-        
-        this.broadcastState();
+        return PhaseManager.startJokerDraft(this);
     }
 
     selectJoker(userId, jokerId) {
@@ -696,16 +532,7 @@ class Room {
     }
 
     startPlaying() {
-        this.gameState = "PLAYING";
-        this.roundCount = 1;
-        this.activeQuestion = null;
-        this.resolvedQuestionsThisTurn = [];
-        
-        const firstPlayableIndex = this.users.findIndex(u => !u.disconnected && u.status === 'playing');
-        this.currentTurnIndex = firstPlayableIndex !== -1 ? firstPlayableIndex : 0;
-
-        this.startTimer();
-        this.broadcastState();
+        return PhaseManager.startPlaying(this);
     }
 
     handleChat(userId, message) {
@@ -749,13 +576,7 @@ class Room {
     }
 
     skipTurn(userId) {
-        if (this.gameState !== "PLAYING") return;
-        const currentUser = this.users[this.currentTurnIndex];
-        if (!currentUser || currentUser.id !== userId) return;
-        
-        if (currentUser.russianRouletteActive) return;
-
-        this.nextTurn();
+        return TurnManager.skipTurn(this, userId);
     }
 
     async guessWord(userId, guess) {
@@ -763,19 +584,7 @@ class Room {
     }
 
     openLettersForUser(user, count) {
-        if (!user.assignedWord) return;
-        const word = user.assignedWord.toLocaleUpperCase("tr-TR").replace(/[^A-ZÇĞİÖŞÜ0-9]/g, "");
-        for(let k=0; k<count; k++) {
-            const unrevealed = word.split('').filter(c => !user.revealedLetters.includes(c));
-            if (unrevealed.length === 0) {
-                this.addChatLog({ system: true, privateTo: user.id, message: "Sistem (Özel): Açılacak başka harf kalmadı!", timestamp: Date.now() });
-                break;
-            }
-            const randomChar = unrevealed[Math.floor(Math.random() * unrevealed.length)];
-            user.revealedLetters.push(randomChar);
-            const countChar = word.split('').filter(c => c === randomChar).length;
-            this.addChatLog({ system: true, privateTo: user.id, message: `Sistem (Özel): Kelimen '${randomChar}' karakterini içeriyor (${countChar} adet).`, timestamp: Date.now() });
-        }
+        return TurnManager.openLettersForUser(this, user, count);
     }
 
     useJoker(userId, payload) {
@@ -795,308 +604,23 @@ class Room {
     }
 
     nextTurn(isDisconnect = false) {
-        if (this.questionTimer) {
-            clearTimeout(this.questionTimer);
-            this.questionTimer = null;
-        }
-        this.activeQuestion = null;
-        this.resolvedQuestionsThisTurn = [];
-        if (this.gameState !== "PLAYING") return;
-
-        if (!isDisconnect) {
-            const prevUser = this.users[this.currentTurnIndex];
-            if (prevUser && prevUser.status === 'playing') {
-                if (prevUser.russianRouletteActive) {
-                    let dmg = 3;
-                    let shielded = false;
-                    if (prevUser.shieldActive) {
-                        shielded = true;
-                        prevUser.shieldActive = false;
-                        dmg -= 1;
-                        this.io.to(this.code).emit("game:visual_effect", { type: 'shield_cast', targetId: prevUser.id });
-                    }
-                    
-                    prevUser.lives -= dmg;
-                    prevUser.russianRouletteActive = false;
-                    
-                    if (prevUser.lives <= 0) {
-                        prevUser.status = 'spectator';
-                        prevUser.bloodTieTarget = null;
-                        prevUser.timeBomb = null;
-                        this.io.to(this.code).emit("game:visual_effect", { type: 'roulette_die', targetId: prevUser.id });
-                        this.addChatLog({ system: true, message: `💀 ${prevUser.name} Rus Ruleti süresini aştı ve elendi!`, timestamp: Date.now() });
-                    } else {
-                        this.addChatLog({ system: true, message: `🛡️ ${prevUser.name} Rus Ruleti süresini aştı! Kalkanı parçalandı ve ağır hasar aldı ama yaşıyor!`, timestamp: Date.now() });
-                    }
-                    
-                    const activePlayers = this.users.filter(x => x.status === 'playing');
-                    if (activePlayers.length <= 1) {
-                        this.endGame();
-                        return;
-                    }
-                }
-                prevUser.extraQuestionChain = false;
-                prevUser.extraQuestions = 0;
-            }
-        }
-
-        let spins = 0;
-        let foundNext = false;
-        const maxSpins = this.users.length * 3;
-
-        while (spins < maxSpins) {
-            spins++;
-            if (!isDisconnect || spins > 1) {
-                this.currentTurnIndex = (this.currentTurnIndex + 1) % this.users.length;
-                
-                if (this.currentTurnIndex === 0) {
-                    this.roundCount++;
-                    
-                    for (let u of this.users) {
-                        if (u.status === 'playing') {
-                            if (u.mirrorRoundsLeft > 0) u.mirrorRoundsLeft--;
-                            
-                            if (u.timeBomb) {
-                                u.timeBomb.roundsLeft--;
-                                if (u.timeBomb.roundsLeft <= 0) {
-                                    let dmg = 2;
-                                    let shielded = false;
-                                    if (u.shieldActive) {
-                                        shielded = true;
-                                        u.shieldActive = false;
-                                        dmg -= 1;
-                                        this.io.to(this.code).emit("game:visual_effect", { type: 'shield_cast', targetId: u.id });
-                                    }
-                                    
-                                    u.lives -= dmg;
-                                    u.timeBomb = null;
-                                    this.io.to(this.code).emit("game:visual_effect", { type: 'bomb_explode', targetId: u.id });
-                                    
-                                    if (shielded) {
-                                        this.addChatLog({ system: true, message: `🛡️ 💥 GÜM! Saatli Bomba patladı! ${u.name}'in kalkanı kırıldı ama yine de 1 can kaybetti! (-1 Can)`, timestamp: Date.now() });
-                                    } else {
-                                        this.addChatLog({ system: true, message: `💥 GÜM! Süre doldu. ${u.name}'in üzerindeki Saatli Bomba patladı! (-2 Can)`, timestamp: Date.now() });
-                                    }
-                                    
-                                    if (u.lives <= 0) {
-                                        u.status = 'spectator';
-                                        u.bloodTieTarget = null;
-                                        this.addChatLog({ system: true, message: `💀 ${u.name} bombanın etkisiyle elendi! Kelimesi: ${u.assignedWord}`, timestamp: Date.now() });
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    
-                    const activePlayers = this.users.filter(x => x.status === 'playing');
-                    if (activePlayers.length <= 1) {
-                        this.endGame();
-                        return;
-                    }
-                }
-            }
-            
-            const nextUser = this.users[this.currentTurnIndex];
-            if (nextUser && nextUser.status === 'playing' && !nextUser.disconnected) {
-                if (nextUser.silencedTurns > 0) {
-                    nextUser.silencedTurns--;
-                    this.addChatLog({
-                        system: true,
-                        message: `🤐 ${nextUser.name} susturulduğu için sırasını atlıyor.`,
-                        timestamp: Date.now()
-                    });
-                } else {
-                    nextUser.questionsAskedThisTurn = 0;
-                    nextUser.lastQuestion = null;
-                    nextUser.lastQuestions = [];
-                    foundNext = true;
-                    break; 
-                }
-            }
-        } 
-
-        if (!foundNext) {
-            this.endGame();
-            return;
-        }
-
-        this.startTimer();
-        this.broadcastState();
+        return TurnManager.nextTurn(this, isDisconnect);
     }
 
     startTimer() {
-        if (this.timer) clearTimeout(this.timer);
-        
-        this.turnStartTime = Date.now();
-        
-        this.timer = setTimeout(() => {
-            if (this.gameState === "PLAYING") {
-                this.nextTurn();
-            }
-        }, this.turnTime * 1000);
+        return TurnManager.startTimer(this);
     }
 
     async endGame() {
-        if (this.destroyed || this.gameState === "ROUND_END") return;
-        const prevState = this.gameState;
-        this.gameState = "ROUND_END";
-        this.objection = null;
-        this.activeQuestion = null;
-        this.clearAllTimers();
-
-        if (prevState === "BETTING" || prevState === "WORD_SELECTION" || prevState === "JOKER_DRAFT") {
-            if (this.isBettingEnabled && this.paidDbIds && this.paidDbIds.size > 0) {
-                const refundIds = Array.from(this.paidDbIds);
-                this.paidDbIds.clear();
-                await RewardService.refundBetFees(refundIds, this.betAmount);
-                this.addChatLog({
-                    system: true,
-                    message: `💸 Oyun başlamadan yetersiz oyuncu nedeniyle iptal edildi. ${this.betAmount} Altın giriş ücretleri iade edildi.`,
-                    timestamp: Date.now()
-                });
-            }
-            this.broadcastState();
-            return;
-        }
-
-        const survivors = this.users.filter(u => u.status === 'playing' && !u.disconnected);
-        if (prevState === "PLAYING" && this.winners.length === 0 && survivors.length === 1) {
-            const survivor = survivors[0];
-            if (!this.winners.includes(survivor.id)) {
-                this.winners.push(survivor.id);
-                survivor.status = 'spectator';
-
-                const rank = this.winners.length;
-                const playersCount = this.initialPlayerCount || this.users.length;
-                const totalPot = playersCount * (this.betAmount || 50);
-                const bettors = this.isBettingEnabled
-                    ? Object.keys(this.bets || {})
-                        .filter(uid => this.bets[uid] === survivor.id)
-                        .map(uid => this.users.find(u => u.id === uid))
-                        .filter(Boolean)
-                    : [];
-
-                const { winnerReward, bettorReward, repReward } = RewardService.calculatePotDistribution({
-                    isBettingEnabled: this.isBettingEnabled,
-                    totalPot,
-                    playersCount,
-                    rank,
-                    isRussianRoulette: false,
-                    bettorCount: bettors.length
-                });
-
-                const survivorRewards = {};
-                if (survivor.dbId) {
-                    survivorRewards[survivor.dbId] = { gold: winnerReward, rep: repReward, winCount: 1, playCount: 1, betWinCount: 0 };
-                    this.paidDbIds?.delete(survivor.dbId);
-                }
-                survivor.reputation = (survivor.reputation || 0) + repReward;
-
-                if (this.isBettingEnabled && bettorReward > 0 && bettors.length > 0) {
-                    for (const b of bettors) {
-                        if (b.dbId) {
-                            if (!survivorRewards[b.dbId]) survivorRewards[b.dbId] = { gold: 0, rep: 0, winCount: 0, playCount: 0, betWinCount: 0 };
-                            survivorRewards[b.dbId].gold += bettorReward;
-                            survivorRewards[b.dbId].rep += 5;
-                            survivorRewards[b.dbId].betWinCount += 1;
-                        }
-                        b.reputation = (b.reputation || 0) + 5;
-                    }
-                }
-
-                const msg = this.isBettingEnabled
-                    ? `👑 Hayatta kalan son oyuncu ${survivor.name} kazandı! Ödül: ${winnerReward} Altın.`
-                    : `👑 Hayatta kalan son oyuncu ${survivor.name} kazandı! (+${repReward} İtibar)`;
-                this.addChatLog({ system: true, message: msg, timestamp: Date.now() });
-                this.roundLogs.push(msg);
-
-                await RewardService.grantBatchRewards(survivorRewards);
-            }
-        }
-
-        await RewardService.grantParticipationRewards(this.users, this.winners);
-        this.broadcastState();
+        return PhaseManager.endGame(this);
     }
 
     broadcastState() {
-        this.users.forEach(user => {
-            if (user.disconnected) return;
-            const usersPayload = this.users.map(u => ({
-                id: u.id,
-                dbId: u.id === user.id ? u.dbId : undefined,
-                name: u.name,
-                isHost: u.isHost,
-                avatar: u.avatar,
-                pedestal: u.pedestal,
-                nameColor: u.nameColor,
-                title: u.title,
-                reputation: u.reputation || 0,
-                status: u.status,
-                targetId: u.targetId,
-                hasSubmittedWord: u.hasSubmittedWord,
-                isVoiceEnabled: u.isVoiceEnabled,
-                lives: u.lives,
-                disconnected: !!u.disconnected,
-                joker: u.id === user.id ? u.joker : null,
-                jokerChoices: u.id === user.id ? u.jokerChoices : undefined,
-                hasDrafted: u.hasDrafted,
-                hasUsedJoker: u.hasUsedJoker,
-                russianRouletteActive: u.russianRouletteActive,
-                bloodTieTarget: u.bloodTieTarget,
-                timeBomb: u.timeBomb,
-                mirrorRoundsLeft: (u.id === user.id) ? (u.mirrorRoundsLeft || 0) : 0, 
-                shieldActive: (u.id === user.id) ? !!u.shieldActive : false, 
-                extraQuestionChain: (u.id === user.id) ? u.extraQuestionChain : false,
-                silencedTurns: u.silencedTurns,
-                extraQuestions: u.extraQuestions || 0,
-                questionsAskedThisTurn: u.questionsAskedThisTurn || 0,
-                lastQuestion: u.lastQuestion,
-                lastQuestions: u.lastQuestions || [],
-                assignedWord: (this.gameState === "ROUND_END" || u.id !== user.id) ? u.assignedWord : null
-            }));
-
-            const payload = {
-                gameState: this.gameState,
-                category: this.category, theme: this.theme, map: this.map,
-                isBettingEnabled: this.isBettingEnabled,
-                betAmount: this.betAmount,
-                isJokersEnabled: this.isJokersEnabled,
-                activeQuestion: this.activeQuestion,
-                resolvedQuestionsThisTurn: this.resolvedQuestionsThisTurn || [],
-                users: usersPayload,
-                currentTurnUserId: this.gameState === "PLAYING" ? this.users[this.currentTurnIndex]?.id : null,
-                turnEndsAt: this.gameState === "PLAYING" ? ((this.activeQuestion || this.objection) ? Date.now() + this.pausedRemainingMs : this.turnStartTime + (this.turnTime * 1000)) : null,
-                winners: this.winners,
-                objection: this.objection,
-                hasObjectionUsed: this.hasObjectionUsed,
-                bettingEndTime: this.bettingEndTime,
-                jokerDraftEndTime: this.jokerDraftEndTime,
-                roundCount: this.roundCount || 1,
-                roundLogs: this.gameState === "ROUND_END" ? this.roundLogs : []
-            };
-
-            this.io.to(user.id).emit("game:state", payload);
-        });
+        return StateSerializer.broadcastState(this);
     }
 
     broadcastHeadRotation(socketOrId, payload) {
-        if (!payload || typeof payload.pitch !== 'number' || typeof payload.yaw !== 'number') return;
-
-        const isSocket = typeof socketOrId === 'object' && socketOrId !== null && typeof socketOrId.to === 'function';
-        const userId = isSocket ? socketOrId.id : socketOrId;
-        const user = this.users.find(u => u.id === userId);
-        if (!user) return;
-
-        const now = Date.now();
-        if (now - user.lastHeadRotTime < 50) return;
-        user.lastHeadRotTime = now;
-
-        const emitter = isSocket ? socketOrId.to(this.code) : this.io.to(this.code);
-        emitter.emit("game:head_update", {
-            userId,
-            pitch: payload.pitch,
-            yaw: payload.yaw
-        });
+        return StateSerializer.broadcastHeadRotation(this, socketOrId, payload);
     }
 
     playTaunt(userId, type) {
