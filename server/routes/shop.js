@@ -23,34 +23,7 @@ const authMiddleware = (req, res, next) => {
     }
 };
 
-const PREMIUM_AVATARS = [
-    { id: 'Wizard', price: 200, label: 'Büyücü', icon: '🔮', type: 'avatar' },
-    { id: 'Rogue', price: 300, label: 'Suikastçi', icon: '🗡️', type: 'avatar' },
-    { id: 'Ranger', price: 400, label: 'Okçu', icon: '🏹', type: 'avatar' },
-    { id: 'Monk', price: 500, label: 'Keşiş', icon: '🥋', type: 'avatar' },
-    { id: 'Cleric', price: 600, label: 'Şifacı', icon: '✨', type: 'avatar' }
-];
-
-const PREMIUM_PEDESTALS = [
-    { id: 'gold_pedestal', price: 500, label: 'Altın Kaide', icon: '🏆', type: 'pedestal' },
-    { id: 'lava_ring', price: 800, label: 'Lav Halkası', icon: '🌋', type: 'pedestal' },
-    { id: 'ice_block', price: 600, label: 'Buz Kütlesi', icon: '🧊', type: 'pedestal' },
-    { id: 'cloud_base', price: 1000, label: 'Uçan Bulut', icon: '☁️', type: 'pedestal' }
-];
-
-const PREMIUM_COLORS = [
-    { id: 'color_neon_pink', price: 1000, label: 'Sinyal Mercan', icon: '🪸', type: 'color' },
-    { id: 'color_electric_blue', price: 1000, label: 'Nane Telemetri', icon: '⚡', type: 'color' },
-    { id: 'color_gold', price: 2000, label: 'Saf Altın', icon: '✨', type: 'color' }
-];
-
-const PREMIUM_TITLES = [
-    { id: 'title_rich', price: 5000, label: 'Ünvan: Zengin', icon: '👑', type: 'title' },
-    { id: 'title_troll', price: 1500, label: 'Ünvan: Trol', icon: '🤡', type: 'title' },
-    { id: 'title_collector', price: 2500, label: 'Ünvan: Koleksiyoncu', icon: '💎', type: 'title' }
-];
-
-const ALL_ITEMS = [...PREMIUM_AVATARS, ...PREMIUM_PEDESTALS, ...PREMIUM_COLORS, ...PREMIUM_TITLES];
+const { ALL_SHOP_ITEMS: ALL_ITEMS } = require("../config/catalog");
 
 router.get("/items", (req, res) => {
     res.json(ALL_ITEMS);

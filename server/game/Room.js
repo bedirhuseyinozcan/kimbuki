@@ -5,6 +5,7 @@ const objectionHandler = require('./handlers/objectionHandler');
 const StateSerializer = require('./managers/StateSerializer');
 const PhaseManager = require('./managers/PhaseManager');
 const TurnManager = require('./managers/TurnManager');
+const { VALID_MAPS, VALID_THEMES, VALID_CATEGORIES, VALID_BET_AMOUNTS } = require('../config/catalog');
 
 class Room {
     constructor(code, io) {
@@ -378,24 +379,19 @@ class Room {
         const user = this.users.find(u => u.id === userId);
         if (!user || !user.isHost) return false;
 
-        const validMaps = ["floating_island__low_poly_vr.glb", "snow.glb", "desert.glb"];
-        const validThemes = ["day", "night"];
-        const validCategories = ["Karışık", "Ünlüler", "Hayvanlar", "Tarihi Kişiler", "Filmler / Diziler"];
-        const validBetAmounts = [50, 100, 250, 500];
-
-        if (typeof settings.category === "string" && validCategories.includes(settings.category)) {
+        if (typeof settings.category === "string" && VALID_CATEGORIES.includes(settings.category)) {
             this.category = settings.category;
         }
-        if (typeof settings.theme === "string" && validThemes.includes(settings.theme)) {
+        if (typeof settings.theme === "string" && VALID_THEMES.includes(settings.theme)) {
             this.theme = settings.theme;
         }
-        if (typeof settings.map === "string" && validMaps.includes(settings.map)) {
+        if (typeof settings.map === "string" && VALID_MAPS.includes(settings.map)) {
             this.map = settings.map;
         }
         if (typeof settings.bettingEnabled === "boolean") {
             this.isBettingEnabled = settings.bettingEnabled;
         }
-        if (typeof settings.betAmount === "number" && validBetAmounts.includes(settings.betAmount)) {
+        if (typeof settings.betAmount === "number" && VALID_BET_AMOUNTS.includes(settings.betAmount)) {
             this.betAmount = settings.betAmount;
         }
         if (typeof settings.jokersEnabled === "boolean") {

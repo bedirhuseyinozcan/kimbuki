@@ -1,6 +1,7 @@
 const Room = require("./Room");
 const RewardService = require("./services/RewardService");
 const payloadValidator = require("./validators/payloadValidator");
+const { FREE_DEFAULTS } = require("../config/catalog");
 
 const MAX_ROOMS = 200;
 const MAX_PLAYERS_PER_ROOM = 10;
@@ -19,16 +20,16 @@ class GameManager {
     sanitizeCosmetics(profile, avatar, pedestal, nameColor, title) {
         const safeAvatar = (typeof avatar === 'string' && profile.unlockedAvatars.includes(avatar))
             ? avatar
-            : 'Warrior';
+            : FREE_DEFAULTS.avatar;
         const safePedestal = (typeof pedestal === 'string' && profile.unlockedPedestals.includes(pedestal))
             ? pedestal
-            : 'default_stone';
+            : FREE_DEFAULTS.pedestal;
         const safeNameColor = (typeof nameColor === 'string' && profile.unlockedNameColors.includes(nameColor))
             ? nameColor
-            : 'text-white';
-        const safeTitle = (typeof title === 'string' && (title === '' || profile.unlockedTitles.includes(title)))
+            : FREE_DEFAULTS.nameColor;
+        const safeTitle = (typeof title === 'string' && (title === FREE_DEFAULTS.title || profile.unlockedTitles.includes(title)))
             ? title
-            : '';
+            : FREE_DEFAULTS.title;
         return { safeAvatar, safePedestal, safeNameColor, safeTitle };
     }
 
