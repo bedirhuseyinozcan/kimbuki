@@ -1370,7 +1370,7 @@ export default function Home() {
                         const rankObj = getRankInfo(u.reputation || 0);
                         return (
                             <div 
-                                key={u._id} 
+                                key={u._id || u.username || index} 
                                 className={`flex justify-between items-center p-3.5 rounded-[4px] border-2 ${
                                     index === 0 
                                         ? 'bg-[#FFBE0B]/15 border-[#FFBE0B]' 
