@@ -226,6 +226,7 @@ export default function GamePage() {
                     inviteUrl={game.inviteUrl}
                     myId={myId!}
                     onStart={game.handleStart}
+                    onUpdateSettings={game.handleUpdateSettings}
                     onCloseRoom={game.handleCloseRoom}
                     onLeaveRoom={game.handleLeaveRoom}
                     onCopyLink={game.copyLink}

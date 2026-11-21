@@ -30,6 +30,7 @@ export interface GameStartSettings {
 
 export interface GameActions {
     start: (settings: GameStartSettings) => void;
+    updateSettings: (settings: GameStartSettings) => void;
     setWord: (customWord?: string) => void;
     chat: (e?: React.FormEvent, customMsg?: string) => void;
     skip: () => void;
@@ -406,6 +407,10 @@ export function useGameSocket(
         socket?.emit("game:start", settings);
     }, [socket, markSubmitting]);
 
+    const handleUpdateSettings = useCallback((settings: GameStartSettings) => {
+        socket?.emit("game:update_settings", settings);
+    }, [socket]);
+
     const handleSetWord = useCallback((customWord?: string) => {
         const word = (typeof customWord === "string" ? customWord : wordInputRef.current).trim();
         if (!word) return;
@@ -547,6 +552,7 @@ export function useGameSocket(
 
     const actions: GameActions = useMemo(() => ({
         start: handleStart,
+        updateSettings: handleUpdateSettings,
         setWord: handleSetWord,
         chat: handleChat,
         skip: handleSkip,
@@ -569,6 +575,7 @@ export function useGameSocket(
         closeRoom: handleCloseRoom,
     }), [
         handleStart,
+        handleUpdateSettings,
         handleSetWord,
         handleChat,
         handleSkip,
@@ -625,6 +632,7 @@ export function useGameSocket(
         actions,
 
         handleStart,
+        handleUpdateSettings,
         handleSetWord,
         handleChat,
         handleSkip,

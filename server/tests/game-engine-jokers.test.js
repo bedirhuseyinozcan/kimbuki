@@ -116,3 +116,35 @@ test('2-player correct guess only marks the guesser as winner, not the remaining
     assert.equal(room.winners.includes('s2'), false);
     room.destroy();
 });
+
+test('Room.updateSettings only allows host in LOBBY and validates values', () => {
+    const io = createMockIo();
+    const room = new Room('SET01', io);
+    room.addUser('s1', 'Host', null);
+    room.addUser('s2', 'Player2', null);
+
+    const nonHostResult = room.updateSettings('s2', { map: 'snow.glb', theme: 'night' });
+    assert.equal(nonHostResult, false);
+    assert.equal(room.map, 'floating_island__low_poly_vr.glb');
+
+    const hostResult = room.updateSettings('s1', {
+        category: 'Ünlüler',
+        map: 'snow.glb',
+        theme: 'night',
+        bettingEnabled: true,
+        betAmount: 250,
+        jokersEnabled: false
+    });
+    assert.equal(hostResult, true);
+    assert.equal(room.category, 'Ünlüler');
+    assert.equal(room.map, 'snow.glb');
+    assert.equal(room.theme, 'night');
+    assert.equal(room.isBettingEnabled, true);
+    assert.equal(room.betAmount, 250);
+    assert.equal(room.isJokersEnabled, false);
+
+    room.updateSettings('s1', { map: 'hacked.glb', betAmount: 999999 });
+    assert.equal(room.map, 'snow.glb');
+    assert.equal(room.betAmount, 250);
+    room.destroy();
+});

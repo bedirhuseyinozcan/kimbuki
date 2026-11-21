@@ -120,6 +120,7 @@ class GameManager {
         });
 
         socket.on("game:update_avatar", (payload) => this.handleUpdateAvatar(socket, payload?.avatarIndex));
+        socket.on("game:update_settings", (settings) => this.handleUpdateSettings(socket, settings));
         socket.on("game:start", (settings) => this.handleStartGame(socket, settings));
         socket.on("game:place_bet", (payload) => this.handlePlaceBet(socket, payload?.targetId));
         
@@ -326,6 +327,13 @@ class GameManager {
         const room = this.getRoomBySocket(socket);
         if (room) {
             room.updateVoice(socket.id, Boolean(enabled));
+        }
+    }
+
+    handleUpdateSettings(socket, settings) {
+        const room = this.getRoomBySocket(socket);
+        if (room) {
+            room.updateSettings(socket.id, settings);
         }
     }
 

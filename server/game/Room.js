@@ -10,7 +10,7 @@ class Room {
         this.io = io;
         this.users = [];
         this.gameState = "LOBBY";
-        this.category = ""; this.theme = "day"; this.map = "floating_island__low_poly_vr.glb";
+        this.category = "Karışık"; this.theme = "day"; this.map = "floating_island__low_poly_vr.glb";
         this.activeQuestion = null;
         
         this.turnTime = 60;
@@ -384,6 +384,39 @@ class Room {
             user.isVoiceEnabled = enabled;
             this.broadcastState();
         }
+    }
+
+    updateSettings(userId, settings = {}) {
+        if (this.gameState !== "LOBBY" || !settings || typeof settings !== "object") return false;
+        const user = this.users.find(u => u.id === userId);
+        if (!user || !user.isHost) return false;
+
+        const validMaps = ["floating_island__low_poly_vr.glb", "snow.glb", "desert.glb"];
+        const validThemes = ["day", "night"];
+        const validCategories = ["Karışık", "Ünlüler", "Hayvanlar", "Tarihi Kişiler", "Filmler / Diziler"];
+        const validBetAmounts = [50, 100, 250, 500];
+
+        if (typeof settings.category === "string" && validCategories.includes(settings.category)) {
+            this.category = settings.category;
+        }
+        if (typeof settings.theme === "string" && validThemes.includes(settings.theme)) {
+            this.theme = settings.theme;
+        }
+        if (typeof settings.map === "string" && validMaps.includes(settings.map)) {
+            this.map = settings.map;
+        }
+        if (typeof settings.bettingEnabled === "boolean") {
+            this.isBettingEnabled = settings.bettingEnabled;
+        }
+        if (typeof settings.betAmount === "number" && validBetAmounts.includes(settings.betAmount)) {
+            this.betAmount = settings.betAmount;
+        }
+        if (typeof settings.jokersEnabled === "boolean") {
+            this.isJokersEnabled = settings.jokersEnabled;
+        }
+
+        this.broadcastState();
+        return true;
     }
 
     async startGame(settings = {}) {

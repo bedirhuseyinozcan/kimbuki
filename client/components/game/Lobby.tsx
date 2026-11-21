@@ -13,6 +13,7 @@ interface LobbyProps {
     inviteUrl: string;
     myId: string;
     onStart: (settings: { category: string, bettingEnabled: boolean, jokersEnabled: boolean, betAmount: number, theme: "day"|"night", map: string }) => void;
+    onUpdateSettings?: (settings: { category: string, bettingEnabled: boolean, jokersEnabled: boolean, betAmount: number, theme: "day"|"night", map: string }) => void;
     onCloseRoom: () => void;
     onLeaveRoom: () => void;
     onCopyLink: () => void;
@@ -39,15 +40,32 @@ const DARK_MENU_PROPS = {
     },
 };
 
+const MAP_LABELS: Record<string, string> = {
+    "floating_island__low_poly_vr.glb": "🏝️ Uçan Ada",
+    "snow.glb": "❄️ Karlı Zirve",
+    "desert.glb": "🏜️ Kurak Çöl",
+};
+
 export default function Lobby({
-    gameState, me, code, inviteUrl, myId, onStart, onCloseRoom, onLeaveRoom, onCopyLink, onSelectAvatar, onToggleVoice
+    gameState, me, code, inviteUrl, myId, onStart, onUpdateSettings, onCloseRoom, onLeaveRoom, onCopyLink, onSelectAvatar, onToggleVoice
 }: LobbyProps & { onSelectAvatar: (id: number) => void, onToggleVoice: (enabled: boolean) => void }) {
-    const [category, setCategory] = useState("Karışık");
-    const [bettingEnabled, setBettingEnabled] = useState(false);
-    const [betAmount, setBetAmount] = useState(50);
-    const [jokersEnabled, setJokersEnabled] = useState(true); 
-    const [theme, setTheme] = useState<"day" | "night">("day");
-    const [map, setMap] = useState("floating_island__low_poly_vr.glb");
+    const [category, setCategory] = useState(gameState.category || "Karışık");
+    const [bettingEnabled, setBettingEnabled] = useState(Boolean(gameState.isBettingEnabled));
+    const [betAmount, setBetAmount] = useState(gameState.betAmount || 50);
+    const [jokersEnabled, setJokersEnabled] = useState(gameState.isJokersEnabled !== false);
+    const [theme, setTheme] = useState<"day" | "night">(gameState.theme || "day");
+    const [map, setMap] = useState(gameState.map || "floating_island__low_poly_vr.glb");
+
+    const emitSettings = (patch: Partial<{ category: string; bettingEnabled: boolean; jokersEnabled: boolean; betAmount: number; theme: "day" | "night"; map: string }>) => {
+        const next = { category, bettingEnabled, jokersEnabled, betAmount, theme, map, ...patch };
+        if (patch.category !== undefined) setCategory(patch.category);
+        if (patch.bettingEnabled !== undefined) setBettingEnabled(patch.bettingEnabled);
+        if (patch.jokersEnabled !== undefined) setJokersEnabled(patch.jokersEnabled);
+        if (patch.betAmount !== undefined) setBetAmount(patch.betAmount);
+        if (patch.theme !== undefined) setTheme(patch.theme);
+        if (patch.map !== undefined) setMap(patch.map);
+        onUpdateSettings?.(next);
+    };
 
     return (
         <main className="min-h-screen text-[#F6F5F2] flex flex-col items-center justify-center p-4 md:p-8 relative">
@@ -259,7 +277,7 @@ export default function Lobby({
                                     <label className="swiss-label block mb-2">KELİME KATEGORİSİ</label>
                                     <Select
                                         value={category}
-                                        onChange={(e) => setCategory(e.target.value)}
+                                        onChange={(e) => emitSettings({ category: e.target.value })}
                                         MenuProps={DARK_MENU_PROPS}
                                         size="small"
                                         fullWidth
@@ -284,13 +302,13 @@ export default function Lobby({
                                 <div className="p-3.5 bg-[#111318] rounded-[4px] border-2 border-[#2D3342] space-y-3">
                                     <div className="flex items-center justify-between">
                                         <FormControlLabel 
-                                            control={<Switch checked={bettingEnabled} onChange={(e) => setBettingEnabled(e.target.checked)} color="warning" />} 
+                                            control={<Switch checked={bettingEnabled} onChange={(e) => emitSettings({ bettingEnabled: e.target.checked })} color="warning" />} 
                                             label={<span className="font-display font-bold text-sm uppercase">💰 ALTIN BAHİS MODU</span>}
                                         />
                                         {bettingEnabled && (
                                             <Select
                                                 value={betAmount}
-                                                onChange={(e) => setBetAmount(e.target.value as number)}
+                                                onChange={(e) => emitSettings({ betAmount: e.target.value as number })}
                                                 MenuProps={DARK_MENU_PROPS}
                                                 size="small"
                                                 className="!bg-[#1A1D24] !text-[#FFBE0B] !font-mono !font-bold min-w-[125px]"
@@ -309,7 +327,7 @@ export default function Lobby({
                                     </div>
                                     <div className="border-t border-[#2D3342] pt-2">
                                         <FormControlLabel 
-                                            control={<Switch checked={jokersEnabled} onChange={(e) => setJokersEnabled(e.target.checked)} color="warning" />} 
+                                            control={<Switch checked={jokersEnabled} onChange={(e) => emitSettings({ jokersEnabled: e.target.checked })} color="warning" />} 
                                             label={<span className="font-display font-bold text-sm uppercase">🃏 TAKTİKSEL JOKER KARTLARI</span>}
                                         />
                                     </div>
@@ -320,7 +338,7 @@ export default function Lobby({
                                         <label className="swiss-label block mb-2">3D HARİTA SEÇİMİ</label>
                                         <Select
                                             value={map}
-                                            onChange={(e) => setMap(e.target.value)}
+                                            onChange={(e) => emitSettings({ map: e.target.value })}
                                             MenuProps={DARK_MENU_PROPS}
                                             variant="outlined"
                                             size="small"
@@ -343,7 +361,7 @@ export default function Lobby({
                                         <label className="swiss-label block mb-2">ATMOSFER SAATİ</label>
                                         <Select
                                             value={theme}
-                                            onChange={(e) => setTheme(e.target.value as "day" | "night")}
+                                            onChange={(e) => emitSettings({ theme: e.target.value as "day" | "night" })}
                                             MenuProps={DARK_MENU_PROPS}
                                             variant="outlined"
                                             size="small"
@@ -363,13 +381,35 @@ export default function Lobby({
                                 </div>
                             </div>
                         ) : (
-                            <div className="p-6 bg-[#111318] border-2 border-[#2D3342] rounded-[4px] text-center space-y-2 my-4">
-                                <span className="font-mono text-xs uppercase tracking-widest text-[#FFBE0B] block">
-                                    BEKLEME DURUMU
-                                </span>
-                                <p className="text-sm text-[#A0A8B8]">
-                                    Oda kurucusu maç ayarlarını yapılandırıyor. Birazdan oyun başlayacak...
-                                </p>
+                            <div className="p-5 bg-[#111318] border-2 border-[#2D3342] rounded-[4px] space-y-4 my-4">
+                                <div className="text-center space-y-1">
+                                    <span className="font-mono text-xs uppercase tracking-widest text-[#FFBE0B] block">
+                                        CANLI MASA AYARLARI
+                                    </span>
+                                    <p className="text-xs text-[#A0A8B8]">
+                                        Oda kurucusu ayarları değiştirdikçe buradan anlık takip edebilirsin.
+                                    </p>
+                                </div>
+                                <div className="grid grid-cols-2 gap-2.5 text-left">
+                                    <div className="p-2.5 bg-[#1A1D24] border border-[#2D3342] rounded-[4px]">
+                                        <span className="swiss-label block text-[10px]">KATEGORİ</span>
+                                        <span className="font-display font-bold text-sm text-[#F6F5F2]">{gameState.category || "Karışık"}</span>
+                                    </div>
+                                    <div className="p-2.5 bg-[#1A1D24] border border-[#2D3342] rounded-[4px]">
+                                        <span className="swiss-label block text-[10px]">HARİTA</span>
+                                        <span className="font-display font-bold text-sm text-[#F6F5F2]">{MAP_LABELS[gameState.map || "floating_island__low_poly_vr.glb"] || "🏝️ Uçan Ada"}</span>
+                                    </div>
+                                    <div className="p-2.5 bg-[#1A1D24] border border-[#2D3342] rounded-[4px]">
+                                        <span className="swiss-label block text-[10px]">ATMOSFER</span>
+                                        <span className="font-display font-bold text-sm text-[#F6F5F2]">{gameState.theme === "night" ? "🌙 Gece" : "☀️ Gündüz"}</span>
+                                    </div>
+                                    <div className="p-2.5 bg-[#1A1D24] border border-[#2D3342] rounded-[4px]">
+                                        <span className="swiss-label block text-[10px]">BAHİS & JOKER</span>
+                                        <span className="font-mono font-bold text-xs text-[#FFBE0B]">
+                                            {gameState.isBettingEnabled ? `💰 ${gameState.betAmount || 50}G` : "Eğlence"} · {gameState.isJokersEnabled !== false ? "🃏 Açık" : "🃏 Kapalı"}
+                                        </span>
+                                    </div>
+                                </div>
                             </div>
                         )}
                     </div>
