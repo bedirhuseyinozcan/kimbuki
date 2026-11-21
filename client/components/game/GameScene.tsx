@@ -98,6 +98,20 @@ export default function GameScene(props: GameSceneProps = {}) {
     const [jokerGuideOpen, setJokerGuideOpen] = useState(false);
 
     const [jokerDialogOpen, setJokerDialogOpen] = useState(false);
+    const [lowGraphics, setLowGraphics] = useState<boolean>(() => {
+        if (typeof window === "undefined") return false;
+        return localStorage.getItem("kimbuki_low_graphics") === "1";
+    });
+
+    const toggleGraphicsQuality = () => {
+        setLowGraphics((prev) => {
+            const next = !prev;
+            if (typeof window !== "undefined") {
+                localStorage.setItem("kimbuki_low_graphics", next ? "1" : "0");
+            }
+            return next;
+        });
+    };
     const [jokerTarget, setJokerTarget] = useState("");
     const [jokerWord, setJokerWord] = useState("");
     const [isNotepadOpen, setIsNotepadOpen] = useState(false);
@@ -265,7 +279,8 @@ export default function GameScene(props: GameSceneProps = {}) {
             <div className="fixed inset-0 z-0 pointer-events-auto bg-[#111318]">
                 <Scene3D 
                     gameState={gameState} myId={myId} activeBubbles={activeBubbles} 
-                    headRotationsRef={ctx.headRotationsRef} onHeadRotation={onHeadRotation} taunts={taunts}
+                    headRotationsRef={ctx.headRotationsRef} speakingNames={ctx.speakingNames}
+                    lowGraphics={lowGraphics} onHeadRotation={onHeadRotation} taunts={taunts}
                     visualEffects={visualEffects}
                 />
             </div>
@@ -353,6 +368,18 @@ export default function GameScene(props: GameSceneProps = {}) {
 
                 {/* Top-Right Hardware Controls */}
                 <div className="flex gap-1.5 md:gap-2 items-center pointer-events-auto shrink-0">
+                    <button
+                        type="button"
+                        onClick={toggleGraphicsQuality}
+                        title={lowGraphics ? "Grafik: Hafif Mod (Yüksek için tıkla)" : "Grafik: Yüksek Kalite (Hafif mod için tıkla)"}
+                        className={`flex items-center justify-center h-9 px-2.5 rounded-[4px] border-2 font-mono text-[10px] font-bold uppercase tracking-wider shadow-[2px_2px_0px_#090A0D] transition-colors cursor-pointer ${
+                            lowGraphics
+                                ? 'bg-[#222630] border-[#00E5A3] text-[#00E5A3]'
+                                : 'bg-[#1A1D24] border-[#3E4659] text-[#A0A8B8] hover:border-[#FFBE0B] hover:text-[#F6F5F2]'
+                        }`}
+                    >
+                        {lowGraphics ? "HAFİF" : "HD"}
+                    </button>
                     <button 
                         onClick={() => setJokerGuideOpen(true)} 
                         title="Joker Rehberi"

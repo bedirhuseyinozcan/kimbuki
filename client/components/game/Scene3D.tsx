@@ -249,6 +249,7 @@ const sharedCloudPedestalSphere2 = new THREE.SphereGeometry(0.5, 12, 12);
 const sharedCloudPedestalSphere3 = new THREE.SphereGeometry(0.45, 12, 12);
 const sharedDefaultPedestalGeo = new THREE.CylinderGeometry(0.7, 0.75, 0.5, 8);
 const sharedTurnRingGeo = new THREE.TorusGeometry(1.05, 0.055, 10, 36);
+const sharedSpeakRingGeo = new THREE.TorusGeometry(1.22, 0.045, 10, 36);
 
 const PedestalNode = React.memo(function PedestalNode({ type }: { type: string }) {
     switch (type) {
@@ -370,6 +371,7 @@ interface PlayerNodeProps {
     index: number;
     totalUsers: number;
     isCurrentTurn: boolean;
+    isSpeaking: boolean;
     isMe: boolean;
     isWinner: boolean;
     activeBubble?: string;
@@ -379,7 +381,7 @@ interface PlayerNodeProps {
 }
 
 const PlayerNode = React.memo(function PlayerNode({
-    u, index, totalUsers, isCurrentTurn, isMe, isWinner, activeBubble, headRotationsRef, taunt, visualEffects
+    u, index, totalUsers, isCurrentTurn, isSpeaking, isMe, isWinner, activeBubble, headRotationsRef, taunt, visualEffects
 }: PlayerNodeProps) {
     const radius = totalUsers > 4 ? PLAYER_CIRCLE_RADIUS_LARGE : PLAYER_CIRCLE_RADIUS_SMALL;
     const angleOffset = totalUsers === 3 ? (Math.PI / 2) : -(Math.PI / 2);
@@ -404,6 +406,12 @@ const PlayerNode = React.memo(function PlayerNode({
             {isCurrentTurn && !isWinner && (
                 <mesh position={[0, 0.06, 0]} rotation={[Math.PI / 2, 0, 0]} geometry={sharedTurnRingGeo}>
                     <meshStandardMaterial color="#FFBE0B" emissive="#FFBE0B" emissiveIntensity={1.6} toneMapped={false} />
+                </mesh>
+            )}
+
+            {isSpeaking && (
+                <mesh position={[0, 0.09, 0]} rotation={[Math.PI / 2, 0, 0]} geometry={sharedSpeakRingGeo}>
+                    <meshStandardMaterial color="#00E5A3" emissive="#00E5A3" emissiveIntensity={1.8} toneMapped={false} />
                 </mesh>
             )}
 
@@ -497,6 +505,7 @@ const PlayerNode = React.memo(function PlayerNode({
                                 </span>
                             )}
                             <span className="text-[#3E4659] mx-0.5">|</span>
+                            {isSpeaking && <span className="text-[#00E5A3] animate-pulse">🎙️</span>}
                             {u.name} {u.disconnected && '(KOPTU)'}
                         </span>
                         {u.status !== 'spectator' && !isWinner && (
@@ -529,24 +538,26 @@ interface Scene3DProps {
     myId: string;
     activeBubbles: { [key: string]: { text: string; id: string } };
     headRotationsRef?: React.MutableRefObject<HeadRotationMap>;
+    speakingNames?: string[];
+    lowGraphics?: boolean;
     onHeadRotation?: (pitch: number, yaw: number) => void;
     taunts?: { [key: string]: { type: string; id: number } };
     visualEffects?: Array<{ id: number; type: string; targetId?: string; userId?: string }>;
 }
 
 const Scene3D = React.memo(function Scene3D({
-    gameState, myId, activeBubbles, headRotationsRef, onHeadRotation, taunts, visualEffects
+    gameState, myId, activeBubbles, headRotationsRef, speakingNames = [], lowGraphics = false, onHeadRotation, taunts, visualEffects
 }: Scene3DProps) {
     const isDay = gameState?.theme !== "night";
 
     return (
         <div className='absolute inset-0 w-full h-full z-0 pointer-events-auto touch-none'>
             <WebGLErrorBoundary>
-                <Canvas shadows dpr={[1, 1.5]} camera={{ position: [0, 4.5, 8], fov: 45 }}>
+                <Canvas shadows={!lowGraphics} dpr={lowGraphics ? [1, 1] : [1, 1.5]} camera={{ position: [0, 4.5, 8], fov: 45 }}>
                     <color attach='background' args={[isDay ? '#38bdf8' : '#0f172a']} />
                     <fog attach='fog' args={[isDay ? '#38bdf8' : '#0f172a', isDay ? 15 : 8, isDay ? 40 : 30]} />
                     <ambientLight intensity={isDay ? 0.9 : 0.4} />
-                    <directionalLight castShadow position={[10, 15, 5]} intensity={isDay ? 2.2 : 1.2} color={isDay ? "#ffedd5" : "#e0f2fe"} shadow-mapSize={[1024, 1024]} />
+                    <directionalLight castShadow={!lowGraphics} position={[10, 15, 5]} intensity={isDay ? 2.2 : 1.2} color={isDay ? "#ffedd5" : "#e0f2fe"} shadow-mapSize={[1024, 1024]} />
                     <pointLight position={[0, 4, 0]} intensity={isDay ? 0.5 : 1.5} color={isDay ? '#eab308' : '#38bdf8'} distance={10} />
 
                     <Suspense fallback={
@@ -566,6 +577,7 @@ const Scene3D = React.memo(function Scene3D({
                                 index={i}
                                 totalUsers={gameState.users.length}
                                 isCurrentTurn={u.id === gameState.currentTurnUserId}
+                                isSpeaking={speakingNames.includes(u.name)}
                                 isMe={u.id === myId}
                                 isWinner={gameState.winners.includes(u.id)}
                                 activeBubble={activeBubbles[u.id]?.text}
@@ -576,7 +588,9 @@ const Scene3D = React.memo(function Scene3D({
                         ))}
                     </group>
 
-                    <ContactShadows frames={1} position={[PLAYER_CENTER[0], PLAYER_CENTER[1] - 0.05, PLAYER_CENTER[2]]} opacity={0.5} scale={15} blur={2.5} far={4} />
+                    {!lowGraphics && (
+                        <ContactShadows frames={1} position={[PLAYER_CENTER[0], PLAYER_CENTER[1] - 0.05, PLAYER_CENTER[2]]} opacity={0.5} scale={15} blur={2.5} far={4} />
+                    )}
                     <FirstPersonCamera
                         myId={myId}
                         users={gameState.users}

@@ -21,6 +21,7 @@ export interface GameContextValue {
     setGuessDialogOpen: (val: boolean) => void;
     headRotations: { [key: string]: { pitch: number; yaw: number } };
     headRotationsRef: React.MutableRefObject<{ [key: string]: { pitch: number; yaw: number } }>;
+    speakingNames: string[];
     taunts: { [key: string]: { type: string; id: number } };
     visualEffects: VisualEffect[];
     isSubmitting: boolean;

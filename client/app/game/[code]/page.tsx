@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useGameSocket } from "@/hooks/useGameSocket";
 import { useLiveKit } from "@/hooks/useLiveKit";
@@ -100,9 +100,27 @@ function LiveKitMicSync({ isVoiceEnabled }: { isVoiceEnabled: boolean }) {
     return null;
 }
 
+function LiveKitSpeakerTracker({ onSpeakersChange }: { onSpeakersChange: (names: string[]) => void }) {
+    const room = useRoomContext();
+
+    useEffect(() => {
+        if (!room) return;
+        const handleSpeakers = (speakers: Array<{ name?: string; identity: string }>) => {
+            onSpeakersChange(speakers.map((s) => s.name || s.identity));
+        };
+        room.on(RoomEvent.ActiveSpeakersChanged, handleSpeakers);
+        return () => {
+            room.off(RoomEvent.ActiveSpeakersChanged, handleSpeakers);
+        };
+    }, [room, onSpeakersChange]);
+
+    return null;
+}
+
 export default function GamePage() {
     const { code } = useParams();
     const router = useRouter();
+    const [speakingNames, setSpeakingNames] = useState<string[]>([]);
     const notepad = useNotepad(code);
     const game = useGameSocket(code, {
         onClearNotepad: notepad.clearNotepad,
@@ -148,6 +166,7 @@ export default function GamePage() {
             setGuessDialogOpen: game.setGuessDialogOpen,
             headRotations: game.headRotations,
             headRotationsRef: game.headRotationsRef,
+            speakingNames,
             taunts: game.taunts,
             visualEffects: game.visualEffects,
             isSubmitting: game.isSubmitting,
@@ -173,6 +192,7 @@ export default function GamePage() {
         game.setGuessDialogOpen,
         game.headRotations,
         game.headRotationsRef,
+        speakingNames,
         game.taunts,
         game.visualEffects,
         game.isSubmitting,
@@ -300,6 +320,7 @@ export default function GamePage() {
                 <RoomAudioRenderer />
                 <LiveKitSpeakerSync />
                 <LiveKitMicSync isVoiceEnabled={me?.isVoiceEnabled || false} />
+                <LiveKitSpeakerTracker onSpeakersChange={setSpeakingNames} />
             </LiveKitRoom>
         </GameProvider>
     );
