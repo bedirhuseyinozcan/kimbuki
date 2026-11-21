@@ -55,6 +55,7 @@ const apiLimiter = rateLimit({
 
 app.use("/api/auth/login", authLimiter);
 app.use("/api/auth/register", authLimiter);
+app.use("/api/auth/guest", authLimiter);
 app.use("/api/", apiLimiter);
 
 const connectDB = require("./config/db");
@@ -81,7 +82,13 @@ io.use((socket, next) => {
   if (token) {
     jwt.verify(token, JWT_SECRET, { algorithms: ["HS256"] }, (err, decoded) => {
       if (!err && decoded) {
-        socket.data.userId = decoded.id;
+        if (decoded.isGuest) {
+          socket.data.userId = null;
+          socket.data.guestId = decoded.id;
+        } else {
+          socket.data.userId = decoded.id;
+          socket.data.guestId = null;
+        }
       }
       next();
     });

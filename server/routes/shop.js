@@ -58,6 +58,9 @@ router.get("/items", (req, res) => {
 
 router.post("/buy", authMiddleware, async (req, res) => {
     try {
+        if (req.user?.isGuest) {
+            return res.status(403).json({ error: "Mağazadan alışveriş yapmak için ücretsiz hesap oluşturmalısınız." });
+        }
         const { itemId } = req.body || {};
         const itemToBuy = ALL_ITEMS.find(a => a.id === itemId);
         

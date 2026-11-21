@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+const crypto = require("crypto");
 const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
@@ -241,8 +242,73 @@ router.post("/login", async (req, res) => {
     }
 });
 
+router.post("/guest", (req, res) => {
+    try {
+        const { username: rawUsername } = req.body || {};
+        if (typeof rawUsername !== "string") {
+            return res.status(400).json({ error: "Geçersiz takma ad formatı." });
+        }
+        const username = rawUsername.trim();
+        if (username.length < 3 || username.length > 20) {
+            return res.status(400).json({ error: "Takma ad 3 ile 20 karakter arasında olmalıdır." });
+        }
+
+        const guestId = `guest_${crypto.randomUUID()}`;
+        const token = jwt.sign(
+            { id: guestId, isGuest: true, username },
+            JWT_SECRET,
+            { expiresIn: "12h" }
+        );
+
+        return res.status(201).json({
+            token,
+            user: {
+                id: guestId,
+                username,
+                isGuest: true,
+                avatar: "Warrior",
+                pedestal: "default_stone",
+                nameColor: "text-white",
+                title: "",
+                gold: 0,
+                unlockedAvatars: ["Warrior"],
+                unlockedPedestals: ["default_stone"],
+                unlockedNameColors: ["text-white"],
+                unlockedTitles: [],
+                rankInfo: getRankInfo(0),
+                quests: [],
+                canClaimDaily: false,
+                loginStreak: 0
+            }
+        });
+    } catch (error) {
+        console.error("Guest auth error:", error);
+        return res.status(500).json({ error: "Sunucu hatası" });
+    }
+});
+
 router.get("/me", authMiddleware, async (req, res) => {
     try {
+        if (req.user?.isGuest) {
+            return res.json({
+                id: req.user.id,
+                username: req.user.username || "Misafir",
+                isGuest: true,
+                avatar: "Warrior",
+                pedestal: "default_stone",
+                nameColor: "text-white",
+                title: "",
+                gold: 0,
+                unlockedAvatars: ["Warrior"],
+                unlockedPedestals: ["default_stone"],
+                unlockedNameColors: ["text-white"],
+                unlockedTitles: [],
+                rankInfo: getRankInfo(0),
+                quests: [],
+                canClaimDaily: false,
+                loginStreak: 0
+            });
+        }
         const user = await User.findById(req.user.id).select("-password");
         if (!user) {
             return res.status(404).json({ error: "Kullanıcı bulunamadı." });
@@ -346,6 +412,7 @@ router.get("/me", authMiddleware, async (req, res) => {
 
 router.post("/daily-reward", authMiddleware, async (req, res) => {
     try {
+        if (req.user?.isGuest) return res.status(403).json({ error: "Günlük ödül için ücretsiz hesap oluşturmalısınız." });
         const user = await User.findById(req.user.id).select("lastLoginDate loginStreak").lean();
         if (!user) return res.status(404).json({ error: "Kullanıcı bulunamadı." });
 
@@ -400,6 +467,7 @@ router.post("/daily-reward", authMiddleware, async (req, res) => {
 
 router.put("/profile", authMiddleware, async (req, res) => {
     try {
+        if (req.user?.isGuest) return res.status(403).json({ error: "Profil düzenlemek için ücretsiz hesap oluşturmalısınız." });
         const { username: rawUsername, avatar, pedestal, nameColor, title } = req.body || {};
         
         if (rawUsername !== undefined && typeof rawUsername !== 'string') {
@@ -469,6 +537,7 @@ router.put("/profile", authMiddleware, async (req, res) => {
 
 router.post("/claim-quest", authMiddleware, async (req, res) => {
     try {
+        if (req.user?.isGuest) return res.status(403).json({ error: "Görev ödülleri için ücretsiz hesap oluşturmalısınız." });
         const { questId } = req.body || {};
         if (typeof questId !== 'string' || !questId.trim()) {
             return res.status(400).json({ error: "Geçersiz format" });

@@ -94,11 +94,11 @@ class Room {
         this.io.to(socketId).emit("game:init_chat", { chatHistory: history });
     }
 
-    addUser(socketId, name, dbId, avatar, pedestal = 'default_stone', reputation = 0, nameColor = 'text-white', title = '') {
-        // Prevent seat/dbId hijacking: authenticated seats can ONLY be reclaimed by matching dbId
+    addUser(socketId, name, dbId, avatar, pedestal = 'default_stone', reputation = 0, nameColor = 'text-white', title = '', guestId = null) {
         const existingUser = this.users.find(u =>
             (dbId && u.dbId && u.dbId === dbId) ||
-            (!u.dbId && !dbId && u.disconnected && u.name === name)
+            (guestId && u.guestId && u.guestId === guestId) ||
+            (!u.dbId && !u.guestId && !dbId && !guestId && u.disconnected && u.name === name)
         );
         if (existingUser) {
             const oldId = existingUser.id;
@@ -165,6 +165,7 @@ class Room {
         this.users.push({
             id: socketId,
             dbId: dbId,
+            guestId: guestId,
             name,
             isHost,
             avatar: avatar || 'Warrior',

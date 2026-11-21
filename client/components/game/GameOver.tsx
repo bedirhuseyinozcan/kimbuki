@@ -73,6 +73,22 @@ export default function GameOver({
                         </div>
                     )}
 
+                    {!me?.dbId && (
+                        <div className="mb-6 p-3.5 bg-[#FFBE0B]/10 border-2 border-[#FFBE0B] rounded-[4px] flex flex-col sm:flex-row items-center justify-between gap-3">
+                            <span className="font-mono text-xs text-[#FFBE0B] font-bold">
+                                ⚡ Misafir olarak oynuyorsun — altın ve itibar kazanmak için ücretsiz hesap aç!
+                            </span>
+                            <Button
+                                size="small"
+                                variant="contained"
+                                onClick={onLeaveRoom}
+                                className="swiss-btn-primary !px-3 !py-1.5 !text-xs shrink-0"
+                            >
+                                HESAP AÇ
+                            </Button>
+                        </div>
+                    )}
+
                     <div className="flex flex-col sm:flex-row gap-3">
                         {me?.isHost && (
                             <Button 

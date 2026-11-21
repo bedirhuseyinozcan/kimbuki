@@ -233,7 +233,7 @@ class GameManager {
             
             const profile = await RewardService.getUserProfileForRoom(userId);
             const { safeAvatar, safePedestal, safeNameColor, safeTitle } = this.sanitizeCosmetics(profile, avatar, pedestal, nameColor, title);
-            room.addUser(socket.id, name, userId, safeAvatar, safePedestal, profile.reputation, safeNameColor, safeTitle);
+            room.addUser(socket.id, name, userId, safeAvatar, safePedestal, profile.reputation, safeNameColor, safeTitle, socket.data?.guestId || null);
             this.socketToRoom.set(socket.id, room);
 
             cb?.({ ok: true, roomCode: code });
@@ -248,9 +248,12 @@ class GameManager {
             const code = (roomCode || "").toUpperCase();
             let room = this.rooms.get(code);
 
+            const guestId = socket.data?.guestId || null;
+
             if (room) {
                 const isReconnecting = (userId ? room.users.some(u => u.dbId && u.dbId === userId) : false)
-                    || (!userId && room.users.some(u => !u.dbId && u.disconnected && u.name === name));
+                    || (guestId ? room.users.some(u => u.guestId && u.guestId === guestId) : false)
+                    || (!userId && !guestId && room.users.some(u => !u.dbId && !u.guestId && u.disconnected && u.name === name));
 
                 if (room.gameState !== "LOBBY" && !isReconnecting) {
                     cb?.({ ok: false, error: "Oyun zaten başladı! Bu odaya şu an katılamazsınız." });
@@ -284,7 +287,8 @@ class GameManager {
                 return;
             }
             const isReconnectingNow = (userId ? room.users.some(u => u.dbId && u.dbId === userId) : false)
-                || (!userId && room.users.some(u => !u.dbId && u.disconnected && u.name === name));
+                || (guestId ? room.users.some(u => u.guestId && u.guestId === guestId) : false)
+                || (!userId && !guestId && room.users.some(u => !u.dbId && !u.guestId && u.disconnected && u.name === name));
             if (room.gameState !== "LOBBY" && !isReconnectingNow) {
                 cb?.({ ok: false, error: "Oyun siz bağlanırken başladı!" });
                 return;
@@ -297,7 +301,7 @@ class GameManager {
             socket.join(code);
 
             const { safeAvatar, safePedestal, safeNameColor, safeTitle } = this.sanitizeCosmetics(profile, avatar, pedestal, nameColor, title);
-            room.addUser(socket.id, name, userId, safeAvatar, safePedestal, profile.reputation, safeNameColor, safeTitle);
+            room.addUser(socket.id, name, userId, safeAvatar, safePedestal, profile.reputation, safeNameColor, safeTitle, guestId);
             this.socketToRoom.set(socket.id, room);
 
             cb?.({ ok: true });

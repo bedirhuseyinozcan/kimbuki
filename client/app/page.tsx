@@ -37,7 +37,7 @@ export default function Home() {
   type ShopItem = { id: string; price: number; label: string; icon: string; type: string };
   type LeaderboardEntry = { _id?: string; username: string; gold: number; reputation?: number; avatar?: string; nameColor?: string; title?: string };
 
-  const [user, setUser] = useState<{ id: string, username: string, avatar: string, pedestal?: string, nameColor?: string, title?: string, gold: number, unlockedAvatars: string[], unlockedPedestals?: string[], unlockedNameColors?: string[], unlockedTitles?: string[], rankInfo?: { title: string, reputation: number, nextThreshold: number | null }, quests?: QuestItem[], canClaimDaily?: boolean, loginStreak?: number } | null>(null);
+  const [user, setUser] = useState<{ id: string, username: string, isGuest?: boolean, avatar: string, pedestal?: string, nameColor?: string, title?: string, gold: number, unlockedAvatars: string[], unlockedPedestals?: string[], unlockedNameColors?: string[], unlockedTitles?: string[], rankInfo?: { title: string, reputation: number, nextThreshold: number | null }, quests?: QuestItem[], canClaimDaily?: boolean, loginStreak?: number } | null>(null);
   
   const [questsDialogOpen, setQuestsDialogOpen] = useState(false);
 
@@ -72,6 +72,7 @@ export default function Home() {
   const [liveStats, setLiveStats] = useState({ activeRooms: 0, activePlayers: 0 });
 
   const [authTab, setAuthTab] = useState(0);
+  const [guestName, setGuestName] = useState("");
   const [loginEmail, setLoginEmail] = useState("");
   const [loginName, setLoginName] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
@@ -90,6 +91,7 @@ export default function Home() {
     if (inviteCode) {
         queueMicrotask(() => {
             setRoomCode(inviteCode);
+            setAuthTab(2);
             setPlayDialogOpen(true);
         });
     }
@@ -128,6 +130,7 @@ export default function Home() {
           setUser({ 
               id: data.id, 
               username: data.username, 
+              isGuest: Boolean(data.isGuest),
               avatar: data.avatar, 
               pedestal: data.pedestal,
               nameColor: data.nameColor,
@@ -166,6 +169,53 @@ export default function Home() {
             setLeaderboardDialogOpen(true);
         })
         .catch(() => toast.error("Liderlik tablosu yüklenemedi."));
+  };
+
+  const handleGuestLogin = async () => {
+    const cleanName = guestName.trim();
+    if (cleanName.length < 3 || cleanName.length > 20) {
+      return toast.error("Takma ad 3 ile 20 karakter arasında olmalıdır!");
+    }
+    setLoginLoading(true);
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:4000"}/api/auth/guest`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: cleanName })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error || "Misafir girişi başarısız!");
+        return;
+      }
+      localStorage.setItem("gameToken", data.token);
+      setUser({
+        id: data.user.id,
+        username: data.user.username,
+        isGuest: true,
+        avatar: data.user.avatar,
+        pedestal: data.user.pedestal,
+        nameColor: data.user.nameColor,
+        title: data.user.title,
+        gold: 0,
+        unlockedAvatars: data.user.unlockedAvatars,
+        unlockedPedestals: data.user.unlockedPedestals,
+        unlockedNameColors: data.user.unlockedNameColors,
+        unlockedTitles: [],
+        rankInfo: data.user.rankInfo,
+        quests: [],
+        canClaimDaily: false,
+        loginStreak: 0
+      });
+      toast.success(`Hoş geldin ${data.user.username}! (Misafir)`);
+      if (roomCode.trim()) {
+        router.push(`/game/${encodeURIComponent(roomCode.trim().toUpperCase())}`);
+      }
+    } catch {
+      toast.error("Sunucuya bağlanılamadı!");
+    } finally {
+      setLoginLoading(false);
+    }
   };
 
   const handleAuth = async () => {
@@ -738,96 +788,137 @@ export default function Home() {
                 slotProps={{ indicator: { style: { backgroundColor: '#FFBE0B', height: '3px' } } }}
                 className="mb-4 border-b-2 border-[#2D3342]"
               >
-                <Tab label="GİRİŞ YAP" className="!font-display !font-bold !text-sm" />
-                <Tab label="KAYIT OL" className="!font-display !font-bold !text-sm" />
+                <Tab label="GİRİŞ YAP" className="!font-display !font-bold !text-xs sm:!text-sm" />
+                <Tab label="KAYIT OL" className="!font-display !font-bold !text-xs sm:!text-sm" />
+                <Tab label="⚡ MİSAFİR" className="!font-display !font-bold !text-xs sm:!text-sm !text-[#00E5A3]" />
               </Tabs>
-              
-              <TextField
-                placeholder="E-posta adresiniz"
-                type="email"
-                size="small"
-                value={loginEmail}
-                onChange={(e) => setLoginEmail(e.target.value)}
-                sx={inputFieldSx}
-                slotProps={{ 
-                  input: {
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <EmailOutlinedIcon sx={{ color: '#A0A8B8', fontSize: 20 }} />
-                      </InputAdornment>
-                    )
-                  }
-                }}
-                fullWidth
-              />
 
-              {authTab === 1 && (
-                <TextField
-                  placeholder="Kullanıcı Adı (Nick)"
-                  size="small"
-                  value={loginName}
-                  onChange={(e) => setLoginName(e.target.value)}
-                  sx={inputFieldSx}
-                  slotProps={{ 
-                    input: {
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <PersonOutlineIcon sx={{ color: '#A0A8B8', fontSize: 20 }} />
-                        </InputAdornment>
-                      )
-                    }
-                  }}
-                  fullWidth
-                />
+              {authTab === 2 ? (
+                <div className="space-y-4">
+                  <div className="p-3 bg-[#00E5A3]/10 border-l-4 border-[#00E5A3] rounded-[4px] font-mono text-xs text-[#A0A8B8]">
+                    Kayıt olmadan 3 saniyede masaya otur ve sesli sohbete katıl. (Altın bahis ve mağaza için hesap gerekir.)
+                  </div>
+                  <TextField
+                    placeholder="Takma Adın (3-20 karakter)"
+                    size="small"
+                    value={guestName}
+                    onChange={(e) => setGuestName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleGuestLogin();
+                    }}
+                    sx={inputFieldSx}
+                    slotProps={{
+                      input: {
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <PersonOutlineIcon sx={{ color: '#00E5A3', fontSize: 20 }} />
+                          </InputAdornment>
+                        )
+                      }
+                    }}
+                    fullWidth
+                  />
+                  <Button
+                    variant="contained"
+                    fullWidth
+                    size="large"
+                    disabled={loginLoading || guestName.trim().length < 3}
+                    onClick={handleGuestLogin}
+                    className="swiss-btn-mint !py-3.5"
+                  >
+                    {loginLoading ? "BAĞLANILIYOR..." : (roomCode.trim() ? `⚡ ${roomCode.trim().toUpperCase()} ODASINA KATIL` : "⚡ MİSAFİR OLARAK BAŞLA")}
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <TextField
+                    placeholder="E-posta adresiniz"
+                    type="email"
+                    size="small"
+                    value={loginEmail}
+                    onChange={(e) => setLoginEmail(e.target.value)}
+                    sx={inputFieldSx}
+                    slotProps={{ 
+                      input: {
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <EmailOutlinedIcon sx={{ color: '#A0A8B8', fontSize: 20 }} />
+                          </InputAdornment>
+                        )
+                      }
+                    }}
+                    fullWidth
+                  />
+
+                  {authTab === 1 && (
+                    <TextField
+                      placeholder="Kullanıcı Adı (Nick)"
+                      size="small"
+                      value={loginName}
+                      onChange={(e) => setLoginName(e.target.value)}
+                      sx={inputFieldSx}
+                      slotProps={{ 
+                        input: {
+                          startAdornment: (
+                            <InputAdornment position="start">
+                              <PersonOutlineIcon sx={{ color: '#A0A8B8', fontSize: 20 }} />
+                            </InputAdornment>
+                          )
+                        }
+                      }}
+                      fullWidth
+                    />
+                  )}
+
+                  <div>
+                    <TextField
+                      placeholder="Şifre"
+                      type="password"
+                      size="small"
+                      value={loginPassword}
+                      onChange={(e) => setLoginPassword(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleAuth();
+                      }}
+                      sx={inputFieldSx}
+                      slotProps={{ 
+                        input: {
+                          startAdornment: (
+                            <InputAdornment position="start">
+                              <LockOutlinedIcon sx={{ color: '#A0A8B8', fontSize: 20 }} />
+                            </InputAdornment>
+                          )
+                        }
+                      }}
+                      fullWidth
+                    />
+                    {authTab === 0 && (
+                        <div className="text-right mt-2">
+                            <MuiLink 
+                                component="button" 
+                                variant="body2" 
+                                onClick={handleForgotPassword}
+                                className="!font-mono !text-xs !text-[#A0A8B8] hover:!text-[#FFBE0B]"
+                                underline="hover"
+                            >
+                                Şifremi Unuttum?
+                            </MuiLink>
+                        </div>
+                    )}
+                  </div>
+
+                  <Button
+                    variant="contained"
+                    fullWidth
+                    size="large"
+                    disabled={loginLoading}
+                    onClick={handleAuth}
+                    className="swiss-btn-primary !py-3.5 !mt-2"
+                  >
+                    {loginLoading ? "İŞLENİYOR..." : (authTab === 0 ? "GİRİŞ YAP" : "HESAP OLUŞTUR")}
+                  </Button>
+                </>
               )}
-
-              <div>
-                <TextField
-                  placeholder="Şifre"
-                  type="password"
-                  size="small"
-                  value={loginPassword}
-                  onChange={(e) => setLoginPassword(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handleAuth();
-                  }}
-                  sx={inputFieldSx}
-                  slotProps={{ 
-                    input: {
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <LockOutlinedIcon sx={{ color: '#A0A8B8', fontSize: 20 }} />
-                        </InputAdornment>
-                      )
-                    }
-                  }}
-                  fullWidth
-                />
-                {authTab === 0 && (
-                    <div className="text-right mt-2">
-                        <MuiLink 
-                            component="button" 
-                            variant="body2" 
-                            onClick={handleForgotPassword}
-                            className="!font-mono !text-xs !text-[#A0A8B8] hover:!text-[#FFBE0B]"
-                            underline="hover"
-                        >
-                            Şifremi Unuttum?
-                        </MuiLink>
-                    </div>
-                )}
-              </div>
-
-              <Button
-                variant="contained"
-                fullWidth
-                size="large"
-                disabled={loginLoading}
-                onClick={handleAuth}
-                className="swiss-btn-primary !py-3.5 !mt-2"
-              >
-                {loginLoading ? "İŞLENİYOR..." : (authTab === 0 ? "GİRİŞ YAP" : "HESAP OLUŞTUR")}
-              </Button>
             </div>
           ) : (
             <div className="space-y-6 mt-2">

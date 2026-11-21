@@ -44,8 +44,9 @@ router.get("/token", async (req, res) => {
             return res.status(404).json({ error: "Oda bulunamadı." });
         }
 
-        // IDOR Protection: verify caller is actually a member of this room
-        const member = room.users.find((u) => u.dbId && String(u.dbId) === userId);
+        const member = room.users.find(
+            (u) => (u.dbId && String(u.dbId) === userId) || (u.guestId && String(u.guestId) === userId)
+        );
         if (!member) {
             return res.status(403).json({ error: "Bu odanın ses kanalına erişim yetkiniz yok." });
         }

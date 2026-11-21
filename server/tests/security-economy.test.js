@@ -159,3 +159,21 @@ test('GameManager maintains O(1) socketToRoom index across join, leave and close
     assert.equal(gm.getRoomBySocket(s1), null);
     assert.equal(gm.rooms.size, 0);
 });
+
+test('Room.addUser supports secure guestId reclaim without allowing hijacking', () => {
+    const io = createMockIo();
+    const room = new Room('GST01', io);
+
+    room.addUser('sock-g1', 'MisafirAli', null, 'Warrior', 'default_stone', 0, 'text-white', '', 'guest_abc');
+    room.users[0].disconnected = true;
+
+    room.addUser('sock-hijack', 'MisafirAli', null, 'Warrior', 'default_stone', 0, 'text-white', '', 'guest_other');
+    assert.equal(room.users.length, 2);
+    assert.equal(room.users[0].id, 'sock-g1');
+
+    room.addUser('sock-g2', 'MisafirAli', null, 'Warrior', 'default_stone', 0, 'text-white', '', 'guest_abc');
+    assert.equal(room.users.length, 2);
+    assert.equal(room.users[0].id, 'sock-g2');
+    assert.equal(room.users[0].disconnected, false);
+    room.destroy();
+});
