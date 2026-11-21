@@ -77,6 +77,7 @@ export type GameState = {
     } | null;
     roundLogs?: string[];
     category?: string;
+    gameMode?: "classic" | "blitz";
     isBettingEnabled?: boolean;
     betAmount?: number;
     isJokersEnabled?: boolean;

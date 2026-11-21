@@ -1,5 +1,8 @@
+import { useState } from "react";
 import { Button } from "@mui/material";
+import { toast } from "react-toastify";
 import { User, GameState } from "./types";
+import { shareOrDownloadMatchCard } from "@/utils/matchCard";
 
 interface GameOverProps {
     gameState: GameState;
@@ -11,6 +14,22 @@ interface GameOverProps {
 export default function GameOver({
     gameState, me, onStart, onLeaveRoom
 }: GameOverProps) {
+    const [exporting, setExporting] = useState(false);
+
+    const handleShareCard = async () => {
+        if (exporting) return;
+        setExporting(true);
+        try {
+            const result = await shareOrDownloadMatchCard(gameState);
+            if (result === "downloaded") {
+                toast.success("Maç özeti kartı indirildi! 📸");
+            }
+        } catch {
+            toast.error("Maç kartı oluşturulamadı.");
+        } finally {
+            setExporting(false);
+        }
+    };
     return (
         <main className="min-h-screen text-[#F6F5F2] flex flex-col items-center justify-center p-4 relative">
             <div className="fixed inset-0 z-50 bg-[#090A0D]/85 flex items-center justify-center p-4">
@@ -88,6 +107,18 @@ export default function GameOver({
                             </Button>
                         </div>
                     )}
+
+                    <div className="mb-3">
+                        <Button
+                            variant="contained"
+                            fullWidth
+                            disabled={exporting}
+                            onClick={handleShareCard}
+                            className="swiss-btn-mint !py-2.5 !text-xs"
+                        >
+                            {exporting ? "KART HAZIRLANIYOR..." : "📸 MAÇ ÖZETİ KARTINI İNDİR / PAYLAŞ"}
+                        </Button>
+                    </div>
 
                     <div className="flex flex-col sm:flex-row gap-3">
                         {me?.isHost && (
