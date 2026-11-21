@@ -15,6 +15,9 @@ import ChatPanel from "./ui/ChatPanel";
 import ActionMenu from "./ui/ActionMenu";
 import JokerGuideDialog from './JokerGuideDialog';
 import { useGameContext } from "@/context/GameContext";
+import Scene2D from "./Scene2D";
+import { GraphicsMode, getInitialGraphicsMode, saveGraphicsMode } from "@/utils/graphics";
+import { toast } from "react-toastify";
 
 const Scene3D = dynamic(() => import("./Scene3D"), {
     ssr: false,
@@ -98,17 +101,22 @@ export default function GameScene(props: GameSceneProps = {}) {
     const [jokerGuideOpen, setJokerGuideOpen] = useState(false);
 
     const [jokerDialogOpen, setJokerDialogOpen] = useState(false);
-    const [lowGraphics, setLowGraphics] = useState<boolean>(() => {
-        if (typeof window === "undefined") return false;
-        return localStorage.getItem("kimbuki_low_graphics") === "1";
-    });
+    const [graphicsInit] = useState(() => getInitialGraphicsMode());
+    const [graphicsMode, setGraphicsMode] = useState<GraphicsMode>(graphicsInit.mode);
 
-    const toggleGraphicsQuality = () => {
-        setLowGraphics((prev) => {
-            const next = !prev;
-            if (typeof window !== "undefined") {
-                localStorage.setItem("kimbuki_low_graphics", next ? "1" : "0");
-            }
+    useEffect(() => {
+        if (graphicsInit.autoSwitched) {
+            toast.info("Grafik hızlandırma kapalı algılandı — akıcı oyun için 2D Masa Modu otomatik açıldı. Üstten değiştirebilirsiniz.", {
+                toastId: "auto-2d-mode",
+                autoClose: 5000
+            });
+        }
+    }, [graphicsInit.autoSwitched]);
+
+    const cycleGraphicsMode = () => {
+        setGraphicsMode((prev) => {
+            const next: GraphicsMode = prev === "hd" ? "low" : prev === "low" ? "2d" : "hd";
+            saveGraphicsMode(next);
             return next;
         });
     };
@@ -277,12 +285,22 @@ export default function GameScene(props: GameSceneProps = {}) {
         <main className="min-h-[100dvh] h-[100dvh] text-[#F6F5F2] p-3 md:p-4 flex flex-col overflow-hidden relative">
             
             <div className="fixed inset-0 z-0 pointer-events-auto bg-[#111318]">
-                <Scene3D 
-                    gameState={gameState} myId={myId} activeBubbles={activeBubbles} 
-                    headRotationsRef={ctx.headRotationsRef} speakingNames={ctx.speakingNames}
-                    lowGraphics={lowGraphics} onHeadRotation={onHeadRotation} taunts={taunts}
-                    visualEffects={visualEffects}
-                />
+                {graphicsMode === "2d" ? (
+                    <Scene2D
+                        gameState={gameState}
+                        myId={myId}
+                        activeBubbles={activeBubbles}
+                        speakingNames={ctx.speakingNames}
+                        taunts={taunts}
+                    />
+                ) : (
+                    <Scene3D
+                        gameState={gameState} myId={myId} activeBubbles={activeBubbles}
+                        headRotationsRef={ctx.headRotationsRef} speakingNames={ctx.speakingNames}
+                        lowGraphics={graphicsMode === "low"} onHeadRotation={onHeadRotation} taunts={taunts}
+                        visualEffects={visualEffects}
+                    />
+                )}
             </div>
             
             <div className="absolute left-2 md:left-[calc(25%+2rem)] xl:left-[415px] top-[28%] md:top-1/2 -translate-y-1/2 z-20 flex flex-col gap-1.5 md:gap-2 pointer-events-auto">
@@ -370,15 +388,23 @@ export default function GameScene(props: GameSceneProps = {}) {
                 <div className="flex gap-1.5 md:gap-2 items-center pointer-events-auto shrink-0">
                     <button
                         type="button"
-                        onClick={toggleGraphicsQuality}
-                        title={lowGraphics ? "Grafik: Hafif Mod (Yüksek için tıkla)" : "Grafik: Yüksek Kalite (Hafif mod için tıkla)"}
+                        onClick={cycleGraphicsMode}
+                        title={
+                            graphicsMode === "hd"
+                                ? "Grafik: HD 3D (Hafif 3D için tıkla)"
+                                : graphicsMode === "low"
+                                    ? "Grafik: Hafif 3D (2D Masa Modu için tıkla)"
+                                    : "Grafik: 2D Masa Modu — Sıfır GPU (HD 3D için tıkla)"
+                        }
                         className={`flex items-center justify-center h-9 px-2.5 rounded-[4px] border-2 font-mono text-[10px] font-bold uppercase tracking-wider shadow-[2px_2px_0px_#090A0D] transition-colors cursor-pointer ${
-                            lowGraphics
-                                ? 'bg-[#222630] border-[#00E5A3] text-[#00E5A3]'
-                                : 'bg-[#1A1D24] border-[#3E4659] text-[#A0A8B8] hover:border-[#FFBE0B] hover:text-[#F6F5F2]'
+                            graphicsMode === "2d"
+                                ? 'bg-[#222630] border-[#FFBE0B] text-[#FFBE0B]'
+                                : graphicsMode === "low"
+                                    ? 'bg-[#222630] border-[#00E5A3] text-[#00E5A3]'
+                                    : 'bg-[#1A1D24] border-[#3E4659] text-[#A0A8B8] hover:border-[#FFBE0B] hover:text-[#F6F5F2]'
                         }`}
                     >
-                        {lowGraphics ? "HAFİF" : "HD"}
+                        {graphicsMode === "2d" ? "2D" : graphicsMode === "low" ? "HAFİF" : "HD"}
                     </button>
                     <button 
                         onClick={() => setJokerGuideOpen(true)} 

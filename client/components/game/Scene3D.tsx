@@ -553,12 +553,19 @@ const Scene3D = React.memo(function Scene3D({
     return (
         <div className='absolute inset-0 w-full h-full z-0 pointer-events-auto touch-none'>
             <WebGLErrorBoundary>
-                <Canvas shadows={!lowGraphics} dpr={lowGraphics ? [1, 1] : [1, 1.5]} camera={{ position: [0, 4.5, 8], fov: 45 }}>
+                <Canvas
+                    shadows={!lowGraphics}
+                    dpr={lowGraphics ? [0.75, 0.75] : [1, 1.5]}
+                    gl={lowGraphics ? { antialias: false, powerPreference: 'low-power' } : undefined}
+                    camera={{ position: [0, 4.5, 8], fov: 45 }}
+                >
                     <color attach='background' args={[isDay ? '#38bdf8' : '#0f172a']} />
                     <fog attach='fog' args={[isDay ? '#38bdf8' : '#0f172a', isDay ? 15 : 8, isDay ? 40 : 30]} />
                     <ambientLight intensity={isDay ? 0.9 : 0.4} />
                     <directionalLight castShadow={!lowGraphics} position={[10, 15, 5]} intensity={isDay ? 2.2 : 1.2} color={isDay ? "#ffedd5" : "#e0f2fe"} shadow-mapSize={[1024, 1024]} />
-                    <pointLight position={[0, 4, 0]} intensity={isDay ? 0.5 : 1.5} color={isDay ? '#eab308' : '#38bdf8'} distance={10} />
+                    {!lowGraphics && (
+                        <pointLight position={[0, 4, 0]} intensity={isDay ? 0.5 : 1.5} color={isDay ? '#eab308' : '#38bdf8'} distance={10} />
+                    )}
 
                     <Suspense fallback={
                         <mesh position={[0, -0.1, 0]} receiveShadow>
