@@ -1,5 +1,6 @@
 import { Button, TextField } from "@mui/material";
 import { User, GameState } from "./types";
+import { getRandomWord } from "@/utils/wordPool";
 
 interface WordSelectionProps {
     gameState: GameState;
@@ -99,7 +100,16 @@ export default function WordSelection({
                         </div>
 
                         <div>
-                            <label className="swiss-label block mb-2">KAFASINDAKİ KAĞITTA NE YAZSIN?</label>
+                            <div className="flex items-center justify-between gap-2 mb-2">
+                                <label className="swiss-label">KAFASINDAKİ KAĞITTA NE YAZSIN?</label>
+                                <button
+                                    type="button"
+                                    onClick={() => setWordInput(getRandomWord(gameState.category, wordInput))}
+                                    className="font-mono text-[11px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-[4px] bg-[#222630] border-2 border-[#3E4659] text-[#FFBE0B] hover:border-[#FFBE0B] hover:bg-[#2A303E] shadow-[2px_2px_0px_#090A0D] transition-colors cursor-pointer"
+                                >
+                                    🎲 BANA KELİME ÖNER
+                                </button>
+                            </div>
                             <TextField 
                                 fullWidth
                                 placeholder="Örn: Sherlock Holmes, Cristiano Ronaldo, Penguen..."
