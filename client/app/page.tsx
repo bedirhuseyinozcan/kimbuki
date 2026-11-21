@@ -2,23 +2,27 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { TextField, Button, Dialog, DialogTitle, DialogContent, AppBar, Toolbar, Container, Tabs, Tab, Link as MuiLink, IconButton, Drawer, List, InputAdornment, Avatar } from "@mui/material";
+import { Button, AppBar, Toolbar, Container, IconButton, Drawer, List } from "@mui/material";
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import GroupIcon from '@mui/icons-material/Group';
 import LightbulbIcon from '@mui/icons-material/Lightbulb';
 import QuestionMarkIcon from '@mui/icons-material/QuestionMark';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
-import PersonOutlineIcon from '@mui/icons-material/PersonOutlined';
-import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
-import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
 import StorefrontIcon from '@mui/icons-material/Storefront';
 import MenuIcon from '@mui/icons-material/Menu';
 import CloseIcon from '@mui/icons-material/Close';
-import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import { toast } from 'react-toastify';
 import Logo from "@/components/Logo";
-import { AVATARS, PEDESTALS, getRankInfo, NAME_COLORS, TITLES } from "@/components/game/types";
+import { getRankInfo } from "@/components/game/types";
 import { getAudioContext } from "@/utils/audio";
+import { HomeUser, LeaderboardEntry, ShopItem } from "@/components/home/types";
+import PlayAuthDialog from "@/components/home/PlayAuthDialog";
+import ForgotPasswordDialog from "@/components/home/ForgotPasswordDialog";
+import ProfileDialog from "@/components/home/ProfileDialog";
+import DailyRewardDialog from "@/components/home/DailyRewardDialog";
+import ShopDialog from "@/components/home/ShopDialog";
+import LeaderboardDialog from "@/components/home/LeaderboardDialog";
+import QuestsDialog from "@/components/home/QuestsDialog";
 
 export default function Home() {
   const [roomCode, setRoomCode] = useState("");
@@ -32,12 +36,8 @@ export default function Home() {
   };
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
   const [forgotPasswordDialogOpen, setForgotPasswordDialogOpen] = useState(false);
-  
-  type QuestItem = { id: string; type: string; target: number; progress: number; rewardGold: number; rewardRep: number; title: string; isClaimed: boolean };
-  type ShopItem = { id: string; price: number; label: string; icon: string; type: string };
-  type LeaderboardEntry = { _id?: string; username: string; gold: number; reputation?: number; avatar?: string; nameColor?: string; title?: string };
 
-  const [user, setUser] = useState<{ id: string, username: string, isGuest?: boolean, avatar: string, pedestal?: string, nameColor?: string, title?: string, gold: number, unlockedAvatars: string[], unlockedPedestals?: string[], unlockedNameColors?: string[], unlockedTitles?: string[], rankInfo?: { title: string, reputation: number, nextThreshold: number | null }, quests?: QuestItem[], canClaimDaily?: boolean, loginStreak?: number } | null>(null);
+  const [user, setUser] = useState<HomeUser | null>(null);
   
   const [questsDialogOpen, setQuestsDialogOpen] = useState(false);
 
@@ -379,18 +379,6 @@ export default function Home() {
         }
     } catch (e) {
         toast.error("Bağlantı hatası!");
-    }
-  };
-
-  const inputFieldSx = {
-    input: { color: '#F6F5F2', fontWeight: 600, fontFamily: 'var(--font-sans)' },
-    label: { color: '#A0A8B8' },
-    '& .MuiOutlinedInput-root': {
-      backgroundColor: '#111318',
-      borderRadius: '4px',
-      '& fieldset': { borderColor: '#2D3342', borderWidth: '2px' },
-      '&:hover fieldset': { borderColor: '#3E4659' },
-      '&.Mui-focused fieldset': { borderColor: '#FFBE0B', borderWidth: '2px' }
     }
   };
 
@@ -762,736 +750,83 @@ export default function Home() {
         <p>© 2026 KİMBUKİ. TÜM HAKLARI SAKLIDIR.</p>
       </footer>
 
-      {/* Auth / Create & Join Room Dialog */}
-      <Dialog 
-        open={playDialogOpen} 
+      <PlayAuthDialog
+        open={playDialogOpen}
         onClose={() => setPlayDialogOpen(false)}
-        slotProps={{ 
-            paper: { 
-              className: "!bg-[#1A1D24] !text-[#F6F5F2] !rounded-[6px] !border-2 !border-[#3E4659] !shadow-[8px_8px_0px_#090A0D] min-w-[320px] sm:min-w-[420px]" 
-            }
-        }}
-      >
-        <DialogTitle className="font-display font-bold uppercase tracking-wider text-xl border-b-2 border-[#2D3342] py-4 px-6 flex items-center gap-2">
-          <span className="w-2.5 h-2.5 bg-[#FFBE0B] inline-block" />
-          {user ? "MASAYA KATIL VEYA ODA KUR" : "OYUNCU GİRİŞİ"}
-        </DialogTitle>
-        <DialogContent className="p-6">
-          
-          {!user ? (
-            <div className="space-y-4 mt-2">
-              <Tabs 
-                value={authTab} 
-                onChange={(_, v) => setAuthTab(v)} 
-                variant="fullWidth"
-                textColor="inherit"
-                slotProps={{ indicator: { style: { backgroundColor: '#FFBE0B', height: '3px' } } }}
-                className="mb-4 border-b-2 border-[#2D3342]"
-              >
-                <Tab label="GİRİŞ YAP" className="!font-display !font-bold !text-xs sm:!text-sm" />
-                <Tab label="KAYIT OL" className="!font-display !font-bold !text-xs sm:!text-sm" />
-                <Tab label="⚡ MİSAFİR" className="!font-display !font-bold !text-xs sm:!text-sm !text-[#00E5A3]" />
-              </Tabs>
+        user={user}
+        authTab={authTab}
+        setAuthTab={setAuthTab}
+        guestName={guestName}
+        setGuestName={setGuestName}
+        loginEmail={loginEmail}
+        setLoginEmail={setLoginEmail}
+        loginName={loginName}
+        setLoginName={setLoginName}
+        loginPassword={loginPassword}
+        setLoginPassword={setLoginPassword}
+        loginLoading={loginLoading}
+        roomCode={roomCode}
+        setRoomCode={setRoomCode}
+        onGuestLogin={handleGuestLogin}
+        onAuth={handleAuth}
+        onForgotPassword={handleForgotPassword}
+        onOpenProfile={openProfile}
+        onCreateRoom={handleCreate}
+        onJoinRoom={handleJoin}
+      />
 
-              {authTab === 2 ? (
-                <div className="space-y-4">
-                  <div className="p-3 bg-[#00E5A3]/10 border-l-4 border-[#00E5A3] rounded-[4px] font-mono text-xs text-[#A0A8B8]">
-                    Kayıt olmadan 3 saniyede masaya otur ve sesli sohbete katıl. (Altın bahis ve mağaza için hesap gerekir.)
-                  </div>
-                  <TextField
-                    placeholder="Takma Adın (3-20 karakter)"
-                    size="small"
-                    value={guestName}
-                    onChange={(e) => setGuestName(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") handleGuestLogin();
-                    }}
-                    sx={inputFieldSx}
-                    slotProps={{
-                      input: {
-                        startAdornment: (
-                          <InputAdornment position="start">
-                            <PersonOutlineIcon sx={{ color: '#00E5A3', fontSize: 20 }} />
-                          </InputAdornment>
-                        )
-                      }
-                    }}
-                    fullWidth
-                  />
-                  <Button
-                    variant="contained"
-                    fullWidth
-                    size="large"
-                    disabled={loginLoading || guestName.trim().length < 3}
-                    onClick={handleGuestLogin}
-                    className="swiss-btn-mint !py-3.5"
-                  >
-                    {loginLoading ? "BAĞLANILIYOR..." : (roomCode.trim() ? `⚡ ${roomCode.trim().toUpperCase()} ODASINA KATIL` : "⚡ MİSAFİR OLARAK BAŞLA")}
-                  </Button>
-                </div>
-              ) : (
-                <>
-                  <TextField
-                    placeholder="E-posta adresiniz"
-                    type="email"
-                    size="small"
-                    value={loginEmail}
-                    onChange={(e) => setLoginEmail(e.target.value)}
-                    sx={inputFieldSx}
-                    slotProps={{ 
-                      input: {
-                        startAdornment: (
-                          <InputAdornment position="start">
-                            <EmailOutlinedIcon sx={{ color: '#A0A8B8', fontSize: 20 }} />
-                          </InputAdornment>
-                        )
-                      }
-                    }}
-                    fullWidth
-                  />
-
-                  {authTab === 1 && (
-                    <TextField
-                      placeholder="Kullanıcı Adı (Nick)"
-                      size="small"
-                      value={loginName}
-                      onChange={(e) => setLoginName(e.target.value)}
-                      sx={inputFieldSx}
-                      slotProps={{ 
-                        input: {
-                          startAdornment: (
-                            <InputAdornment position="start">
-                              <PersonOutlineIcon sx={{ color: '#A0A8B8', fontSize: 20 }} />
-                            </InputAdornment>
-                          )
-                        }
-                      }}
-                      fullWidth
-                    />
-                  )}
-
-                  <div>
-                    <TextField
-                      placeholder="Şifre"
-                      type="password"
-                      size="small"
-                      value={loginPassword}
-                      onChange={(e) => setLoginPassword(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") handleAuth();
-                      }}
-                      sx={inputFieldSx}
-                      slotProps={{ 
-                        input: {
-                          startAdornment: (
-                            <InputAdornment position="start">
-                              <LockOutlinedIcon sx={{ color: '#A0A8B8', fontSize: 20 }} />
-                            </InputAdornment>
-                          )
-                        }
-                      }}
-                      fullWidth
-                    />
-                    {authTab === 0 && (
-                        <div className="text-right mt-2">
-                            <MuiLink 
-                                component="button" 
-                                variant="body2" 
-                                onClick={handleForgotPassword}
-                                className="!font-mono !text-xs !text-[#A0A8B8] hover:!text-[#FFBE0B]"
-                                underline="hover"
-                            >
-                                Şifremi Unuttum?
-                            </MuiLink>
-                        </div>
-                    )}
-                  </div>
-
-                  <Button
-                    variant="contained"
-                    fullWidth
-                    size="large"
-                    disabled={loginLoading}
-                    onClick={handleAuth}
-                    className="swiss-btn-primary !py-3.5 !mt-2"
-                  >
-                    {loginLoading ? "İŞLENİYOR..." : (authTab === 0 ? "GİRİŞ YAP" : "HESAP OLUŞTUR")}
-                  </Button>
-                </>
-              )}
-            </div>
-          ) : (
-            <div className="space-y-6 mt-2">
-              <div className="bg-[#111318] p-4 rounded-[4px] border-2 border-[#2D3342] flex items-center justify-between">
-                <div>
-                  <span className="swiss-label block">AKTİF OYUNCU</span>
-                  <p className="font-display text-xl font-bold text-[#FFBE0B] uppercase">{user.username}</p>
-                </div>
-                <Button size="small" className="swiss-btn-secondary !px-3 !py-1 !text-xs" onClick={openProfile}>
-                  PROFİL
-                </Button>
-              </div>
-
-              <Button
-                variant="contained"
-                fullWidth
-                size="large"
-                onClick={handleCreate}
-                className="swiss-btn-primary !py-4 !text-base"
-              >
-                + YENİ MASA KUR
-              </Button>
-              
-              <div className="relative flex items-center py-1">
-                <div className="flex-grow border-t-2 border-[#2D3342]"></div>
-                <span className="flex-shrink-0 mx-4 font-mono text-xs font-bold uppercase text-[#687082]">
-                  VEYA KOD İLE KATIL
-                </span>
-                <div className="flex-grow border-t-2 border-[#2D3342]"></div>
-              </div>
-
-              <div className="flex flex-col gap-3">
-                <TextField
-                  placeholder="ODA KODU (ÖRN: A7B9K2)"
-                  value={roomCode}
-                  onChange={(e) => setRoomCode(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handleJoin();
-                  }}
-                  sx={{
-                    input: { 
-                      color: '#111318', 
-                      backgroundColor: '#F4F1EA', 
-                      textAlign: 'center', 
-                      fontFamily: 'var(--font-mono)', 
-                      fontWeight: 700,
-                      letterSpacing: '0.15em',
-                      textTransform: 'uppercase'
-                    },
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: '4px',
-                      '& fieldset': { borderColor: '#090A0D', borderWidth: '2px' }
-                    }
-                  }}
-                  fullWidth
-                />
-                <Button
-                  variant="outlined"
-                  fullWidth
-                  size="large"
-                  onClick={handleJoin}
-                  className="swiss-btn-mint !py-3.5"
-                >
-                  ODAYA KATIL 🚀
-                </Button>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Forgot Password Dialog */}
-      <Dialog 
-        open={forgotPasswordDialogOpen} 
+      <ForgotPasswordDialog
+        open={forgotPasswordDialogOpen}
         onClose={() => setForgotPasswordDialogOpen(false)}
-        slotProps={{ 
-            paper: { 
-              className: "!bg-[#1A1D24] !text-[#F6F5F2] !rounded-[6px] !border-2 !border-[#3E4659] !shadow-[8px_8px_0px_#090A0D] min-w-[320px] max-w-md" 
-            }
-        }}
-      >
-        <DialogTitle className="font-display font-bold uppercase tracking-wider text-lg border-b-2 border-[#2D3342] py-4 px-6">
-          ŞİFREMİ UNUTTUM
-        </DialogTitle>
-        <DialogContent className="p-6 space-y-4">
-            <p className="text-[#A0A8B8] text-sm mt-2">
-                Kayıt olduğunuz e-posta adresinizi girin. Size bir şifre sıfırlama bağlantısı göndereceğiz.
-            </p>
-            <TextField
-                placeholder="E-posta adresiniz"
-                type="email"
-                size="small"
-                disabled
-                sx={inputFieldSx}
-                fullWidth
-            />
-            <div className="bg-[#FFBE0B]/10 border-l-4 border-[#FFBE0B] p-3 text-[#FFBE0B] font-mono text-xs">
-                ⚠️ BİLGİLENDİRME: Otomatik e-posta ile şifre sıfırlama servisi şu anda bakım aşamasındadır. Lütfen yönetici ile iletişime geçin.
-            </div>
-            <Button
-                variant="contained"
-                fullWidth
-                disabled
-                className="!py-3 !mt-2 !rounded-[4px] !bg-[#222630] !text-[#687082] !font-mono !font-bold"
-            >
-                GEÇİCİ OLARAK DEVRE DIŞI
-            </Button>
-        </DialogContent>
-      </Dialog>
+      />
 
-      {/* Profile & Locker Dialog */}
-      <Dialog 
-        open={profileDialogOpen} 
+      <ProfileDialog
+        open={profileDialogOpen}
         onClose={() => setProfileDialogOpen(false)}
-        slotProps={{ 
-            paper: { 
-              className: "!bg-[#1A1D24] !text-[#F6F5F2] !rounded-[6px] !border-2 !border-[#3E4659] !shadow-[8px_8px_0px_#090A0D] min-w-[320px] sm:min-w-[460px]" 
-            }
-        }}
-      >
-        <DialogTitle className="font-display font-bold uppercase tracking-wider text-xl border-b-2 border-[#2D3342] py-4 px-6 flex items-center justify-between">
-          <span>OYUNCU KİMLİĞİ & ENVANTER</span>
-          <span className="font-mono text-xs text-[#FFBE0B]">PROFİL</span>
-        </DialogTitle>
-        <DialogContent className="p-6 space-y-5 custom-scrollbar">
-            <div className="bg-[#111318] border-2 border-[#2D3342] p-4 rounded-[4px] flex flex-col items-center mt-2">
-                <span className="swiss-label mb-1">MEVCUT İTİBAR KADEMESİ</span>
-                <span className={`font-display text-2xl font-bold uppercase mb-3 flex items-center gap-2 ${getRankInfo(user?.rankInfo?.reputation || 0).color}`}>
-                    <span className="text-3xl">{getRankInfo(user?.rankInfo?.reputation || 0).icon}</span>
-                    {getRankInfo(user?.rankInfo?.reputation || 0).title}
-                </span>
-                <div className="w-full flex flex-col items-center">
-                    <div className="flex justify-between w-full font-mono text-[10px] font-bold uppercase text-[#A0A8B8] mb-1">
-                        <span>İTİBAR PUANI</span>
-                        <span className="tnum">{user?.rankInfo?.reputation || 0} / {user?.rankInfo?.nextThreshold || 'MAX'} RP</span>
-                    </div>
-                    <div className="w-full h-2.5 bg-[#1A1D24] rounded-[2px] overflow-hidden border border-[#2D3342]">
-                        <div 
-                            className="h-full bg-[#FFBE0B]" 
-                            style={{ width: `${user?.rankInfo?.nextThreshold ? Math.min(100, ((user.rankInfo.reputation || 0) / user.rankInfo.nextThreshold) * 100) : 100}%` }}
-                        />
-                    </div>
-                </div>
-            </div>
+        user={user}
+        loginName={loginName}
+        setLoginName={setLoginName}
+        selectedAvatar={selectedAvatar}
+        setSelectedAvatar={setSelectedAvatar}
+        selectedPedestal={selectedPedestal}
+        setSelectedPedestal={setSelectedPedestal}
+        selectedNameColor={selectedNameColor}
+        setSelectedNameColor={setSelectedNameColor}
+        selectedTitle={selectedTitle}
+        setSelectedTitle={setSelectedTitle}
+        onSave={handleUpdateProfile}
+        onLogout={handleLogout}
+      />
 
-            <div>
-                <label className="swiss-label block mb-2">KULLANICI ADI</label>
-                <TextField
-                    size="small"
-                    value={loginName}
-                    onChange={(e) => setLoginName(e.target.value)}
-                    sx={inputFieldSx}
-                    fullWidth
-                />
-            </div>
-
-            <div>
-                <p className="swiss-label mb-2.5">3D KARAKTER SEÇİMİ:</p>
-                <div className="flex flex-wrap gap-2.5 max-h-[140px] overflow-y-auto custom-scrollbar p-1">
-                    {user?.unlockedAvatars?.map(avId => {
-                        const av = AVATARS.find(a => a.id === avId);
-                        if (!av) return null;
-                        const isSelected = selectedAvatar === av.id;
-                        return (
-                            <div 
-                                key={av.id} 
-                                onClick={() => setSelectedAvatar(av.id)}
-                                className={`w-12 h-12 rounded-[4px] border-2 cursor-pointer flex justify-center items-center transition-all ${av.color} ${
-                                    isSelected 
-                                        ? 'border-[#FFBE0B] shadow-[3px_3px_0px_#FFBE0B] -translate-y-0.5' 
-                                        : 'border-[#090A0D] opacity-60 hover:opacity-100'
-                                }`}
-                                title={av.label}
-                            >
-                                {av.icon ? (
-                                    <span className="text-2xl flex items-center justify-center w-full h-full">{av.icon}</span>
-                                ) : (
-                                    <span className="text-xl font-bold">{user.username.charAt(0).toUpperCase()}</span>
-                                )}
-                            </div>
-                        );
-                    })}
-                </div>
-            </div>
-
-            <div>
-                <p className="swiss-label mb-2.5">PLATFORM (KAİDE) SEÇİMİ:</p>
-                <div className="flex flex-wrap gap-2 max-h-[140px] overflow-y-auto custom-scrollbar p-1">
-                    {user?.unlockedPedestals?.map(pedId => {
-                        const ped = PEDESTALS.find(p => p.id === pedId);
-                        if (!ped) return null;
-                        const isSelected = selectedPedestal === ped.id;
-                        return (
-                            <button 
-                                key={ped.id} 
-                                onClick={() => setSelectedPedestal(ped.id)}
-                                className={`px-3.5 py-2 rounded-[4px] border-2 font-mono text-xs font-bold uppercase cursor-pointer transition-all ${
-                                    isSelected 
-                                        ? 'bg-[#FFBE0B] text-[#111318] border-[#090A0D] shadow-[2px_2px_0px_#090A0D]' 
-                                        : 'bg-[#111318] text-[#A0A8B8] border-[#2D3342] hover:border-[#3E4659]'
-                                }`}
-                            >
-                                {ped.label}
-                            </button>
-                        );
-                    })}
-                </div>
-            </div>
-
-            <div>
-                <p className="swiss-label mb-2.5">İSİM RENGİ:</p>
-                <div className="flex flex-wrap gap-2 max-h-[140px] overflow-y-auto custom-scrollbar p-1">
-                    {user?.unlockedNameColors?.map(colorId => {
-                        const c = NAME_COLORS.find(x => x.id === colorId);
-                        if (!c) return null;
-                        const isSelected = selectedNameColor === c.id;
-                        return (
-                            <button 
-                                key={c.id} 
-                                onClick={() => setSelectedNameColor(c.id)}
-                                className={`px-3.5 py-2 rounded-[4px] border-2 font-mono text-xs font-bold uppercase cursor-pointer transition-all bg-[#111318] ${
-                                    isSelected 
-                                        ? 'border-[#FFBE0B] shadow-[2px_2px_0px_#FFBE0B]' 
-                                        : 'border-[#2D3342] opacity-70 hover:opacity-100'
-                                }`}
-                            >
-                                <span className={c.className}>{c.label}</span>
-                            </button>
-                        );
-                    })}
-                </div>
-            </div>
-
-            <div>
-                <p className="swiss-label mb-2.5">ÖZEL ÜNVAN:</p>
-                <div className="flex flex-wrap gap-2 max-h-[140px] overflow-y-auto custom-scrollbar p-1">
-                    {['', ...(user?.unlockedTitles || [])].map(titleId => {
-                        const t = TITLES.find(x => x.id === titleId);
-                        if (!t) return null;
-                        const isSelected = selectedTitle === t.id;
-                        return (
-                            <button 
-                                key={t.id} 
-                                onClick={() => setSelectedTitle(t.id)}
-                                className={`px-3.5 py-2 rounded-[4px] border-2 font-mono text-xs font-bold uppercase cursor-pointer transition-all ${
-                                    isSelected 
-                                        ? 'bg-[#00E5A3] text-[#111318] border-[#090A0D] shadow-[2px_2px_0px_#090A0D]' 
-                                        : 'bg-[#111318] text-[#A0A8B8] border-[#2D3342] hover:border-[#3E4659]'
-                                }`}
-                            >
-                                {t.label}
-                            </button>
-                        );
-                    })}
-                </div>
-            </div>
-
-            <div className="pt-2 flex flex-col gap-2.5">
-                <Button
-                    variant="contained"
-                    fullWidth
-                    onClick={handleUpdateProfile}
-                    className="swiss-btn-primary !py-3"
-                >
-                    DEĞİŞİKLİKLERİ KAYDET
-                </Button>
-                <Button
-                    variant="outlined"
-                    fullWidth
-                    onClick={handleLogout}
-                    className="!border-2 !border-[#FF334B] !text-[#FF334B] hover:!bg-[#FF334B] hover:!text-white !rounded-[4px] !font-mono !font-bold !py-2.5"
-                >
-                    OTURUMU KAPAT
-                </Button>
-            </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Daily Reward Dialog */}
-      <Dialog 
-        open={dailyRewardDialogOpen} 
+      <DailyRewardDialog
+        open={dailyRewardDialogOpen}
         onClose={() => setDailyRewardDialogOpen(false)}
-        maxWidth="sm"
-        fullWidth
-        slotProps={{ 
-            paper: { 
-              className: "!bg-[#1A1D24] !text-[#F6F5F2] !rounded-[6px] !border-2 !border-[#00E5A3] !shadow-[8px_8px_0px_#090A0D]" 
-            }
-        }}
-      >
-        <DialogTitle className="font-display font-bold uppercase tracking-wider text-xl border-b-2 border-[#2D3342] py-4 px-6 flex items-center justify-between">
-            <span>🎁 7 GÜNLÜK GİRİŞ SERİSİ</span>
-            <span className="font-mono text-xs text-[#00E5A3] tnum">SERİ: {user?.loginStreak || 0} GÜN</span>
-        </DialogTitle>
-        <DialogContent className="p-6">
-            <p className="text-[#A0A8B8] text-sm mb-6 mt-1">
-              Her gün oyuna girerek giriş serini koru ve artan altın ödüllerini topla!
-            </p>
-            <div className="grid grid-cols-4 sm:grid-cols-7 gap-2.5">
-                {[1, 2, 3, 4, 5, 6, 7].map((day) => {
-                    const amounts = [50, 100, 150, 200, 250, 300, 500];
-                    const amount = amounts[day - 1];
-                    const streak = user?.loginStreak || 0;
-                    const effectiveStreak = user?.canClaimDaily && streak >= 7 ? 0 : streak;
-                    
-                    let status = 'locked';
-                    if (user?.canClaimDaily) {
-                        if (day <= effectiveStreak) status = 'claimed';
-                        else if (day === effectiveStreak + 1) status = 'current';
-                    } else {
-                        if (day <= streak) status = 'claimed';
-                    }
+        user={user}
+        onClaimDaily={handleClaimDaily}
+      />
 
-                    let cardStyle = 'bg-[#111318] border-[#2D3342] text-[#687082]';
-                    if (status === 'claimed') cardStyle = 'bg-[#00E5A3]/15 border-[#00E5A3] text-[#00E5A3]';
-                    if (status === 'current') cardStyle = 'bg-[#FFBE0B] border-[#090A0D] text-[#111318] shadow-[3px_3px_0px_#090A0D] -translate-y-1';
-
-                    return (
-                        <div key={day} className={`flex flex-col items-center justify-between p-3 rounded-[4px] border-2 ${cardStyle} transition-all`}>
-                            <span className="font-mono text-[10px] font-bold uppercase">{day}. GÜN</span>
-                            <span className="text-xl my-2">
-                                {status === 'claimed' ? '✓' : status === 'locked' ? '🔒' : '🎁'}
-                            </span>
-                            <span className="font-mono text-xs font-bold tnum">{amount}G</span>
-                        </div>
-                    );
-                })}
-            </div>
-            
-            <Button
-                variant="contained"
-                fullWidth
-                disabled={!user?.canClaimDaily}
-                onClick={async () => {
-                    await handleClaimDaily();
-                    setDailyRewardDialogOpen(false);
-                }}
-                className={`!py-3.5 !mt-6 ${user?.canClaimDaily ? 'swiss-btn-mint' : '!bg-[#111318] !text-[#687082] !border-2 !border-[#2D3342] !font-mono !font-bold'}`}
-            >
-                {user?.canClaimDaily ? 'GÜNLÜK ÖDÜLÜ TOPLA' : 'BUGÜNÜN ÖDÜLÜ ALINDI'}
-            </Button>
-        </DialogContent>
-      </Dialog>
-
-      {/* Shop Dialog */}
-      <Dialog 
-        open={shopDialogOpen} 
+      <ShopDialog
+        open={shopDialogOpen}
         onClose={() => setShopDialogOpen(false)}
-        maxWidth="sm"
-        fullWidth
-        slotProps={{ 
-            paper: { 
-              className: "!bg-[#1A1D24] !text-[#F6F5F2] !rounded-[6px] !border-2 !border-[#3E4659] !shadow-[8px_8px_0px_#090A0D]" 
-            }
-        }}
-      >
-        <DialogTitle className="font-display font-bold uppercase tracking-wider text-xl border-b-2 border-[#2D3342] py-4 px-6 flex items-center justify-between">
-            <span>🛒 KOZMETİK MAĞAZASI</span>
-            <span className="font-mono text-xs font-bold px-3 py-1 bg-[#111318] border border-[#FFBE0B] text-[#FFBE0B] rounded-[4px] tnum">
-                🪙 {user?.gold || 0} ALTIN
-            </span>
-        </DialogTitle>
-        <DialogContent className="p-6 custom-scrollbar">
-            <Tabs 
-                value={shopTab} 
-                onChange={(_, newValue) => setShopTab(newValue)} 
-                variant="scrollable"
-                scrollButtons="auto"
-                sx={{
-                    mb: 3, borderBottom: 2, borderColor: '#2D3342',
-                    '& .MuiTab-root': { color: '#A0A8B8', fontFamily: 'var(--font-display)', fontWeight: 700, textTransform: 'uppercase' },
-                    '& .Mui-selected': { color: '#FFBE0B !important' },
-                    '& .MuiTabs-indicator': { backgroundColor: '#FFBE0B', height: '3px' }
-                }}
-            >
-                <Tab label="🎭 KARAKTERLER" />
-                <Tab label="🧊 KAİDELER" />
-                <Tab label="🎨 İSİM RENKLERİ" />
-                <Tab label="👑 ÜNVANLAR" />
-            </Tabs>
+        user={user}
+        shopTab={shopTab}
+        setShopTab={setShopTab}
+        shopItems={shopItems}
+        onBuyItem={handleBuyItem}
+      />
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5">
-                {shopItems.filter(i => {
-                    if (shopTab === 0) return i.type === 'avatar' || !i.type;
-                    if (shopTab === 1) return i.type === 'pedestal';
-                    if (shopTab === 2) return i.type === 'color';
-                    if (shopTab === 3) return i.type === 'title';
-                    return false;
-                }).map((item) => {
-                    let isUnlocked = false;
-                    if (shopTab === 0) isUnlocked = user?.unlockedAvatars?.includes(item.id) || false;
-                    if (shopTab === 1) isUnlocked = user?.unlockedPedestals?.includes(item.id) || false;
-                    if (shopTab === 2) isUnlocked = user?.unlockedNameColors?.includes(item.id) || false;
-                    if (shopTab === 3) isUnlocked = user?.unlockedTitles?.includes(item.id) || false;
-
-                    return (
-                        <div key={item.id} className="bg-[#111318] p-4 rounded-[4px] border-2 border-[#2D3342] flex flex-col items-center justify-between text-center">
-                            <span className="text-4xl mb-2 flex justify-center items-center h-[52px] w-[52px] bg-[#1A1D24] border border-[#2D3342] rounded-[4px]">
-                                {item.icon}
-                            </span>
-                            <span className="font-display font-bold text-sm uppercase text-[#F6F5F2]">{item.label}</span>
-                            <div className="mt-3 w-full">
-                                {isUnlocked ? (
-                                    <Button disabled fullWidth size="small" className="!bg-[#1A1D24] !text-[#687082] !border !border-[#2D3342] !font-mono !text-xs !font-bold !rounded-[4px]">
-                                        ENVANTERDE
-                                    </Button>
-                                ) : (
-                                    <Button 
-                                        fullWidth 
-                                        size="small" 
-                                        onClick={() => handleBuyItem(item.id)}
-                                        className="swiss-btn-primary !py-1.5 !text-xs tnum"
-                                        startIcon={<AttachMoneyIcon fontSize="small" />}
-                                    >
-                                        {item.price}
-                                    </Button>
-                                )}
-                            </div>
-                        </div>
-                    );
-                })}
-            </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Leaderboard Dialog */}
-      <Dialog 
-        open={leaderboardDialogOpen} 
+      <LeaderboardDialog
+        open={leaderboardDialogOpen}
         onClose={() => setLeaderboardDialogOpen(false)}
-        maxWidth="sm"
-        fullWidth
-        slotProps={{ 
-            paper: { 
-              className: "!bg-[#1A1D24] !text-[#F6F5F2] !rounded-[6px] !border-2 !border-[#FFBE0B] !shadow-[8px_8px_0px_#090A0D]" 
-            }
-        }}
-      >
-        <DialogTitle className="font-display font-bold uppercase tracking-wider text-xl border-b-2 border-[#2D3342] py-4 px-6 flex items-center justify-between">
-            <span>🏆 ŞEREF KÜRSÜSÜ (LİDERLİK)</span>
-            <span className="font-mono text-xs text-[#FFBE0B]">TOP OYUNCULAR</span>
-        </DialogTitle>
-        <DialogContent className="p-6 custom-scrollbar">
-            <div className="space-y-2.5 mt-1">
-                {leaderboard.length === 0 ? (
-                    <p className="text-center font-mono text-xs uppercase text-[#687082] py-6">HENÜZ SIRALAMA VERİSİ YOK.</p>
-                ) : (
-                    leaderboard.map((u, index) => {
-                        const avMeta = AVATARS.find(a => a.id === u.avatar);
-                        const rankObj = getRankInfo(u.reputation || 0);
-                        return (
-                            <div 
-                                key={u._id || u.username || index} 
-                                className={`flex justify-between items-center p-3.5 rounded-[4px] border-2 ${
-                                    index === 0 
-                                        ? 'bg-[#FFBE0B]/15 border-[#FFBE0B]' 
-                                        : index < 3 
-                                            ? 'bg-[#222630] border-[#3E4659]' 
-                                            : 'bg-[#111318] border-[#2D3342]'
-                                }`}
-                            >
-                                <div className="flex items-center gap-3.5">
-                                    <span className={`font-mono font-bold text-lg w-8 text-center tnum ${
-                                        index === 0 ? 'text-[#FFBE0B]' : index === 1 ? 'text-[#F6F5F2]' : index === 2 ? 'text-[#FF5938]' : 'text-[#687082]'
-                                    }`}>
-                                        #{index + 1}
-                                    </span>
-                                    <Avatar className={`!rounded-[4px] !border-2 !border-[#090A0D] ${avMeta?.color || '!bg-[#3B82F6]'}`}>
-                                        {avMeta?.icon ? <span className="text-xl flex items-center justify-center h-full w-full">{avMeta.icon}</span> : u.username.charAt(0).toUpperCase()}
-                                    </Avatar>
-                                    <div className="flex flex-col">
-                                        <span className={`text-[10px] font-mono font-bold uppercase tracking-wider flex items-center gap-1 ${rankObj.color}`}>
-                                            {rankObj.icon} {rankObj.title}
-                                        </span>
-                                        <div className="flex items-center gap-2 mt-0.5">
-                                            {u.title && (
-                                                <span className="text-[10px] font-mono font-bold bg-[#1A1D24] border border-[#3E4659] px-1.5 py-0.5 rounded-[2px] text-[#F6F5F2]">
-                                                    {TITLES.find(t => t.id === u.title)?.label || u.title}
-                                                </span>
-                                            )}
-                                            <span className={`font-display font-bold text-base leading-tight ${NAME_COLORS.find(c => c.id === u.nameColor)?.className || 'text-[#F6F5F2]'}`}>
-                                                {u.username}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="font-mono text-xs font-bold bg-[#111318] text-[#00E5A3] px-3 py-1 rounded-[4px] border border-[#00E5A3] tnum">
-                                    ★ {u.reputation || 0}
-                                </div>
-                            </div>
-                        );
-                    })
-                )}
-            </div>
-            <Button
-                variant="outlined"
-                fullWidth
-                onClick={() => setLeaderboardDialogOpen(false)}
-                className="swiss-btn-secondary !mt-6 !py-2.5"
-            >
-                TABLOYU KAPAT
-            </Button>
-        </DialogContent>
-      </Dialog>
+        leaderboard={leaderboard}
+      />
 
-      {/* Quests Dialog */}
-      <Dialog 
-        open={questsDialogOpen} 
+      <QuestsDialog
+        open={questsDialogOpen}
         onClose={() => setQuestsDialogOpen(false)}
-        maxWidth="sm" 
-        fullWidth
-        slotProps={{ 
-            paper: { 
-                className: "!bg-[#1A1D24] !text-[#F6F5F2] !rounded-[6px] !border-2 !border-[#3E4659] !shadow-[8px_8px_0px_#090A0D]" 
-            } 
-        }}
-      >
-        <DialogTitle className="font-display font-bold uppercase tracking-wider text-xl border-b-2 border-[#2D3342] py-4 px-6 flex items-center justify-between">
-            <span>📜 AKTİF GÖREVLER</span>
-            <span className="font-mono text-xs text-[#00E5A3]">ÖDÜL KONTRATLARI</span>
-        </DialogTitle>
-        <DialogContent className="p-6 custom-scrollbar">
-            <div className="space-y-3.5 mt-1">
-                {user?.quests?.map((quest: QuestItem) => {
-                    const isCompleted = quest.progress >= quest.target;
-                    return (
-                        <div 
-                            key={quest.id} 
-                            className={`p-4 rounded-[4px] border-2 flex flex-col sm:flex-row gap-4 justify-between items-center ${
-                                quest.isClaimed 
-                                    ? 'bg-[#111318] border-[#2D3342] opacity-55' 
-                                    : isCompleted 
-                                        ? 'bg-[#00E5A3]/10 border-[#00E5A3]' 
-                                        : 'bg-[#111318] border-[#2D3342]'
-                            }`}
-                        >
-                            <div className="flex-1 w-full text-left">
-                                <p className="font-display font-bold text-base uppercase text-[#F6F5F2]">{quest.title}</p>
-                                <p className="font-mono text-xs text-[#FFBE0B] font-bold mb-2.5 mt-0.5 tnum">
-                                    ÖDÜL: +{quest.rewardGold} ALTIN & +{quest.rewardRep} İTİBAR
-                                </p>
-                                <div className="w-full h-2 bg-[#1A1D24] rounded-[2px] overflow-hidden border border-[#2D3342]">
-                                    <div 
-                                        className={`h-full ${isCompleted ? 'bg-[#00E5A3]' : 'bg-[#FFBE0B]'}`} 
-                                        style={{ width: `${Math.min(100, (quest.progress / quest.target) * 100)}%` }}
-                                    />
-                                </div>
-                                <p className="font-mono text-[11px] text-[#A0A8B8] mt-1 text-right tnum">
-                                    {Math.min(quest.progress, quest.target)} / {quest.target}
-                                </p>
-                            </div>
-                            <Button 
-                                variant="contained" 
-                                disabled={!isCompleted || quest.isClaimed}
-                                onClick={() => handleClaimQuest(quest.id)}
-                                className={`!whitespace-nowrap !px-4 !py-2 ${
-                                    quest.isClaimed 
-                                        ? '!bg-[#222630] !text-[#687082] !font-mono !text-xs' 
-                                        : isCompleted 
-                                            ? 'swiss-btn-mint !text-xs' 
-                                            : '!bg-[#222630] !text-[#687082] !font-mono !text-xs'
-                                }`}
-                            >
-                                {quest.isClaimed ? 'ALINDI' : (isCompleted ? 'ÖDÜLÜ AL' : 'DEVAM EDİYOR')}
-                            </Button>
-                        </div>
-                    );
-                })}
-                {!user?.quests?.length && (
-                    <p className="text-center font-mono text-xs uppercase text-[#687082] py-6">GÖREVLER YÜKLENİYOR...</p>
-                )}
-            </div>
-        </DialogContent>
-      </Dialog>
+        user={user}
+        onClaimQuest={handleClaimQuest}
+      />
 
     </div>
   );
