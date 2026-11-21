@@ -64,6 +64,22 @@ function FirstPersonCamera({ myId, users, radius, onHeadRotation }: {
     const lastTargetLook = useRef({ yaw: 0, pitch: 0 });
     const lastPos = useRef({ x: 0, y: 0 });
     const tempTargetPos = useRef(new THREE.Vector3());
+    const invertCameraRef = useRef<boolean>(
+        typeof window !== "undefined" && localStorage.getItem("kimbuki_invert_camera") === "1"
+    );
+
+    useEffect(() => {
+        const handleCameraSettings = (e: Event) => {
+            const custom = e as CustomEvent<{ invertCamera?: boolean }>;
+            if (typeof custom.detail?.invertCamera === "boolean") {
+                invertCameraRef.current = custom.detail.invertCamera;
+            } else {
+                invertCameraRef.current = localStorage.getItem("kimbuki_invert_camera") === "1";
+            }
+        };
+        window.addEventListener("kimbuki:camera-settings-changed", handleCameraSettings);
+        return () => window.removeEventListener("kimbuki:camera-settings-changed", handleCameraSettings);
+    }, []);
 
     useEffect(() => {
         const handleDown = (e: PointerEvent) => {
@@ -88,8 +104,9 @@ function FirstPersonCamera({ myId, users, radius, onHeadRotation }: {
                 const deltaY = e.clientY - lastPos.current.y;
                 lastPos.current = { x: e.clientX, y: e.clientY };
 
-                const deltaYaw = -(deltaX / window.innerWidth) * Math.PI * 1.5;
-                const deltaPitch = -(deltaY / window.innerHeight) * Math.PI * 1.5;
+                const sign = invertCameraRef.current ? 1 : -1;
+                const deltaYaw = sign * (deltaX / window.innerWidth) * Math.PI * 1.5;
+                const deltaPitch = sign * (deltaY / window.innerHeight) * Math.PI * 1.5;
 
                 lastTargetLook.current.yaw = Math.max(-maxYaw, Math.min(maxYaw, lastTargetLook.current.yaw + deltaYaw));
                 lastTargetLook.current.pitch = Math.max(-maxPitch, Math.min(maxPitch, lastTargetLook.current.pitch + deltaPitch));

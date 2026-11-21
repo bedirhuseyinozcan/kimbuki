@@ -33,6 +33,10 @@ export default function AudioSettingsDialog({ open, onClose }: AudioSettingsDial
     
     const [selectedInput, setSelectedInput] = useState<string>('');
     const [selectedOutput, setSelectedOutput] = useState<string>('');
+    const [invertCamera, setInvertCamera] = useState<boolean>(() => {
+        if (typeof window === 'undefined') return false;
+        return localStorage.getItem('kimbuki_invert_camera') === '1';
+    });
     const [permissionError, setPermissionError] = useState<string | null>(null);
     
     const [volume, setVolume] = useState<number>(0);
@@ -214,13 +218,19 @@ export default function AudioSettingsDialog({ open, onClose }: AudioSettingsDial
     const handleSave = () => {
         if (selectedInput) localStorage.setItem("preferredMic", selectedInput);
         if (selectedOutput) localStorage.setItem("preferredSpeaker", selectedOutput);
+        localStorage.setItem("kimbuki_invert_camera", invertCamera ? "1" : "0");
         stopTest();
         window.dispatchEvent(
             new CustomEvent("kimbuki:audio-device-changed", {
                 detail: { inputId: selectedInput, outputId: selectedOutput },
             })
         );
-        toast.success("Ses cihazları canlı olarak güncellendi!");
+        window.dispatchEvent(
+            new CustomEvent("kimbuki:camera-settings-changed", {
+                detail: { invertCamera },
+            })
+        );
+        toast.success("Ses ve kamera ayarları canlı olarak güncellendi!");
         onClose();
     };
 
@@ -311,6 +321,42 @@ export default function AudioSettingsDialog({ open, onClose }: AudioSettingsDial
                     >
                         🔊 HOPARLÖRÜ TEST ET
                     </Button>
+                </div>
+
+                <div className="w-full h-[2px] bg-[#2D3342]" />
+
+                <div className="flex flex-col gap-3">
+                    <span className="swiss-label">3D KAMERA & FARE YÖNÜ</span>
+                    <div className="grid grid-cols-2 gap-2.5">
+                        <button
+                            type="button"
+                            onClick={() => setInvertCamera(false)}
+                            className={`p-3 rounded-[4px] border-2 font-mono text-xs font-bold uppercase tracking-wider text-left transition-colors cursor-pointer ${
+                                !invertCamera
+                                    ? 'bg-[#FFBE0B] text-[#111318] border-[#090A0D] shadow-[3px_3px_0px_#090A0D]'
+                                    : 'bg-[#111318] text-[#A0A8B8] border-[#2D3342] hover:border-[#3E4659]'
+                            }`}
+                        >
+                            <div>NORMAL (VARSAYILAN)</div>
+                            <div className={`text-[10px] mt-1 font-normal normal-case ${!invertCamera ? 'text-[#111318]/80' : 'text-[#8B94A7]'}`}>
+                                Standart kafa çevirme yönü
+                            </div>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setInvertCamera(true)}
+                            className={`p-3 rounded-[4px] border-2 font-mono text-xs font-bold uppercase tracking-wider text-left transition-colors cursor-pointer ${
+                                invertCamera
+                                    ? 'bg-[#00E5A3] text-[#111318] border-[#090A0D] shadow-[3px_3px_0px_#090A0D]'
+                                    : 'bg-[#111318] text-[#A0A8B8] border-[#2D3342] hover:border-[#3E4659]'
+                            }`}
+                        >
+                            <div>TERS FARE (INVERT)</div>
+                            <div className={`text-[10px] mt-1 font-normal normal-case ${invertCamera ? 'text-[#111318]/80' : 'text-[#8B94A7]'}`}>
+                                Sağa çevirince ters yöne döner
+                            </div>
+                        </button>
+                    </div>
                 </div>
 
                 <div className="text-xs font-mono text-[#00E5A3] bg-[#00E5A3]/10 p-3 rounded-[4px] border-l-4 border-[#00E5A3]">
