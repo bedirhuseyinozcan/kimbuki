@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { Button, AppBar, Toolbar, Container, IconButton, Drawer, List } from "@mui/material";
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import GroupIcon from '@mui/icons-material/Group';
@@ -727,27 +728,86 @@ export default function Home() {
 
       {/* About Section */}
       <section id="biz-kimiz" className="py-20">
-        <Container maxWidth="md">
-          <div className="swiss-panel p-8 md:p-12">
-            <span className="swiss-label block mb-2">STÜDYO MANİFESTOSU</span>
-            <h2 className="font-display text-3xl md:text-4xl font-bold uppercase mb-5 text-[#F6F5F2]">
-              BİZ KİMİZ?
-            </h2>
-            <p className="text-[#A0A8B8] text-base md:text-lg leading-relaxed mb-6">
-              Amacımız, klasik kutu ve masa oyunlarının verdiği samimi, rekabetçi ve eğlenceli hissi modern dijital dünyaya taşımak. 
-              Arkadaşlarınızla yan yana veya uzaklarda olsanız bile, gecikmesiz sesli sohbet altyapımız ve 3 boyutlu masa motorumuz 
-              sayesinde sanki aynı odadaymışsınız gibi kahkaha dolu anlar yaşamanızı sağlıyoruz.
-            </p>
-            <div className="pt-4 border-t-2 border-[#2D3342] flex flex-col sm:flex-row sm:items-center justify-between gap-2 font-mono text-xs text-[#687082] uppercase">
-              <span>GELİŞTİRİCİ: BEDİR HÜSEYİN ÖZCAN</span>
-              <span>SWISS TABLETOP EDITION // V2.0</span>
+        <Container maxWidth="lg">
+          <div className="swiss-panel p-6 sm:p-10 md:p-12">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-stretch">
+              {/* Konnev Games Studio Plate */}
+              <div className="lg:col-span-5 bg-[#111318] border-2 border-[#2D3342] hover:border-[#FF5938] transition-colors rounded-[4px] p-6 sm:p-8 flex flex-col justify-between shadow-[4px_4px_0px_#090A0D]">
+                <div className="flex items-center justify-between border-b border-[#2D3342] pb-3">
+                  <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-[#A0A8B8]">
+                    YAPIMCI STÜDYO // 01
+                  </span>
+                  <span className="w-2.5 h-2.5 bg-[#FF5938] inline-block" />
+                </div>
+
+                <div className="my-8 flex items-center justify-center">
+                  <Image
+                    src="/konnev-games-dark.png"
+                    alt="Konnev Games"
+                    width={1024}
+                    height={644}
+                    className="w-full max-w-[270px] h-auto object-contain select-none"
+                  />
+                </div>
+
+                <div className="pt-3 border-t border-[#2D3342] flex items-center justify-between gap-2 font-mono text-[10px] uppercase tracking-wider">
+                  <span className="text-[#F6F5F2] font-bold">KONNEV GAMES</span>
+                  <span className="text-[#8B94A7]">BAĞIMSIZ OYUN STÜDYOSU</span>
+                </div>
+              </div>
+
+              {/* Studio Manifesto */}
+              <div className="lg:col-span-7 flex flex-col justify-between">
+                <div>
+                  <span className="swiss-label block mb-2">STÜDYO MANİFESTOSU</span>
+                  <h2 className="font-display text-3xl md:text-4xl font-bold uppercase mb-5 text-[#F6F5F2]">
+                    BİZ KİMİZ?
+                  </h2>
+                  <p className="text-[#A0A8B8] text-base md:text-lg leading-relaxed mb-4">
+                    Kimbuki&apos;yi <strong className="text-[#F6F5F2]">Konnev Games</strong> olarak geliştiriyoruz. Amacımız, klasik kutu ve masa oyunlarının verdiği samimi, rekabetçi ve eğlenceli hissi modern dijital dünyaya taşımak.
+                  </p>
+                  <p className="text-[#A0A8B8] text-base md:text-lg leading-relaxed mb-8">
+                    Arkadaşlarınızla yan yana veya uzaklarda olsanız bile, gecikmesiz sesli sohbet altyapımız ve 3 boyutlu masa motorumuz sayesinde sanki aynı odadaymışsınız gibi kahkaha dolu anlar yaşamanızı sağlıyoruz.
+                  </p>
+                </div>
+
+                <div className="pt-5 border-t-2 border-[#2D3342] grid grid-cols-1 sm:grid-cols-3 gap-4 font-mono text-xs uppercase">
+                  <div>
+                    <span className="text-[10px] text-[#687082] block mb-1">STÜDYO</span>
+                    <span className="text-[#F6F5F2] font-bold">KONNEV GAMES</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-[#687082] block mb-1">GELİŞTİRİCİ</span>
+                    <span className="text-[#F6F5F2] font-bold">BEDİR HÜSEYİN ÖZCAN</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-[#687082] block mb-1">SÜRÜM</span>
+                    <span className="text-[#FFBE0B] font-bold">TABLETOP // V2.0</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </Container>
       </section>
 
-      <footer className="py-8 border-t-2 border-[#2D3342] bg-[#111318] text-center font-mono text-xs text-[#687082] uppercase tracking-wider">
-        <p>© 2026 KİMBUKİ. TÜM HAKLARI SAKLIDIR.</p>
+      <footer className="py-8 border-t-2 border-[#2D3342] bg-[#111318] font-mono text-xs text-[#687082] uppercase tracking-wider">
+        <Container maxWidth="lg">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
+            <div className="flex items-center gap-3">
+              <Image
+                src="/konnev-games-dark.png"
+                alt="Konnev Games"
+                width={1024}
+                height={644}
+                className="h-6 w-auto opacity-85 hover:opacity-100 transition-opacity select-none"
+              />
+              <span className="text-[#2D3342]">|</span>
+              <span className="text-[#A0A8B8]">BİR KONNEV GAMES YAPIMIDIR</span>
+            </div>
+            <p>© 2026 KİMBUKİ — KONNEV GAMES. TÜM HAKLARI SAKLIDIR.</p>
+          </div>
+        </Container>
       </footer>
 
       <PlayAuthDialog
